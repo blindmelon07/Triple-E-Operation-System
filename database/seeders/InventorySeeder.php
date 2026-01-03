@@ -12,6 +12,15 @@ class InventorySeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        $products = \App\Models\Product::doesntHave('inventory')->get();
+        
+        foreach ($products as $product) {
+            \App\Models\Inventory::create([
+                'product_id' => $product->id,
+                'quantity' => rand(50, 500),
+            ]);
+        }
+
+        $this->command->info('Created inventory for ' . $products->count() . ' products');
     }
 }

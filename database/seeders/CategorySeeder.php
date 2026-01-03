@@ -12,6 +12,24 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\Category::factory(10)->create();
+        $categories = [
+            'Hand Tools',
+            'Power Tools', 
+            'Fasteners',
+            'Paint',
+            'Plumbing',
+            'Electrical',
+            'Garden',
+            'Safety',
+            'Building Materials',
+            'Adhesives'
+        ];
+
+        foreach ($categories as $category) {
+            \App\Models\Category::firstOrCreate(
+                ['name' => $category],
+                ['description' => 'Category for ' . $category]
+            );
+        }
     }
 }

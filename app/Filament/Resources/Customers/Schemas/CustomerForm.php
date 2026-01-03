@@ -10,7 +10,7 @@ class CustomerForm
     {
         return $schema
             ->components([
-                //
+                \Filament\Forms\Components\TextInput::make('name')->required(),
             ]);
     }
 }

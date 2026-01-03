@@ -23,6 +23,9 @@ class StatsOverview extends BaseWidget
             Stat::make('Sales', Sale::count())
                 ->description('Total sales made')
                 ->color('success'),
+                Stat::make('Total Sales Price', '₱' . number_format(Sale::sum('total'), 2))
+                    ->description('Sum of all sales in PHP')
+                    ->color('success'),
             Stat::make('Purchases', Purchase::count())
                 ->description('Total purchases received')
                 ->color('info'),

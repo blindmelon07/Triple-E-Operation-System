@@ -17,6 +17,7 @@ class DashboardStatsWidget extends Widget
         return [
             'products_count' => Product::count(),
             'sales_count' => Sale::count(),
+            'total_sales' => Sale::sum('total'),
             'purchases_count' => Purchase::count(),
             'low_stock_count' => Inventory::where('quantity', '<', 5)->count(),
         ];

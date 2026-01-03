@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'category_id', 'supplier_id', 'price'];
+    protected $fillable = ['name', 'category_id', 'supplier_id', 'price','quantity'];
     /** @use HasFactory<\Database\Factories\ProductFactory> */
     use HasFactory;
     public function inventory(): \Illuminate\Database\Eloquent\Relations\HasOne
