@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
-use App\Models\Customer;
 use App\Models\Category;
+use App\Models\Customer;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -18,8 +18,19 @@ class POSController extends Controller
             ->whereHas('inventory', function ($query) {
                 $query->where('quantity', '>', 0);
             })
-            ->get();
-        
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'category_id' => $product->category_id,
+                    'price' => $product->price,
+                    'unit' => $product->unit->value,
+                    'category' => $product->category,
+                    'inventory' => $product->inventory,
+                ];
+            });
+
         $customers = Customer::orderBy('name')->get();
         $categories = Category::all();
 
@@ -53,17 +64,20 @@ class POSController extends Controller
             // Create sale items
             foreach ($validated['items'] as $item) {
                 $product = Product::findOrFail($item['id']);
-                
+
                 // Check if enough stock is available
                 if ($product->inventory && $product->inventory->quantity < $item['quantity']) {
                     throw new \Exception("Not enough stock for product: {$product->name}");
                 }
 
+                // Calculate price based on unit type
+                $itemPrice = $item['price'] * $item['quantity'];
+
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $item['id'],
                     'quantity' => $item['quantity'],
-                    'price' => $item['price'],
+                    'price' => $itemPrice,
                 ]);
             }
 
@@ -77,7 +91,7 @@ class POSController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),

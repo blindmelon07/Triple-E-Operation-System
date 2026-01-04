@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Enums\ProductUnit;
 use Filament\Schemas\Schema;
 
 class ProductForm
@@ -22,6 +23,10 @@ class ProductForm
                 \Filament\Forms\Components\TextInput::make('quantity')
                     ->label('Stock')
                     ->numeric()
+                    ->required(),
+                \Filament\Forms\Components\Select::make('unit')
+                    ->options(ProductUnit::class)
+                    ->default(ProductUnit::Piece)
                     ->required(),
             ]);
     }

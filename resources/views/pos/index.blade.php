@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Point of Sale - TOS</title>
+    <title>Tri-E POS</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -15,7 +15,7 @@
             <div class="px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Point of Sale</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tri-E POS</h1>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Process customer transactions</p>
                     </div>
                     <div class="flex items-center gap-4">
@@ -72,7 +72,9 @@
                                     </div>
                                     <div class="flex items-center justify-between mt-2">
                                         <span class="text-lg font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + parseFloat(product.price).toFixed(2)"></span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400" x-text="'Stock: ' + (product.inventory?.quantity || 0)"></span>
+                                        <span class="text-xs" 
+                                              :class="getAvailableStock(product.id) <= 5 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400'" 
+                                              x-text="'Stock: ' + getAvailableStock(product.id)"></span>
                                     </div>
                                 </div>
                             </button>
@@ -128,19 +130,20 @@
                                     </svg>
                                 </button>
                                 <h4 class="font-medium text-gray-900 dark:text-white text-sm mb-2 pr-6" x-text="item.name"></h4>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2" x-text="'₱' + parseFloat(item.unit_price).toFixed(2) + ' per ' + item.unit"></p>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <button 
-                                            @click="updateQuantity(index, -1)"
-                                            class="w-7 h-7 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500"
+                                            @click="updateQuantity(index, -0.1)"
+                                            class="w-7 h-7 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 text-xs"
                                         >
                                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                                             </svg>
                                         </button>
-                                        <span class="w-8 text-center font-medium dark:text-white" x-text="item.quantity"></span>
+                                        <span class="w-12 text-center font-medium dark:text-white text-sm" x-text="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
                                         <button 
-                                            @click="updateQuantity(index, 1)"
+                                            @click="updateQuantity(index, item.unit === 'piece' ? 1 : 0.1)"
                                             class="w-7 h-7 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500"
                                         >
                                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,7 +151,7 @@
                                             </svg>
                                         </button>
                                     </div>
-                                    <span class="font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + (item.price * item.quantity).toFixed(2)"></span>
+                                    <span class="font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
                                 </div>
                             </div>
                         </template>
@@ -260,6 +263,86 @@
         </div>
     </div>
 
+    <!-- Weight Selector Modal -->
+    <div 
+        x-show="showWeightModal" 
+        x-cloak
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showWeightModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Select Weight</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product</label>
+                        <div class="text-lg font-semibold text-gray-900 dark:text-white" x-text="pendingProduct?.name"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Weight</label>
+                        <div class="flex gap-2 mb-3">
+                            <input 
+                                type="number" 
+                                x-model.number="weightValue"
+                                @input="calculateWeightPrice()"
+                                step="0.1"
+                                min="0.1"
+                                placeholder="Enter quantity"
+                                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                            <select 
+                                x-model="weightUnit"
+                                @change="calculateWeightPrice()"
+                                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                                <template x-if="pendingProduct?.unit === 'kilo'">
+                                    <option value="gram">Grams</option>
+                                </template>
+                                <template x-if="pendingProduct?.unit === 'kilo'">
+                                    <option value="kilo" selected>Kilos</option>
+                                </template>
+                                <template x-if="pendingProduct?.unit === 'liter'">
+                                    <option value="milliliter">Milliliters</option>
+                                </template>
+                                <template x-if="pendingProduct?.unit === 'liter'">
+                                    <option value="liter" selected>Liters</option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-600 dark:text-gray-400">Unit Price</span>
+                            <span class="font-semibold dark:text-white" x-text="'₱' + parseFloat(pendingProduct?.price).toFixed(2) + ' per ' + pendingProduct?.unit"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Total Price</span>
+                            <span class="font-bold text-lg text-blue-600 dark:text-blue-400" x-text="'₱' + calculatedWeightPrice.toFixed(2)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button 
+                        @click="showWeightModal = false; pendingProduct = null"
+                        class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        @click="addPendingProductToCart()"
+                        class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                    >
+                        Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Success Modal -->
     <div 
         x-show="showSuccessModal" 
@@ -356,17 +439,33 @@
                 showPaymentModal: false,
                 showSuccessModal: false,
                 showClearCartModal: false,
+                showWeightModal: false,
                 isProcessing: false,
                 paymentMethod: 'cash',
                 cashReceived: 0,
                 change: 0,
                 lastSaleTotal: 0,
                 currentDateTime: '',
+                pendingProduct: null,
+                weightValue: 0,
+                weightUnit: 'kilo',
+                calculatedWeightPrice: 0,
 
                 init() {
                     this.filteredProducts = this.products;
                     this.updateDateTime();
                     setInterval(() => this.updateDateTime(), 1000);
+                },
+
+                getAvailableStock(productId) {
+                    const product = this.products.find(p => p.id === productId);
+                    if (!product) return 0;
+                    
+                    const originalStock = product.inventory?.quantity || 0;
+                    const cartItem = this.cart.find(item => item.id === productId);
+                    const quantityInCart = cartItem ? cartItem.quantity : 0;
+                    
+                    return originalStock - quantityInCart;
                 },
 
                 updateDateTime() {
@@ -389,12 +488,23 @@
                 },
 
                 addToCart(product) {
+                    // For weight-based products, show weight selector
+                    if (product.unit !== 'piece') {
+                        this.pendingProduct = product;
+                        this.weightValue = 1;
+                        this.weightUnit = product.unit;
+                        this.calculatedWeightPrice = product.price;
+                        this.showWeightModal = true;
+                        return;
+                    }
+
+                    // For piece-based products, add directly
                     const existingItem = this.cart.find(item => item.id === product.id);
-                    const availableStock = product.inventory?.quantity || 0;
+                    const availableStock = this.getAvailableStock(product.id);
                     
                     if (existingItem) {
-                        if (existingItem.quantity < availableStock) {
-                            existingItem.quantity++;
+                        if (availableStock > 0) {
+                            existingItem.quantity += 1;
                         } else {
                             alert('Not enough stock available');
                         }
@@ -404,13 +514,77 @@
                                 id: product.id,
                                 name: product.name,
                                 price: parseFloat(product.price),
+                                unit_price: parseFloat(product.price),
+                                unit: product.unit,
                                 quantity: 1,
-                                maxStock: availableStock
+                                maxStock: product.inventory?.quantity || 0
                             });
                         } else {
                             alert('Product out of stock');
                         }
                     }
+                },
+
+                calculateWeightPrice() {
+                    if (!this.pendingProduct || !this.weightValue) {
+                        this.calculatedWeightPrice = 0;
+                        return;
+                    }
+
+                    const basePrice = parseFloat(this.pendingProduct.price);
+                    let quantity = this.weightValue;
+
+                    // Convert to base unit if needed
+                    if (this.pendingProduct.unit === 'kilo' && this.weightUnit === 'gram') {
+                        quantity = this.weightValue / 1000;
+                    } else if (this.pendingProduct.unit === 'liter' && this.weightUnit === 'milliliter') {
+                        quantity = this.weightValue / 1000;
+                    }
+
+                    this.calculatedWeightPrice = basePrice * quantity;
+                },
+
+                addPendingProductToCart() {
+                    if (!this.pendingProduct || !this.weightValue) {
+                        alert('Please enter a valid weight');
+                        return;
+                    }
+
+                    const availableStock = this.getAvailableStock(this.pendingProduct.id);
+                    let quantity = this.weightValue;
+
+                    // Convert to base unit if needed
+                    if (this.pendingProduct.unit === 'kilo' && this.weightUnit === 'gram') {
+                        quantity = this.weightValue / 1000;
+                    } else if (this.pendingProduct.unit === 'liter' && this.weightUnit === 'milliliter') {
+                        quantity = this.weightValue / 1000;
+                    }
+
+                    if (quantity > availableStock) {
+                        alert('Not enough stock available');
+                        return;
+                    }
+
+                    const existingItem = this.cart.find(item => item.id === this.pendingProduct.id);
+                    
+                    if (existingItem) {
+                        existingItem.quantity += quantity;
+                    } else {
+                        this.cart.push({
+                            id: this.pendingProduct.id,
+                            name: this.pendingProduct.name,
+                            price: parseFloat(this.pendingProduct.price),
+                            unit_price: parseFloat(this.pendingProduct.price),
+                            unit: this.pendingProduct.unit,
+                            quantity: quantity,
+                            maxStock: this.pendingProduct.inventory?.quantity || 0
+                        });
+                    }
+
+                    this.showWeightModal = false;
+                    this.pendingProduct = null;
+                    this.weightValue = 0;
+                    this.calculatedWeightPrice = 0;
                 },
 
                 updateQuantity(index, change) {
@@ -419,15 +593,25 @@
                     
                     if (newQuantity <= 0) {
                         this.removeFromCart(index);
-                    } else if (newQuantity <= item.maxStock) {
-                        item.quantity = newQuantity;
                     } else {
-                        alert('Not enough stock available');
+                        const availableStock = this.getAvailableStock(item.id) + item.quantity;
+                        
+                        if (newQuantity <= availableStock) {
+                            item.quantity = newQuantity;
+                        } else {
+                            alert('Not enough stock available');
+                        }
                     }
                 },
 
                 removeFromCart(index) {
                     this.cart.splice(index, 1);
+                },
+
+                calculateItemPrice(item) {
+                    // For weight/liquid units (kilo, gram, liter, milliliter), 
+                    // calculate price proportionally based on quantity
+                    return item.unit_price * item.quantity;
                 },
 
                 clearCart() {
@@ -492,7 +676,7 @@
                 },
 
                 get subtotal() {
-                    return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    return this.cart.reduce((sum, item) => sum + this.calculateItemPrice(item), 0);
                 },
 
                 get tax() {

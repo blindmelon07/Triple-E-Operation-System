@@ -17,6 +17,9 @@ class ProductsTable
                 \Filament\Tables\Columns\TextColumn::make('category.name')->label('Category')->searchable(),
                 \Filament\Tables\Columns\TextColumn::make('price')->money('PHP')->label('Price'),
                 \Filament\Tables\Columns\TextColumn::make('inventory.quantity')->label('Stock'),
+                \Filament\Tables\Columns\TextColumn::make('unit')
+                    ->label('Unit')
+                    ->formatStateUsing(fn ($state) => $state?->label()),
             ])
             ->filters([
                 //
