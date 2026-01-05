@@ -272,7 +272,7 @@
     >
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
             <div class="p-6">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Select Weight</h3>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Select Quantity</h3>
                 
                 <div class="space-y-4">
                     <div>
@@ -281,7 +281,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Weight</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quantity</label>
                         <div class="flex gap-2 mb-3">
                             <input 
                                 type="number" 
@@ -297,17 +297,46 @@
                                 @change="calculateWeightPrice()"
                                 class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                             >
+                                <!-- Kilo conversions -->
                                 <template x-if="pendingProduct?.unit === 'kilo'">
                                     <option value="gram">Grams</option>
                                 </template>
                                 <template x-if="pendingProduct?.unit === 'kilo'">
                                     <option value="kilo" selected>Kilos</option>
                                 </template>
+                                
+                                <!-- Liter conversions -->
                                 <template x-if="pendingProduct?.unit === 'liter'">
                                     <option value="milliliter">Milliliters</option>
                                 </template>
                                 <template x-if="pendingProduct?.unit === 'liter'">
                                     <option value="liter" selected>Liters</option>
+                                </template>
+
+                                <!-- Meter conversions -->
+                                <template x-if="pendingProduct?.unit === 'meter'">
+                                    <option value="foot">Feet</option>
+                                </template>
+                                <template x-if="pendingProduct?.unit === 'meter'">
+                                    <option value="meter" selected>Meters</option>
+                                </template>
+
+                                <!-- Foot conversions -->
+                                <template x-if="pendingProduct?.unit === 'foot'">
+                                    <option value="foot" selected>Feet</option>
+                                </template>
+                                <template x-if="pendingProduct?.unit === 'foot'">
+                                    <option value="meter">Meters</option>
+                                </template>
+
+                                <!-- No conversion options for package units -->
+                                <template x-if="pendingProduct?.unit === 'bag' || pendingProduct?.unit === 'box' || pendingProduct?.unit === 'bundle' || pendingProduct?.unit === 'tube' || pendingProduct?.unit === 'knot'">
+                                    <option :value="pendingProduct?.unit" selected x-text="pendingProduct?.unit.charAt(0).toUpperCase() + pendingProduct?.unit.slice(1)"></option>
+                                </template>
+
+                                <!-- Cubic meter has no conversion -->
+                                <template x-if="pendingProduct?.unit === 'cubic_meter'">
+                                    <option value="cubic_meter" selected>Cubic Meters</option>
                                 </template>
                             </select>
                         </div>
@@ -316,7 +345,7 @@
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                         <div class="flex justify-between text-sm mb-2">
                             <span class="text-gray-600 dark:text-gray-400">Unit Price</span>
-                            <span class="font-semibold dark:text-white" x-text="'₱' + parseFloat(pendingProduct?.price).toFixed(2) + ' per ' + pendingProduct?.unit"></span>
+                            <span class="font-semibold dark:text-white" x-text="'₱' + parseFloat(pendingProduct?.price).toFixed(2) + ' per ' + (pendingProduct?.unit === 'cubic_meter' ? 'cu.m' : pendingProduct?.unit)"></span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600 dark:text-gray-400">Total Price</span>
@@ -539,6 +568,10 @@
                         quantity = this.weightValue / 1000;
                     } else if (this.pendingProduct.unit === 'liter' && this.weightUnit === 'milliliter') {
                         quantity = this.weightValue / 1000;
+                    } else if (this.pendingProduct.unit === 'meter' && this.weightUnit === 'foot') {
+                        quantity = this.weightValue / 3.28084;
+                    } else if (this.pendingProduct.unit === 'foot' && this.weightUnit === 'meter') {
+                        quantity = this.weightValue * 3.28084;
                     }
 
                     this.calculatedWeightPrice = basePrice * quantity;
@@ -546,7 +579,7 @@
 
                 addPendingProductToCart() {
                     if (!this.pendingProduct || !this.weightValue) {
-                        alert('Please enter a valid weight');
+                        alert('Please enter a valid quantity');
                         return;
                     }
 
@@ -558,6 +591,10 @@
                         quantity = this.weightValue / 1000;
                     } else if (this.pendingProduct.unit === 'liter' && this.weightUnit === 'milliliter') {
                         quantity = this.weightValue / 1000;
+                    } else if (this.pendingProduct.unit === 'meter' && this.weightUnit === 'foot') {
+                        quantity = this.weightValue / 3.28084;
+                    } else if (this.pendingProduct.unit === 'foot' && this.weightUnit === 'meter') {
+                        quantity = this.weightValue * 3.28084;
                     }
 
                     if (quantity > availableStock) {

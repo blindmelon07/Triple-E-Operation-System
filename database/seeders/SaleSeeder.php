@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Customer;
+use App\Models\Sale;
 use Illuminate\Database\Seeder;
 
 class SaleSeeder extends Seeder
@@ -12,6 +13,14 @@ class SaleSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        $customers = Customer::all();
+
+        if ($customers->isEmpty()) {
+            return;
+        }
+
+        Sale::factory(10)
+            ->recycle($customers)
+            ->create();
     }
 }

@@ -17,7 +17,8 @@ class SaleFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'date' => $this->faker->dateTimeBetween('-30 days'),
+            'total' => $this->faker->randomFloat(2, 50, 500),
         ];
     }
 }
