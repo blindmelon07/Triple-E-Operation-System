@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Customer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,9 +17,28 @@ class SaleFactory extends Factory
      */
     public function definition(): array
     {
+        $total = fake()->randomFloat(2, 500, 10000);
+
         return [
-            'date' => $this->faker->dateTimeBetween('-30 days'),
-            'total' => $this->faker->randomFloat(2, 50, 500),
+            'customer_id' => Customer::factory(),
+            'date' => fake()->dateTimeBetween('-30 days'),
+            'total' => $total,
+            'payment_status' => fake()->randomElement(['unpaid', 'partial', 'paid']),
+            'amount_paid' => fake()->randomFloat(2, 0, $total),
+            'due_date' => fake()->optional()->dateTimeBetween('now', '+60 days'),
+            'paid_date' => null,
         ];
+    }
+
+    /**
+     * State for paid sales.
+     */
+    public function paid(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'payment_status' => 'paid',
+            'amount_paid' => $attributes['total'],
+            'paid_date' => now(),
+        ]);
     }
 }

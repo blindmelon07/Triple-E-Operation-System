@@ -18,6 +18,16 @@ class ExpenseCategory extends Model
     ];
 
     /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
+
+    /**
      * @return HasMany<Expense, $this>
      */
     public function expenses(): HasMany
