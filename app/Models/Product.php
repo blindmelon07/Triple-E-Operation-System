@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'category_id', 'supplier_id', 'price', 'quantity', 'unit'];
+    protected $fillable = ['name', 'category_id', 'supplier_id', 'price', 'cost_price', 'quantity', 'unit'];
 
     /** @use HasFactory<\Database\Factories\ProductFactory> */
     use HasFactory;
@@ -17,7 +17,33 @@ class Product extends Model
     {
         return [
             'unit' => ProductUnit::class,
+            'price' => 'decimal:2',
+            'cost_price' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Get the profit margin for this product.
+     */
+    public function getProfitMarginAttribute(): float
+    {
+        if (! $this->price || $this->price == 0) {
+            return 0;
+        }
+
+        $cost = $this->cost_price ?? ($this->price * 0.7); // Default to 70% of price if no cost set
+
+        return (($this->price - $cost) / $this->price) * 100;
+    }
+
+    /**
+     * Get the profit per unit for this product.
+     */
+    public function getProfitPerUnitAttribute(): float
+    {
+        $cost = $this->cost_price ?? ($this->price * 0.7);
+
+        return (float) $this->price - (float) $cost;
     }
 
     public function inventory(): \Illuminate\Database\Eloquent\Relations\HasOne
