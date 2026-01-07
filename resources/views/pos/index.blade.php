@@ -2,26 +2,114 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1f2937">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/images/icon-192.png">
     <title>Tri-E POS</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        /* Cross-platform touch optimizations */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        
+        /* Prevent pull-to-refresh on mobile */
+        body {
+            overscroll-behavior-y: contain;
+        }
+        
+        /* Smooth scrolling for all platforms */
+        .scroll-smooth {
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        
+        /* Touch-friendly button states */
+        .touch-btn:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+        
+        /* Safe area padding for notched devices */
+        .safe-area-top {
+            padding-top: env(safe-area-inset-top);
+        }
+        .safe-area-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        /* Prevent text selection on UI elements */
+        .no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        /* Hide scrollbar but allow scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Mobile cart slide animation */
+        .cart-slide-enter {
+            transform: translateX(100%);
+        }
+        .cart-slide-enter-active {
+            transform: translateX(0);
+            transition: transform 0.3s ease-out;
+        }
+        .cart-slide-leave-active {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900" x-data="posSystem()">
-    <div class="min-h-screen">
+<body class="bg-gray-50 dark:bg-gray-900 no-select safe-area-top" x-data="posSystem()">
+    <div class="min-h-screen min-h-[100dvh]">
         <!-- Header -->
-        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-            <div class="px-6 py-4">
+        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
+            <div class="px-3 sm:px-6 py-3 sm:py-4">
                 <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tri-E POS</h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Process customer transactions</p>
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        <h1 class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Tri-E POS</h1>
+                        <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Process customer transactions</p>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm text-gray-600 dark:text-gray-400" x-text="currentDateTime"></span>
-                        <a href="/" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                            Back to Admin
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        <span class="hidden sm:block text-sm text-gray-600 dark:text-gray-400" x-text="currentDateTime"></span>
+                        
+                        <!-- Mobile Cart Toggle Button -->
+                        <button 
+                            @click="showMobileCart = !showMobileCart"
+                            class="lg:hidden relative px-3 py-2 bg-blue-600 text-white rounded-lg touch-btn"
+                        >
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <span 
+                                x-show="cart.length > 0"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
+                                x-text="cart.length"
+                            ></span>
+                        </button>
+                        
+                        <a href="/" class="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition touch-btn text-sm sm:text-base">
+                            <span class="hidden sm:inline">Back to Admin</span>
+                            <svg class="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
                         </a>
                     </div>
                 </div>
@@ -29,25 +117,26 @@
         </header>
 
         <!-- Main Content -->
-        <div class="flex h-[calc(100vh-89px)]">
-            <!-- Products Section (Left Side) -->
+        <div class="flex flex-col lg:flex-row h-[calc(100vh-65px)] h-[calc(100dvh-65px)] sm:h-[calc(100vh-89px)] sm:h-[calc(100dvh-89px)]">
+            <!-- Products Section -->
             <div class="flex-1 overflow-hidden flex flex-col">
                 <!-- Search and Filter Bar -->
-                <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-                    <div class="flex gap-4">
+                <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                    <div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
                         <div class="flex-1">
                             <input 
                                 type="text" 
                                 x-model="searchQuery"
                                 @input="filterProducts()"
-                                placeholder="Search products by name or scan barcode..."
-                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                inputmode="search"
+                                placeholder="Search products..."
+                                class="w-full px-4 py-3 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
                             >
                         </div>
                         <select 
                             x-model="selectedCategory"
                             @change="filterProducts()"
-                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            class="px-4 py-3 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
                         >
                             <option value="">All Categories</option>
                             @foreach($categories as $category)
@@ -58,21 +147,21 @@
                 </div>
 
                 <!-- Products Grid -->
-                <div class="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900">
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div class="flex-1 overflow-y-auto scroll-smooth hide-scrollbar p-3 sm:p-6 bg-gray-50 dark:bg-gray-900" :class="{ 'pb-24 lg:pb-6': cart.length > 0 }">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-4">
                         <template x-for="product in filteredProducts" :key="product.id">
                             <button 
                                 @click="addToCart(product)"
-                                class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-md transition border border-gray-200 dark:border-gray-700 text-left"
+                                class="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md active:shadow-inner transition border border-gray-200 dark:border-gray-700 text-left touch-btn"
                             >
                                 <div class="flex flex-col h-full">
                                     <div class="flex-1">
-                                        <h3 class="font-semibold text-gray-900 dark:text-white text-sm mb-1" x-text="product.name"></h3>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2" x-text="product.category?.name || 'No Category'"></p>
+                                        <h3 class="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm mb-1 line-clamp-2" x-text="product.name"></h3>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate" x-text="product.category?.name || 'No Category'"></p>
                                     </div>
                                     <div class="flex items-center justify-between mt-2">
-                                        <span class="text-lg font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + parseFloat(product.price).toFixed(2)"></span>
-                                        <span class="text-xs" 
+                                        <span class="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + parseFloat(product.price).toFixed(2)"></span>
+                                        <span class="text-xs hidden sm:inline" 
                                               :class="getAvailableStock(product.id) <= 5 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400'" 
                                               x-text="'Stock: ' + getAvailableStock(product.id)"></span>
                                     </div>
@@ -84,10 +173,25 @@
                         <p class="text-gray-500 dark:text-gray-400">No products found</p>
                     </div>
                 </div>
+                
+                <!-- Mobile Bottom Cart Summary Bar -->
+                <div 
+                    x-show="cart.length > 0"
+                    @click="showMobileCart = true"
+                    class="lg:hidden fixed bottom-0 left-0 right-0 bg-blue-600 text-white p-4 flex items-center justify-between z-20 safe-area-bottom touch-btn"
+                >
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center">
+                            <span class="font-bold" x-text="cart.length"></span>
+                        </div>
+                        <span class="font-medium">View Cart</span>
+                    </div>
+                    <span class="text-xl font-bold" x-text="'₱' + total.toFixed(2)"></span>
+                </div>
             </div>
 
-            <!-- Cart Section (Right Side) -->
-            <div class="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col">
+            <!-- Cart Section (Desktop) -->
+            <div class="hidden lg:flex w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-col">
                 <!-- Cart Header -->
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">Current Sale</h2>
@@ -108,7 +212,7 @@
                 </div>
 
                 <!-- Cart Items -->
-                <div class="flex-1 overflow-y-auto p-4">
+                <div class="flex-1 overflow-y-auto scroll-smooth p-4">
                     <template x-if="cart.length === 0">
                         <div class="text-center py-12">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +227,7 @@
                             <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 relative">
                                 <button 
                                     @click="removeFromCart(index)"
-                                    class="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                                    class="absolute top-2 right-2 text-red-500 hover:text-red-700 touch-btn p-1"
                                 >
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -134,19 +238,19 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <button 
-                                            @click="updateQuantity(index, -0.1)"
-                                            class="w-7 h-7 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 text-xs"
+                                            @click="updateQuantity(index, item.unit === 'piece' ? -1 : -0.1)"
+                                            class="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 touch-btn"
                                         >
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                                             </svg>
                                         </button>
                                         <span class="w-12 text-center font-medium dark:text-white text-sm" x-text="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
                                         <button 
                                             @click="updateQuantity(index, item.unit === 'piece' ? 1 : 0.1)"
-                                            class="w-7 h-7 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500"
+                                            class="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 touch-btn"
                                         >
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                             </svg>
                                         </button>
@@ -178,7 +282,7 @@
                         <button 
                             @click="processPayment()"
                             :disabled="cart.length === 0 || isProcessing"
-                            class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-semibold py-3 rounded-lg transition"
+                            class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-semibold py-3 rounded-lg transition touch-btn"
                         >
                             <span x-show="!isProcessing">Complete Sale</span>
                             <span x-show="isProcessing">Processing...</span>
@@ -186,10 +290,156 @@
                         <button 
                             @click="clearCart()"
                             :disabled="cart.length === 0"
-                            class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg transition"
+                            class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg transition touch-btn"
                         >
                             Clear Cart
                         </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile Cart Slide-over -->
+            <div 
+                x-show="showMobileCart"
+                x-cloak
+                class="lg:hidden fixed inset-0 z-40"
+                @keydown.escape.window="showMobileCart = false"
+            >
+                <!-- Backdrop -->
+                <div 
+                    x-show="showMobileCart"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="absolute inset-0 bg-black/50"
+                    @click="showMobileCart = false"
+                ></div>
+                
+                <!-- Cart Panel -->
+                <div 
+                    x-show="showMobileCart"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="translate-x-full"
+                    x-transition:enter-end="translate-x-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="translate-x-0"
+                    x-transition:leave-end="translate-x-full"
+                    class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-gray-800 shadow-xl flex flex-col"
+                >
+                    <!-- Mobile Cart Header -->
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between safe-area-top">
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Current Sale</h2>
+                        <button 
+                            @click="showMobileCart = false"
+                            class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn"
+                        >
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Customer Selection (Mobile) -->
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer</label>
+                        <select 
+                            x-model="selectedCustomer"
+                            class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                            <option value="">Walk-in Customer</option>
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Mobile Cart Items -->
+                    <div class="flex-1 overflow-y-auto scroll-smooth p-4">
+                        <template x-if="cart.length === 0">
+                            <div class="text-center py-12">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Cart is empty</p>
+                            </div>
+                        </template>
+
+                        <div class="space-y-3">
+                            <template x-for="(item, index) in cart" :key="'mobile-' + index">
+                                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 relative">
+                                    <button 
+                                        @click="removeFromCart(index)"
+                                        class="absolute top-3 right-3 text-red-500 hover:text-red-700 touch-btn p-1"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                    <h4 class="font-medium text-gray-900 dark:text-white text-base mb-2 pr-8" x-text="item.name"></h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-3" x-text="'₱' + parseFloat(item.unit_price).toFixed(2) + ' per ' + item.unit"></p>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <button 
+                                                @click="updateQuantity(index, item.unit === 'piece' ? -1 : -0.1)"
+                                                class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-600 rounded-lg border border-gray-300 dark:border-gray-500 touch-btn"
+                                            >
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                                                </svg>
+                                            </button>
+                                            <span class="w-14 text-center font-medium dark:text-white text-lg" x-text="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
+                                            <button 
+                                                @click="updateQuantity(index, item.unit === 'piece' ? 1 : 0.1)"
+                                                class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-600 rounded-lg border border-gray-300 dark:border-gray-500 touch-btn"
+                                            >
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <span class="font-bold text-lg text-blue-600 dark:text-blue-400" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Cart Summary -->
+                    <div class="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 safe-area-bottom">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                            <span class="font-medium dark:text-white" x-text="'₱' + subtotal.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Tax (0%)</span>
+                            <span class="font-medium dark:text-white" x-text="'₱' + tax.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between text-xl font-bold border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <span class="dark:text-white">Total</span>
+                            <span class="text-blue-600 dark:text-blue-400" x-text="'₱' + total.toFixed(2)"></span>
+                        </div>
+
+                        <!-- Mobile Action Buttons -->
+                        <div class="space-y-3 pt-2">
+                            <button 
+                                @click="processPayment()"
+                                :disabled="cart.length === 0 || isProcessing"
+                                class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-semibold py-4 rounded-xl transition touch-btn text-lg"
+                            >
+                                <span x-show="!isProcessing">Complete Sale</span>
+                                <span x-show="isProcessing">Processing...</span>
+                            </button>
+                            <button 
+                                @click="clearCart()"
+                                :disabled="cart.length === 0"
+                                class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-3 rounded-xl transition touch-btn"
+                            >
+                                Clear Cart
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -522,6 +772,7 @@
                 showClearCartModal: false,
                 showWeightModal: false,
                 showOutOfStockModal: false,
+                showMobileCart: false,
                 outOfStockTitle: '',
                 outOfStockMessage: '',
                 outOfStockProduct: '',
