@@ -806,7 +806,8 @@
 
                 updateDateTime() {
                     const now = new Date();
-                    this.currentDateTime = now.toLocaleString('en-US', {
+                    this.currentDateTime = now.toLocaleString('en-PH', {
+                        timeZone: 'Asia/Manila',
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
