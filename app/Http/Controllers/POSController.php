@@ -15,9 +15,6 @@ class POSController extends Controller
     public function index(): \Illuminate\Contracts\View\View
     {
         $products = Product::with(['category', 'inventory'])
-            ->whereHas('inventory', function ($query) {
-                $query->where('quantity', '>', 0);
-            })
             ->get()
             ->map(function ($product) {
                 return [
