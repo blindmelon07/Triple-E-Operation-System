@@ -95,4 +95,35 @@ class POSController extends Controller
             ], 500);
         }
     }
+
+    public function storeCustomer(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $customer = Customer::create([
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'payment_term_days' => 0,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer added successfully',
+                'customer' => $customer,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

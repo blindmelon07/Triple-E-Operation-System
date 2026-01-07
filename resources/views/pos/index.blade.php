@@ -200,15 +200,26 @@
                 <!-- Customer Selection -->
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer</label>
-                    <select 
-                        x-model="selectedCustomer"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="">Walk-in Customer</option>
-                        @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="flex gap-2">
+                        <select 
+                            x-model="selectedCustomer"
+                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        >
+                            <option value="">Walk-in Customer</option>
+                            <template x-for="customer in customers" :key="customer.id">
+                                <option :value="customer.id" x-text="customer.name"></option>
+                            </template>
+                        </select>
+                        <button 
+                            @click="showAddCustomerModal = true"
+                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition touch-btn"
+                            title="Add New Customer"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Cart Items -->
@@ -345,15 +356,26 @@
                     <!-- Customer Selection (Mobile) -->
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer</label>
-                        <select 
-                            x-model="selectedCustomer"
-                            class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
-                        >
-                            <option value="">Walk-in Customer</option>
-                            @foreach($customers as $customer)
-                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                            @endforeach
-                        </select>
+                        <div class="flex gap-2">
+                            <select 
+                                x-model="selectedCustomer"
+                                class="flex-1 px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                            >
+                                <option value="">Walk-in Customer</option>
+                                <template x-for="customer in customers" :key="customer.id">
+                                    <option :value="customer.id" x-text="customer.name"></option>
+                                </template>
+                            </select>
+                            <button 
+                                @click="showAddCustomerModal = true"
+                                class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition touch-btn"
+                                title="Add New Customer"
+                            >
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Mobile Cart Items -->
@@ -651,6 +673,111 @@
         </div>
     </div>
 
+    <!-- Add Customer Modal -->
+    <div 
+        x-show="showAddCustomerModal" 
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showAddCustomerModal = false"
+    >
+        <div 
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4"
+        >
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Add New Customer</h3>
+                    <button 
+                        @click="showAddCustomerModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <form @submit.prevent="saveCustomer()" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name <span class="text-red-500">*</span></label>
+                        <input 
+                            type="text" 
+                            x-model="newCustomer.name"
+                            required
+                            placeholder="Customer name"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                        <input 
+                            type="tel" 
+                            x-model="newCustomer.phone"
+                            placeholder="Phone number"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                        <input 
+                            type="email" 
+                            x-model="newCustomer.email"
+                            placeholder="Email address"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
+                        <textarea 
+                            x-model="newCustomer.address"
+                            placeholder="Customer address"
+                            rows="2"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base resize-none"
+                        ></textarea>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div x-show="customerError" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm" x-text="customerError"></div>
+
+                    <!-- Buttons -->
+                    <div class="flex gap-3 pt-2">
+                        <button 
+                            type="button"
+                            @click="showAddCustomerModal = false; resetCustomerForm()"
+                            class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold touch-btn"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit"
+                            :disabled="isSavingCustomer || !newCustomer.name"
+                            class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition font-semibold touch-btn"
+                        >
+                            <span x-show="!isSavingCustomer">Save Customer</span>
+                            <span x-show="isSavingCustomer">Saving...</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Out of Stock Modal -->
     <div 
         x-show="showOutOfStockModal" 
@@ -762,6 +889,7 @@
         function posSystem() {
             return {
                 products: @json($products),
+                customers: @json($customers),
                 filteredProducts: [],
                 cart: [],
                 searchQuery: '',
@@ -773,10 +901,19 @@
                 showWeightModal: false,
                 showOutOfStockModal: false,
                 showMobileCart: false,
+                showAddCustomerModal: false,
                 outOfStockTitle: '',
                 outOfStockMessage: '',
                 outOfStockProduct: '',
                 isProcessing: false,
+                isSavingCustomer: false,
+                customerError: '',
+                newCustomer: {
+                    name: '',
+                    phone: '',
+                    email: '',
+                    address: ''
+                },
                 paymentMethod: 'cash',
                 cashReceived: 0,
                 change: 0,
@@ -876,6 +1013,55 @@
                         utterance.pitch = 1;
                         utterance.volume = 1;
                         speechSynthesis.speak(utterance);
+                    }
+                },
+
+                resetCustomerForm() {
+                    this.newCustomer = {
+                        name: '',
+                        phone: '',
+                        email: '',
+                        address: ''
+                    };
+                    this.customerError = '';
+                },
+
+                async saveCustomer() {
+                    if (!this.newCustomer.name.trim()) {
+                        this.customerError = 'Customer name is required';
+                        return;
+                    }
+
+                    this.isSavingCustomer = true;
+                    this.customerError = '';
+
+                    try {
+                        const response = await fetch('/pos/customer', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(this.newCustomer)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            // Add the new customer to the list
+                            this.customers.push(data.customer);
+                            // Select the new customer
+                            this.selectedCustomer = data.customer.id;
+                            // Close modal and reset form
+                            this.showAddCustomerModal = false;
+                            this.resetCustomerForm();
+                        } else {
+                            this.customerError = data.message || 'Failed to add customer';
+                        }
+                    } catch (error) {
+                        this.customerError = 'Error adding customer: ' + error.message;
+                    } finally {
+                        this.isSavingCustomer = false;
                     }
                 },
 
