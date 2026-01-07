@@ -401,6 +401,58 @@
         </div>
     </div>
 
+    <!-- Out of Stock Modal -->
+    <div 
+        x-show="showOutOfStockModal" 
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showOutOfStockModal = false"
+    >
+        <div 
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform"
+        >
+            <div class="p-6">
+                <!-- Icon -->
+                <div class="flex items-center justify-center w-20 h-20 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full">
+                    <svg class="w-10 h-10 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4M12 4v16m0-16L8 8m4-4l4 4" transform="rotate(45 12 12)" />
+                    </svg>
+                </div>
+
+                <!-- Title -->
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white text-center mb-2" x-text="outOfStockTitle"></h3>
+                
+                <!-- Message -->
+                <p class="text-gray-600 dark:text-gray-400 text-center mb-2" x-text="outOfStockMessage"></p>
+                
+                <!-- Product Info -->
+                <div x-show="outOfStockProduct" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-6">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white text-center" x-text="outOfStockProduct"></p>
+                </div>
+
+                <!-- Button -->
+                <button 
+                    @click="showOutOfStockModal = false"
+                    class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition font-semibold"
+                >
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Clear Cart Confirmation Modal -->
     <div 
         x-show="showClearCartModal" 
@@ -469,6 +521,10 @@
                 showSuccessModal: false,
                 showClearCartModal: false,
                 showWeightModal: false,
+                showOutOfStockModal: false,
+                outOfStockTitle: '',
+                outOfStockMessage: '',
+                outOfStockProduct: '',
                 isProcessing: false,
                 paymentMethod: 'cash',
                 cashReceived: 0,
@@ -535,7 +591,7 @@
                         if (availableStock > 0) {
                             existingItem.quantity += 1;
                         } else {
-                            alert('Not enough stock available');
+                            this.showStockAlert('Not Enough Stock', 'There is not enough stock available to add more of this item.', product.name);
                         }
                     } else {
                         if (availableStock > 0) {
@@ -549,8 +605,24 @@
                                 maxStock: product.inventory?.quantity || 0
                             });
                         } else {
-                            alert('Product out of stock');
+                            this.showStockAlert('Out of Stock', 'This product is currently out of stock and cannot be added to cart.', product.name);
                         }
+                    }
+                },
+
+                showStockAlert(title, message, productName = '') {
+                    this.outOfStockTitle = title;
+                    this.outOfStockMessage = message;
+                    this.outOfStockProduct = productName;
+                    this.showOutOfStockModal = true;
+                    
+                    // Speak the alert using Web Speech API
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(productName ? `${title}. ${productName}` : title);
+                        utterance.rate = 1;
+                        utterance.pitch = 1;
+                        utterance.volume = 1;
+                        speechSynthesis.speak(utterance);
                     }
                 },
 
