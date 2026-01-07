@@ -26,6 +26,7 @@ class TosPanelProvider extends PanelProvider
             ->default()
             ->id('tos')
             ->path('/')
+            ->profile()
             ->login()
             ->colors([
                 'primary' => Color::Blue,
