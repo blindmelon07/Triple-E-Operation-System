@@ -20,7 +20,7 @@
                     </div>
                     <div class="flex items-center gap-4">
                         <span class="text-sm text-gray-600 dark:text-gray-400" x-text="currentDateTime"></span>
-                        <a href="/tos" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                        <a href="/" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                             Back to Admin
                         </a>
                     </div>
