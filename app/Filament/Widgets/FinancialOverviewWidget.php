@@ -3,11 +3,15 @@
 namespace App\Filament\Widgets;
 
 use App\Services\AccountingService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class FinancialOverviewWidget extends BaseWidget
 {
+
+
+    use HasWidgetShield;
     protected ?string $heading = 'Financial Overview';
 
     protected ?string $description = 'Monthly financial metrics compared to last month';

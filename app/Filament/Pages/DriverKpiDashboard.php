@@ -6,6 +6,7 @@ use App\Enums\DeliveryStatus;
 use App\Models\Delivery;
 use App\Models\Driver;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -23,7 +24,7 @@ class DriverKpiDashboard extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
     use InteractsWithTable;
-
+    use HasPageShield;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
     protected static ?string $navigationLabel = 'Driver KPI';

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Supplier;
 use App\Services\CsvExportService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
@@ -22,7 +23,7 @@ use UnitEnum;
 class ProductsReport extends Page implements HasTable
 {
     use InteractsWithTable;
-
+    use HasPageShield;
     protected string $view = 'filament.pages.products-report';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-pie';

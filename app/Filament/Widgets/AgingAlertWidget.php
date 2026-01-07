@@ -4,10 +4,12 @@ namespace App\Filament\Widgets;
 
 use App\Models\Purchase;
 use App\Models\Sale;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 
 class AgingAlertWidget extends Widget
 {
+    use HasWidgetShield;
     protected string $view = 'filament.widgets.aging-alert-widget';
 
     protected static ?int $sort = 2;

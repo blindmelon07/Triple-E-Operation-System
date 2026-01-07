@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Services\AccountingService;
 use App\Services\ReportExportService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -13,6 +14,7 @@ use UnitEnum;
 
 class FinancialDashboard extends Page
 {
+    use HasPageShield;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
 
     protected string $view = 'filament.pages.financial-dashboard';

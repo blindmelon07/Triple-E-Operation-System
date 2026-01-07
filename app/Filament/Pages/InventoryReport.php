@@ -6,6 +6,7 @@ use App\Exports\InventoryReportExport;
 use App\Models\InventoryMovement;
 use App\Services\CsvExportService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -22,7 +23,7 @@ use UnitEnum;
 class InventoryReport extends Page implements HasTable
 {
     use InteractsWithTable;
-
+    use HasPageShield;
     protected string $view = 'filament.pages.inventory-report';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';

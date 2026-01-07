@@ -7,9 +7,11 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Purchase;
 use App\Models\Inventory;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class DashboardStatsWidget extends Widget
 {
+    use HasWidgetShield;
     protected string $view = 'filament.widgets.dashboard-stats-widget';
 
     public function getData(): array

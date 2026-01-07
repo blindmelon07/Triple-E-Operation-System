@@ -4,10 +4,12 @@ namespace App\Filament\Widgets;
 
 use App\Models\Purchase;
 use App\Models\Sale;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 
 class CollectionReminderWidget extends Widget
 {
+    use HasWidgetShield;
     protected string $view = 'filament.widgets.collection-reminder-widget';
 
     protected static ?int $sort = 3;
