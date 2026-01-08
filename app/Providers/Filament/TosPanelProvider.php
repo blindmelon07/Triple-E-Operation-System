@@ -7,6 +7,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -40,6 +41,13 @@ class TosPanelProvider extends PanelProvider
             ->widgets([
                 // All dashboard widgets removed
             ])
+            ->navigationItems([
+                NavigationItem::make('POS')
+                    ->url('/pos')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->sort(0)
+                    ->visible(fn () => auth()->user()?->hasRole('cashier') || auth()->user()?->hasRole('super_admin')),
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -53,8 +61,17 @@ class TosPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])->plugins([
+            ])
+            ->plugins([
                 FilamentShieldPlugin::make(),
-            ]);
+            ])
+            ->homeUrl(function (): string {
+                $user = auth()->user();
+                if ($user && $user->hasRole('cashier')) {
+                    return '/pos';
+                }
+
+                return Dashboard::getUrl();
+            });
     }
 }
