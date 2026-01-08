@@ -44,15 +44,6 @@ class Purchase extends Model
                 }
             }
         });
-
-        static::saved(function (Purchase $purchase) {
-            $total = $purchase->purchase_items()->get()->sum(function ($item) {
-                return ($item->price ?? 0) * ($item->quantity ?? 1);
-            });
-            if ($purchase->total !== $total) {
-                $purchase->updateQuietly(['total' => $total]);
-            }
-        });
     }
 
     public function purchase_items(): HasMany

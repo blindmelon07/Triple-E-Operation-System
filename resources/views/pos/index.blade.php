@@ -299,6 +299,16 @@
                             <span x-show="isProcessing">Processing...</span>
                         </button>
                         <button 
+                            @click="showQuotationModal = true"
+                            :disabled="cart.length === 0"
+                            class="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-semibold py-3 rounded-lg transition touch-btn flex items-center justify-center gap-2"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Create Quotation
+                        </button>
+                        <button 
                             @click="clearCart()"
                             :disabled="cart.length === 0"
                             class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg transition touch-btn"
@@ -453,6 +463,16 @@
                             >
                                 <span x-show="!isProcessing">Complete Sale</span>
                                 <span x-show="isProcessing">Processing...</span>
+                            </button>
+                            <button 
+                                @click="showQuotationModal = true; showMobileCart = false"
+                                :disabled="cart.length === 0"
+                                class="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-semibold py-4 rounded-xl transition touch-btn text-lg flex items-center justify-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Create Quotation
                             </button>
                             <button 
                                 @click="clearCart()"
@@ -885,6 +905,165 @@
         </div>
     </div>
 
+    <!-- Quotation Modal -->
+    <div 
+        x-show="showQuotationModal" 
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showQuotationModal = false"
+    >
+        <div 
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+        >
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Create Quotation</h3>
+                    </div>
+                    <button 
+                        @click="showQuotationModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Customer Info -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                    <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Customer</div>
+                    <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedCustomer ? customers.find(c => c.id == selectedCustomer)?.name : 'Walk-in Customer'"></div>
+                </div>
+
+                <!-- Items Summary -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                    <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">Items (<span x-text="cart.length"></span>)</div>
+                    <div class="max-h-40 overflow-y-auto space-y-2">
+                        <template x-for="(item, index) in cart" :key="'quot-item-' + index">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-700 dark:text-gray-300" x-text="item.name + ' × ' + item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
+                                <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="border-t border-gray-200 dark:border-gray-600 mt-3 pt-3">
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-gray-900 dark:text-white">Total</span>
+                            <span class="font-bold text-lg text-amber-600 dark:text-amber-400" x-text="'₱' + total.toFixed(2)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quotation Options -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valid For (Days)</label>
+                        <select 
+                            x-model="quotationValidDays"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                            <option value="7">7 Days</option>
+                            <option value="15">15 Days</option>
+                            <option value="30" selected>30 Days</option>
+                            <option value="60">60 Days</option>
+                            <option value="90">90 Days</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (Optional)</label>
+                        <textarea 
+                            x-model="quotationNotes"
+                            placeholder="Add any notes or terms for this quotation..."
+                            rows="3"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base resize-none"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div x-show="quotationError" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm mt-4" x-text="quotationError"></div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3 mt-6">
+                    <button 
+                        @click="showQuotationModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold touch-btn"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        @click="createQuotation()"
+                        :disabled="isCreatingQuotation || cart.length === 0"
+                        class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition font-semibold touch-btn flex items-center justify-center gap-2"
+                    >
+                        <span x-show="!isCreatingQuotation">Create & Print</span>
+                        <span x-show="isCreatingQuotation">Creating...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quotation Success Modal -->
+    <div 
+        x-show="showQuotationSuccessModal" 
+        x-cloak
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Quotation Created!</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-2">Your quotation has been saved successfully</p>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                    <div class="text-sm text-gray-600 dark:text-gray-400">Quotation Number</div>
+                    <div class="text-lg font-bold text-amber-600 dark:text-amber-400" x-text="lastQuotationNumber"></div>
+                </div>
+                <div class="flex gap-3">
+                    <button 
+                        @click="printQuotation()"
+                        class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Print
+                    </button>
+                    <button 
+                        @click="showQuotationSuccessModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function posSystem() {
             return {
@@ -902,12 +1081,20 @@
                 showOutOfStockModal: false,
                 showMobileCart: false,
                 showAddCustomerModal: false,
+                showQuotationModal: false,
+                showQuotationSuccessModal: false,
                 outOfStockTitle: '',
                 outOfStockMessage: '',
                 outOfStockProduct: '',
                 isProcessing: false,
+                isCreatingQuotation: false,
                 isSavingCustomer: false,
                 customerError: '',
+                quotationError: '',
+                quotationNotes: '',
+                quotationValidDays: 30,
+                lastQuotationNumber: '',
+                lastQuotationPrintUrl: '',
                 newCustomer: {
                     name: '',
                     phone: '',
@@ -1220,6 +1407,58 @@
                         alert('Error processing sale: ' + error.message);
                     } finally {
                         this.isProcessing = false;
+                    }
+                },
+
+                async createQuotation() {
+                    if (this.cart.length === 0) {
+                        this.quotationError = 'Cart is empty';
+                        return;
+                    }
+
+                    this.isCreatingQuotation = true;
+                    this.quotationError = '';
+
+                    try {
+                        const response = await fetch('/pos/quotation', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                customer_id: this.selectedCustomer || null,
+                                items: this.cart,
+                                total: this.total,
+                                notes: this.quotationNotes,
+                                valid_days: parseInt(this.quotationValidDays)
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.lastQuotationNumber = data.quotation_number;
+                            this.lastQuotationPrintUrl = data.print_url;
+                            this.showQuotationModal = false;
+                            this.showQuotationSuccessModal = true;
+                            this.cart = [];
+                            this.selectedCustomer = '';
+                            this.quotationNotes = '';
+                            this.quotationValidDays = 30;
+                        } else {
+                            this.quotationError = data.message || 'Failed to create quotation';
+                        }
+                    } catch (error) {
+                        this.quotationError = 'Error creating quotation: ' + error.message;
+                    } finally {
+                        this.isCreatingQuotation = false;
+                    }
+                },
+
+                printQuotation() {
+                    if (this.lastQuotationPrintUrl) {
+                        window.open(this.lastQuotationPrintUrl, '_blank');
                     }
                 },
 

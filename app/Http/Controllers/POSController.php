@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Quotation;
+use App\Models\QuotationItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -125,5 +127,72 @@ class POSController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function createQuotation(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_id' => 'nullable|exists:customers,id',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'total' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+            'valid_days' => 'nullable|integer|min:1|max:365',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $validDays = $validated['valid_days'] ?? 30;
+
+            $quotation = Quotation::create([
+                'customer_id' => $validated['customer_id'],
+                'date' => now(),
+                'valid_until' => now()->addDays($validDays),
+                'total' => $validated['total'],
+                'notes' => $validated['notes'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                $itemPrice = $item['unit_price'] * $item['quantity'];
+
+                QuotationItem::create([
+                    'quotation_id' => $quotation->id,
+                    'product_id' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'price' => $itemPrice,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Quotation created successfully',
+                'quotation_id' => $quotation->id,
+                'quotation_number' => $quotation->quotation_number,
+                'print_url' => route('pos.print-quotation', $quotation->id),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function printQuotation(Quotation $quotation): \Illuminate\Contracts\View\View
+    {
+        $quotation->load(['customer', 'quotation_items.product']);
+
+        return view('pos.quotation-print', compact('quotation'));
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Purchases\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class PurchasesTable
@@ -13,18 +14,18 @@ class PurchasesTable
     {
         return $table
             ->columns([
-                \Filament\Tables\Columns\TextColumn::make('supplier.name')->label('Supplier')->searchable(),
-                \Filament\Tables\Columns\TextColumn::make('date')->date(),
-                \Filament\Tables\Columns\TextColumn::make('purchase_items_count')->counts('purchase_items')->label('Items'),
-                \Filament\Tables\Columns\TextColumn::make('total')->money('USD'),
+                TextColumn::make('supplier.name')->label('Supplier')->searchable(),
+                TextColumn::make('date')->date(),
+                TextColumn::make('purchase_items_count')->counts('purchase_items')->label('Items'),
+                TextColumn::make('total')->money('PHP')->label('Total'),
             ])
             ->filters([
                 //
             ])
-            ->recordActions([
+            ->actions([
                 EditAction::make(),
             ])
-            ->toolbarActions([
+            ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
