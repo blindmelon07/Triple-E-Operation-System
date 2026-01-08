@@ -52,10 +52,11 @@ class VehiclesTable
                     ->suffix(' km')
                     ->sortable(),
 
-                TextColumn::make('assigned_driver')
+                TextColumn::make('assignedDriver.name')
                     ->label('Driver')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->placeholder('No driver assigned'),
 
                 TextColumn::make('status')
                     ->label('Status')

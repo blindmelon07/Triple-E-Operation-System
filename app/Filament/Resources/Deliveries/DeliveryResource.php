@@ -9,6 +9,7 @@ use App\Filament\Resources\Deliveries\Pages\ListDeliveries;
 use App\Filament\Resources\Deliveries\Pages\ViewDelivery;
 use App\Models\Delivery;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -195,6 +196,12 @@ class DeliveryResource extends Resource
             ->actions([
                 ViewAction::make(),
                 EditAction::make(),
+                Action::make('print')
+                    ->label('Print')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn ($record) => route('delivery.print-receipt', $record))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),

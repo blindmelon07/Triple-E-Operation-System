@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Vehicle extends Model
@@ -25,7 +26,7 @@ class Vehicle extends Model
         'acquisition_date',
         'acquisition_cost',
         'status',
-        'assigned_driver',
+        'assigned_driver_id',
         'notes',
     ];
 
@@ -40,6 +41,14 @@ class Vehicle extends Model
             'year' => 'integer',
             'current_mileage' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function assignedDriver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_driver_id');
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Vehicles\Schemas;
 
+use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -114,9 +115,12 @@ class VehicleForm
                             ->default('active')
                             ->required(),
 
-                        TextInput::make('assigned_driver')
+                        Select::make('assigned_driver_id')
                             ->label('Assigned Driver')
-                            ->maxLength(255),
+                            ->options(fn () => User::role('driver')->pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Select a driver'),
                     ])
                     ->columns(2),
 
