@@ -105,6 +105,7 @@ class POSController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
+            'contact_person' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -113,6 +114,7 @@ class POSController extends Controller
                 'phone' => $validated['phone'] ?? null,
                 'email' => $validated['email'] ?? null,
                 'address' => $validated['address'] ?? null,
+                'contact_person' => $validated['contact_person'] ?? null,
                 'payment_term_days' => 0,
             ]);
 
