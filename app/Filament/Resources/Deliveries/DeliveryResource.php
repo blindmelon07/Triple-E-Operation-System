@@ -13,14 +13,13 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -93,7 +92,7 @@ class DeliveryResource extends Resource
     {
         return $schema
             ->components([
-                InfolistSection::make('Customer & Order Details')
+                Section::make('Customer & Order Details')
                     ->schema([
                         TextEntry::make('sale.customer.name')
                             ->label('Customer Name')
@@ -113,7 +112,7 @@ class DeliveryResource extends Resource
                         TextEntry::make('rating')
                             ->formatStateUsing(fn (?int $state) => $state ? str_repeat('⭐', $state) : 'No rating yet'),
                     ])->columns(3),
-                InfolistSection::make('Delivered Items')
+                Section::make('Delivered Items')
                     ->schema([
                         RepeatableEntry::make('sale.sale_items')
                             ->label('')
@@ -127,7 +126,7 @@ class DeliveryResource extends Resource
                                     ->money('PHP'),
                             ])->columns(3),
                     ]),
-                InfolistSection::make('Timestamps')
+                Section::make('Timestamps')
                     ->schema([
                         TextEntry::make('assigned_at')
                             ->label('Assigned')
