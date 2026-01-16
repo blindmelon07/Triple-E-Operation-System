@@ -350,7 +350,7 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <h1>Tri-E Trading</h1>
+                <h1>Tri-E Enterprises</h1>
                 <p>Your Trusted Business Partner</p>
                 <p style="margin-top: 10px;">123 Business Street, City</p>
                 <p>Phone: (123) 456-7890</p>
