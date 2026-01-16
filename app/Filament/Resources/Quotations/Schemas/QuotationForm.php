@@ -106,8 +106,8 @@ class QuotationForm
                                     ->native(false)
                                     ->displayFormat('M d, Y')
                                     ->minDate(now())
-                                    ->default(now()->addDays(30))
-                                    ->helperText('Expiration date for this quotation (default: 30 days)')
+                                    ->default(now()->addDays(15))
+                                    ->helperText('Expiration date for this quotation (default: 15 days)')
                                     ->columnSpan(1),
 
                                 Placeholder::make('validity_days')
@@ -119,7 +119,7 @@ class QuotationForm
                                             $days = now()->parse($validUntil)->diffInDays(now()->parse($date));
                                             return $days . ' days';
                                         }
-                                        return '30 days (default)';
+                                        return '15 days (default)';
                                     })
                                     ->columnSpan(1),
                             ]),

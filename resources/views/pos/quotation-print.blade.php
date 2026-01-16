@@ -391,26 +391,21 @@
             </div>
         </div>
 
-        <!-- Validity Notice -->
-        @if($quotation->valid_until)
-            <div class="validity-notice">
-                <p>This quotation is valid until <strong>{{ $quotation->valid_until->format('F d, Y') }}</strong></p>
-            </div>
-        @endif
-
         <!-- Items Table -->
         <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width: 40%">Product</th>
+                    <th style="width: 5%">#</th>
+                    <th style="width: 35%">Product</th>
                     <th style="width: 15%">Quantity</th>
                     <th style="width: 20%">Unit Price</th>
                     <th style="width: 25%">Total</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach($quotation->quotation_items as $item)
+                @foreach($quotation->quotation_items as $index => $item)
                     <tr>
+                        <td style="text-align: center;">{{ $index + 1 }}</td>
                         <td class="product-name">{{ $item->product_description ?? $item->product?->name }}</td>
                         <td>{{ number_format($item->quantity, $item->unit === 'piece' ? 0 : 2) }} {{ $item->unit }}</td>
                         <td>₱{{ number_format($item->unit_price, 2) }}</td>
@@ -446,10 +441,39 @@
             </div>
         @endif
 
+        <!-- Signatures -->
+        <div style="margin-top: 60px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 10px;">
+                <div style="border-top: 1px solid #333; padding-top: 5px; margin-top: 50px; font-weight: bold; font-size: 12px;">
+                    Prepared By
+                </div>
+            </div>
+            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 10px;">
+                <div style="border-top: 1px solid #333; padding-top: 5px; margin-top: 50px; font-weight: bold; font-size: 12px;">
+                    Approved By
+                </div>
+            </div>
+            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 10px;">
+                <div style="border-top: 1px solid #333; padding-top: 5px; margin-top: 50px; font-weight: bold; font-size: 12px;">
+                    Received By
+                </div>
+            </div>
+        </div>
+
+        <!-- Validity Notice -->
+        @if($quotation->valid_until)
+            <div style="text-align: center; margin-top: 30px; padding: 10px; background: #dbeafe; border-radius: 5px;">
+                <p style="color: #1e40af; font-weight: 500; font-size: 13px;">
+                    This quotation is valid until <strong>{{ $quotation->valid_until->format('F d, Y') }}</strong>
+                </p>
+            </div>
+        @endif
+
         <!-- Footer -->
-        <div class="footer">
-            <p>Thank you for considering our quotation!</p>
-            <p>For any questions, please contact us at (123) 456-7890</p>
+        <div class="footer" style="margin-top: 20px;">
+            <p><strong>Prices are subject to change without prior notice.</strong></p>
+            <p style="margin-top: 10px;">Thank you for considering our quotation!</p>
+            <p>For any questions, please contact us at (+639) 993-052-2540</p>
             <p style="margin-top: 10px; font-size: 10px; color: #94a3b8;">
                 Generated on {{ now()->format('F d, Y h:i A') }}
             </p>
