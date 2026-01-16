@@ -5,390 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Delivery Receipt - #{{ $delivery->id }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 14px;
-            line-height: 1.5;
-            color: #333;
-            background: #fff;
-        }
-        
+        /* Receipt-style CSS to match scanned design */
+        * { box-sizing: border-box; margin:0; padding:0 }
+        body { font-family: 'Arial', sans-serif; font-size:11px; color:#111; background:#fff }
+
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            width: 760px;
+            margin: 8px auto;
+            padding: 12px;
+            background: #f7e1e1; /* paper pink tone */
+            border: 1px solid #d3a6a6;
         }
-        
+
         /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #059669;
-        }
-        
-        .company-info h1 {
-            font-size: 28px;
-            color: #047857;
-            margin-bottom: 5px;
-        }
-        
-        .company-info p {
-            color: #666;
-            font-size: 12px;
-        }
-        
-        .receipt-title {
-            text-align: right;
-        }
-        
-        .receipt-title h2 {
-            font-size: 24px;
-            color: #047857;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .receipt-title .number {
-            font-size: 16px;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        .receipt-title .status {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-top: 8px;
-        }
-        
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        
-        .status-assigned {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
-        .status-in_transit {
-            background: #e0e7ff;
-            color: #3730a3;
-        }
-        
-        .status-delivered {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        .status-cancelled {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        /* Info Grid */
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-        
-        .info-box {
-            padding: 15px;
-            background: #f0fdf4;
-            border-radius: 8px;
-            border-left: 4px solid #059669;
-        }
-        
-        .info-box h3 {
-            font-size: 12px;
-            color: #047857;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        
-        .info-box p {
-            margin-bottom: 5px;
-        }
-        
-        .info-box .label {
-            color: #64748b;
-            font-size: 12px;
-        }
-        
-        .info-box .value {
-            color: #1e293b;
-            font-weight: 500;
-        }
-        
-        /* Table */
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-        }
-        
-        .items-table thead {
-            background: #047857;
-            color: white;
-        }
-        
-        .items-table th {
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .items-table th:last-child,
-        .items-table td:last-child {
-            text-align: right;
-        }
-        
-        .items-table th:nth-child(2),
-        .items-table td:nth-child(2) {
-            text-align: center;
-        }
-        
-        .items-table th:nth-child(3),
-        .items-table td:nth-child(3) {
-            text-align: right;
-        }
-        
-        .items-table tbody tr {
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .items-table tbody tr:nth-child(even) {
-            background: #f0fdf4;
-        }
-        
-        .items-table td {
-            padding: 12px 15px;
-        }
-        
-        .items-table .product-name {
-            font-weight: 500;
-            color: #1e293b;
-        }
-        
-        /* Summary */
-        .summary {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 30px;
-        }
-        
-        .summary-box {
-            width: 300px;
-            background: #f0fdf4;
-            border-radius: 8px;
-            padding: 15px;
-            border: 2px solid #059669;
-        }
-        
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #d1fae5;
-        }
-        
-        .summary-row:last-child {
-            border-bottom: none;
-            padding-top: 12px;
-            margin-top: 8px;
-            border-top: 2px solid #059669;
-        }
-        
-        .summary-row .label {
-            color: #64748b;
-        }
-        
-        .summary-row .value {
-            font-weight: 600;
-            color: #1e293b;
-        }
-        
-        .summary-row.total .label,
-        .summary-row.total .value {
-            font-size: 16px;
-            color: #047857;
-        }
-        
-        /* Delivery Info */
-        .delivery-info {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .delivery-info h3 {
-            font-size: 14px;
-            color: #047857;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #059669;
-        }
-        
-        .delivery-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-        }
-        
-        .delivery-detail {
-            padding: 10px;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .delivery-detail .label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-        
-        .delivery-detail .value {
-            font-weight: 600;
-            color: #1e293b;
-        }
-        
-        /* Notes */
-        .notes {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .notes h3 {
-            font-size: 12px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-        
-        .notes p {
-            color: #475569;
-            font-style: italic;
-        }
-        
-        /* Signature Section */
-        .signature-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
-            margin-top: 50px;
-            padding-top: 20px;
-        }
-        
-        .signature-box {
-            text-align: center;
-        }
-        
-        .signature-line {
-            border-top: 1px solid #333;
-            margin-top: 50px;
-            padding-top: 10px;
-        }
-        
-        .signature-label {
-            font-size: 12px;
-            color: #64748b;
-        }
-        
-        /* Footer */
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            text-align: center;
-            color: #64748b;
-            font-size: 12px;
-        }
-        
-        .footer p {
-            margin-bottom: 5px;
-        }
-        
-        /* Print Styles */
-        @media print {
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            
-            .container {
-                padding: 0;
-            }
-            
-            .no-print {
-                display: none !important;
-            }
-        }
-        
-        /* Print Button */
-        .print-actions {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
-        
-        .btn-print {
-            background: #047857;
-            color: white;
-        }
-        
-        .btn-print:hover {
-            background: #065f46;
-        }
-        
-        .btn-back {
-            background: #64748b;
-            color: white;
-        }
-        
-        .btn-back:hover {
-            background: #475569;
-        }
+        .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #b88; padding-bottom:6px; }
+        .company-info { font-size:12px }
+        .company-info h1 { font-size:16px; font-weight:700; margin-bottom:4px }
+        .company-info p { font-size:10.5px; color:#222 }
+
+        .receipt-meta { text-align:right; font-size:11px }
+        .receipt-meta .title { font-weight:700; letter-spacing:1px; font-size:13px }
+        .receipt-meta .meta-row { margin-top:3px }
+
+        /* Info grid */
+        .info-grid { display:flex; gap:10px; margin-top:8px }
+        .info-box { flex:1; padding:6px; font-size:10.5px }
+        .info-box .label { display:inline-block; width:92px; color:#333 }
+
+        /* Items table */
+        .items-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:11px }
+        .items-table thead th { text-align:left; padding:6px 8px; border-bottom:2px solid #000 }
+        .items-table tbody td { padding:6px 8px; border-bottom:1px dashed #b88 }
+        .items-table th.qty, .items-table td.qty { width:8% }
+        .items-table th.desc, .items-table td.desc { width:38% }
+        .items-table th.chinese, .items-table td.chinese { width:18% }
+        .items-table th.price, .items-table td.price { width:12%; text-align:right }
+        .items-table th.disc, .items-table td.disc { width:8%; text-align:right }
+        .items-table th.amount, .items-table td.amount { width:14%; text-align:right }
+
+        /* Summary on right */
+        .summary { display:flex; justify-content:flex-end; margin-top:6px }
+        .summary-box { width:300px; font-size:11px }
+        .summary-row { display:flex; justify-content:space-between; padding:4px 0 }
+        .summary-row .label { color:#222 }
+        .summary-row.net { font-weight:700; border-top:1px solid #b88; padding-top:6px; margin-top:6px }
+
+        /* Note above signatures */
+        .received-note { margin-top:14px; font-style:italic; font-size:11px }
+
+        /* Signatures */
+        .signature-section { margin-top:18px }
+        .signature-rows { display:flex; gap:8px }
+        .signature { flex:1; text-align:center; font-size:11px }
+        .signature .line { border-top:1px solid #111; margin-top:36px; padding-top:6px }
+
+        .footer { text-align:center; margin-top:10px; font-size:10px; color:#444 }
+
+        @media print { .print-actions{display:none!important} }
     </style>
 </head>
 <body>
@@ -412,16 +85,20 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <div class="company-info">
-                <h1>{{ config('app.name', 'TOS') }}</h1>
-                <p>Delivery Receipt</p>
-            </div>
-            <div class="receipt-title">
-                <h2>Delivery Receipt</h2>
-                <div class="number">DR-{{ str_pad($delivery->id, 6, '0', STR_PAD_LEFT) }}</div>
-                <div class="status status-{{ $delivery->status->value }}">
-                    {{ $delivery->status->getLabel() }}
+            <div class="company-info" style="display:flex;align-items:center;gap:8px;">
+                <img src="{{ asset('images/logo.png') }}" alt="Tri-E Enterprises Logo" style="height:48px;object-fit:contain;">
+                <div>
+                        <h1>Tri-E Enterprises</h1>
+                        <p>Your Trusted Business Partner</p>
+                        <p style="margin-top: 10px;">Maharlika Highway,Cabidan Sorsogon City</p>
+                        <p>Phone: (+639) 993-052-2540</p>
                 </div>
+            </div>
+            <div class="receipt-meta">
+                <div class="title">DELIVERY RECEIPT</div>
+                <div class="meta-row">DR-{{ str_pad($delivery->id, 6, '0', STR_PAD_LEFT) }}</div>
+                <div class="meta-row">Date: {{ $delivery->created_at->format('Y-m-d') }}</div>
+                <div class="meta-row">Page: 1</div>
             </div>
         </div>
 
@@ -496,23 +173,27 @@
         <table class="items-table">
             <thead>
                 <tr>
-                    <th>Item Description</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
-                    <th>Amount</th>
+                    <th class="qty">Qty</th>
+                    <th class="desc">Description</th>
+                    <th class="chinese">ChineseName</th>
+                    <th class="price">Price</th>
+                    <th class="disc">Disc</th>
+                    <th class="amount">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($delivery->sale?->sale_items ?? [] as $item)
                 <tr>
-                    <td class="product-name">{{ $item->product?->name ?? 'Unknown Product' }}</td>
-                    <td>{{ number_format($item->quantity) }}</td>
-                    <td>₱{{ number_format($item->price / max($item->quantity, 1), 2) }}</td>
-                    <td>₱{{ number_format($item->price, 2) }}</td>
+                    <td class="qty">{{ number_format($item->quantity) }}</td>
+                    <td class="desc product-name">{{ $item->product?->name ?? 'Unknown Product' }}</td>
+                    <td class="chinese">{{ $item->product?->chinese_name ?? '' }}</td>
+                    <td class="price">₱{{ number_format($item->price / max($item->quantity, 1), 2) }}</td>
+                    <td class="disc">{{ isset($item->discount) ? '₱'.number_format($item->discount, 2) : '-' }}</td>
+                    <td class="amount">₱{{ number_format($item->price, 2) }}</td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="4" style="text-align: center; color: #64748b;">No items found</td>
+                    <td colspan="5" style="text-align: center; color: #64748b;">No items found</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -522,11 +203,19 @@
         <div class="summary">
             <div class="summary-box">
                 <div class="summary-row">
-                    <span class="label">Subtotal</span>
-                    <span class="value">₱{{ number_format($delivery->sale?->total ?? 0, 2) }}</span>
+                    <span class="label">SUB TOTAL</span>
+                    <span class="value">₱{{ number_format($delivery->sale?->subtotal ?? $delivery->sale?->total ?? 0, 2) }}</span>
                 </div>
-                <div class="summary-row total">
-                    <span class="label">Total Amount</span>
+                <div class="summary-row">
+                    <span class="label">DISCOUNT</span>
+                    <span class="value">₱{{ number_format($delivery->sale?->discount_total ?? 0, 2) }}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="label">ADJUST</span>
+                    <span class="value">₱{{ number_format($delivery->sale?->adjustment ?? 0, 2) }}</span>
+                </div>
+                <div class="summary-row net">
+                    <span class="label">NET TOTAL</span>
                     <span class="value">₱{{ number_format($delivery->sale?->total ?? 0, 2) }}</span>
                 </div>
             </div>
@@ -540,16 +229,30 @@
         </div>
         @endif
 
+        <div class="received-note">Received the above articles in good order and condition</div>
+
         <!-- Signature Section -->
         <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-line">
-                    <span class="signature-label">Received By (Customer)</span>
+            <div class="signature-rows">
+                <div class="signature">
+                    <div class="line"></div>
+                    <div>Prepared By</div>
                 </div>
-            </div>
-            <div class="signature-box">
-                <div class="signature-line">
-                    <span class="signature-label">Delivered By (Driver)</span>
+                <div class="signature">
+                    <div class="line"></div>
+                    <div>Checker</div>
+                </div>
+                <div class="signature">
+                    <div class="line"></div>
+                    <div>Approved By</div>
+                </div>
+                <div class="signature">
+                    <div class="line"></div>
+                    <div>Driver/Truck #</div>
+                </div>
+                <div class="signature">
+                    <div class="line"></div>
+                    <div>Received By</div>
                 </div>
             </div>
         </div>
@@ -569,11 +272,4 @@
         </div>
         @endif
 
-        <!-- Footer -->
-        <div class="footer">
-            <p>Thank you for choosing {{ config('app.name', 'TOS') }}!</p>
-            <p>This is a computer-generated document. Printed on {{ now()->format('F d, Y h:i A') }}</p>
-        </div>
-    </div>
-</body>
-</html>
+        
