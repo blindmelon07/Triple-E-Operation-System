@@ -197,4 +197,33 @@ class POSController extends Controller
 
         return view('pos.quotation-print', compact('quotation'));
     }
+
+    public function printReceipt(Sale $sale, Request $request): \Illuminate\Contracts\View\View
+    {
+        $sale->load(['customer', 'sale_items.product']);
+        $type = $request->query('type', 'delivery'); // 'delivery' or 'pickup'
+
+        return view('pos.receipt-print', compact('sale', 'type'));
+    }
+
+    public function getRecentSales(): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $sales = Sale::with(['customer', 'sale_items'])
+                ->withCount('sale_items')
+                ->orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'sales' => $sales,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

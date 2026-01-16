@@ -89,22 +89,34 @@
                     </div>
                     <div class="flex items-center gap-2 sm:gap-4">
                         <span class="hidden sm:block text-sm text-gray-600 dark:text-gray-400" x-text="currentDateTime"></span>
-                        
+
+                        <!-- Reprint Button -->
+                        <button
+                            @click="showReprintModal = true"
+                            class="hidden sm:flex px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition touch-btn items-center gap-2"
+                            title="Reprint Receipt"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span class="hidden lg:inline">Reprint</span>
+                        </button>
+
                         <!-- Mobile Cart Toggle Button -->
-                        <button 
+                        <button
                             @click="showMobileCart = !showMobileCart"
                             class="lg:hidden relative px-3 py-2 bg-blue-600 text-white rounded-lg touch-btn"
                         >
                             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
-                            <span 
+                            <span
                                 x-show="cart.length > 0"
                                 class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
                                 x-text="cart.length"
                             ></span>
                         </button>
-                        
+
                         <a href="/" class="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition touch-btn text-sm sm:text-base">
                             <span class="hidden sm:inline">Back to Admin</span>
                             <svg class="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -665,8 +677,8 @@
     </div>
 
     <!-- Success Modal -->
-    <div 
-        x-show="showSuccessModal" 
+    <div
+        x-show="showSuccessModal"
         x-cloak
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     >
@@ -683,11 +695,37 @@
                     <div class="text-sm text-gray-600 dark:text-gray-400">Total Paid</div>
                     <div class="text-2xl font-bold text-green-600 dark:text-green-400" x-text="'₱' + lastSaleTotal.toFixed(2)"></div>
                 </div>
-                <button 
+
+                <!-- Print Receipt Options -->
+                <div class="space-y-2 mb-4">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Print Receipt?</p>
+                    <div class="flex gap-2">
+                        <button
+                            @click="printReceipt('delivery')"
+                            class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold flex items-center justify-center gap-2"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            For Delivery
+                        </button>
+                        <button
+                            @click="printReceipt('pickup')"
+                            class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold flex items-center justify-center gap-2"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            For Pick Up
+                        </button>
+                    </div>
+                </div>
+
+                <button
                     @click="showSuccessModal = false"
-                    class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                    class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
                 >
-                    New Sale
+                    Skip & New Sale
                 </button>
             </div>
         </div>
@@ -1035,8 +1073,8 @@
     </div>
 
     <!-- Quotation Success Modal -->
-    <div 
-        x-show="showQuotationSuccessModal" 
+    <div
+        x-show="showQuotationSuccessModal"
         x-cloak
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     >
@@ -1054,7 +1092,7 @@
                     <div class="text-lg font-bold text-amber-600 dark:text-amber-400" x-text="lastQuotationNumber"></div>
                 </div>
                 <div class="flex gap-3">
-                    <button 
+                    <button
                         @click="printQuotation()"
                         class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
                     >
@@ -1063,13 +1101,164 @@
                         </svg>
                         Print
                     </button>
-                    <button 
+                    <button
                         @click="showQuotationSuccessModal = false"
                         class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
                     >
                         Close
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reprint Modal -->
+    <div
+        x-show="showReprintModal"
+        x-cloak
+        @keydown.escape.window="showReprintModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showReprintModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Reprint Receipt</h3>
+                    </div>
+                    <button
+                        @click="showReprintModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="mt-4">
+                    <input
+                        type="text"
+                        x-model="reprintSearchQuery"
+                        @input="searchRecentSales()"
+                        placeholder="Search by receipt # or customer name..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white text-base"
+                    >
+                </div>
+            </div>
+
+            <!-- Sales List -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div x-show="isLoadingRecentSales" class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading recent sales...</p>
+                </div>
+
+                <div x-show="!isLoadingRecentSales && filteredRecentSales.length === 0" class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">No recent sales found</p>
+                </div>
+
+                <div class="space-y-3">
+                    <template x-for="sale in filteredRecentSales" :key="sale.id">
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition cursor-pointer border border-transparent hover:border-purple-500"
+                             @click="selectedSaleForReprint = sale; showReprintTypeModal = true">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-semibold text-gray-900 dark:text-white" x-text="'Receipt #' + String(sale.id).padStart(6, '0')"></span>
+                                        <span class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">Sale</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                        <span class="font-medium">Customer:</span>
+                                        <span x-text="sale.customer ? sale.customer.name : 'Walk-in Customer'"></span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                        <span class="font-medium">Date:</span>
+                                        <span x-text="new Date(sale.date).toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'})"></span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                                        <span class="font-medium">Items:</span>
+                                        <span x-text="sale.sale_items_count + ' item(s)'"></span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-purple-600 dark:text-purple-400" x-text="'₱' + parseFloat(sale.total).toFixed(2)"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                <button
+                    @click="showReprintModal = false"
+                    class="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reprint Type Selection Modal -->
+    <div
+        x-show="showReprintTypeModal"
+        x-cloak
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
+        @click.self="showReprintTypeModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Select Receipt Type</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                    Receipt <span x-text="selectedSaleForReprint ? '#' + String(selectedSaleForReprint.id).padStart(6, '0') : ''"></span>
+                </p>
+
+                <!-- Receipt Type Options -->
+                <div class="space-y-2 mb-4">
+                    <button
+                        @click="reprintReceipt('delivery')"
+                        class="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Print For Delivery
+                    </button>
+                    <button
+                        @click="reprintReceipt('pickup')"
+                        class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        Print For Pick Up
+                    </button>
+                </div>
+
+                <button
+                    @click="showReprintTypeModal = false"
+                    class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                >
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
@@ -1093,9 +1282,16 @@
                 showAddCustomerModal: false,
                 showQuotationModal: false,
                 showQuotationSuccessModal: false,
+                showReprintModal: false,
+                showReprintTypeModal: false,
                 outOfStockTitle: '',
                 outOfStockMessage: '',
                 outOfStockProduct: '',
+                recentSales: [],
+                filteredRecentSales: [],
+                reprintSearchQuery: '',
+                isLoadingRecentSales: false,
+                selectedSaleForReprint: null,
                 isProcessing: false,
                 isCreatingQuotation: false,
                 isSavingCustomer: false,
@@ -1105,6 +1301,7 @@
                 quotationValidDays: 30,
                 lastQuotationNumber: '',
                 lastQuotationPrintUrl: '',
+                lastSaleId: null,
                 newCustomer: {
                     name: '',
                     phone: '',
@@ -1125,6 +1322,13 @@
                     this.filteredProducts = this.products;
                     this.updateDateTime();
                     setInterval(() => this.updateDateTime(), 1000);
+
+                    // Watch for reprint modal opening
+                    this.$watch('showReprintModal', (value) => {
+                        if (value && this.recentSales.length === 0) {
+                            this.fetchRecentSales();
+                        }
+                    });
                 },
 
                 getAvailableStock(productId) {
@@ -1404,6 +1608,7 @@
 
                         if (data.success) {
                             this.lastSaleTotal = this.total;
+                            this.lastSaleId = data.sale_id;
                             this.showPaymentModal = false;
                             this.showSuccessModal = true;
                             this.cart = [];
@@ -1469,6 +1674,57 @@
                 printQuotation() {
                     if (this.lastQuotationPrintUrl) {
                         window.open(this.lastQuotationPrintUrl, '_blank');
+                    }
+                },
+
+                printReceipt(type) {
+                    if (this.lastSaleId) {
+                        const printUrl = `/pos/print-receipt/${this.lastSaleId}?type=${type}`;
+                        window.open(printUrl, '_blank');
+                        this.showSuccessModal = false;
+                    }
+                },
+
+                async fetchRecentSales() {
+                    this.isLoadingRecentSales = true;
+                    try {
+                        const response = await fetch('/pos/recent-sales', {
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.recentSales = data.sales;
+                            this.filteredRecentSales = data.sales;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching recent sales:', error);
+                    } finally {
+                        this.isLoadingRecentSales = false;
+                    }
+                },
+
+                searchRecentSales() {
+                    const query = this.reprintSearchQuery.toLowerCase();
+                    if (!query) {
+                        this.filteredRecentSales = this.recentSales;
+                        return;
+                    }
+
+                    this.filteredRecentSales = this.recentSales.filter(sale => {
+                        const receiptNumber = String(sale.id).padStart(6, '0');
+                        const customerName = sale.customer ? sale.customer.name.toLowerCase() : 'walk-in customer';
+                        return receiptNumber.includes(query) || customerName.includes(query);
+                    });
+                },
+
+                reprintReceipt(type) {
+                    if (this.selectedSaleForReprint) {
+                        const printUrl = `/pos/print-receipt/${this.selectedSaleForReprint.id}?type=${type}`;
+                        window.open(printUrl, '_blank');
+                        this.showReprintTypeModal = false;
+                        this.showReprintModal = false;
                     }
                 },
 
