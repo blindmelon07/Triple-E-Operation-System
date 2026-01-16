@@ -34,6 +34,9 @@ class CustomerForm
                             ->required(),
                         TextInput::make('contact_person')
                             ->maxLength(255),
+                        TextInput::make('company')
+                            ->label('Company')
+                            ->maxLength(255),
                     ])->columns(3),
                 Section::make('Contact Details')
                     ->schema([

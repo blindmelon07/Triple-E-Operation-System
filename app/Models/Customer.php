@@ -18,6 +18,7 @@ class Customer extends Model
         'phone',
         'email',
         'address',
+        'company',
     ];
 
     protected function casts(): array

@@ -378,15 +378,10 @@
                 <h3>Customer Information</h3>
                 @if($quotation->customer)
                     <p><span class="label">Name:</span> <span class="value">{{ $quotation->customer->name }}</span></p>
-                    @if($quotation->customer->phone)
-                        <p><span class="label">Phone:</span> <span class="value">{{ $quotation->customer->phone }}</span></p>
-                    @endif
-                    @if($quotation->customer->email)
-                        <p><span class="label">Email:</span> <span class="value">{{ $quotation->customer->email }}</span></p>
-                    @endif
-                    @if($quotation->customer->address)
-                        <p><span class="label">Address:</span> <span class="value">{{ $quotation->customer->address }}</span></p>
-                    @endif
+                    <p><span class="label">Phone:</span> <span class="value">{{ $quotation->customer->phone ?? 'N/A' }}</span></p>
+                    <p><span class="label">Email:</span> <span class="value">{{ $quotation->customer->email ?? 'N/A' }}</span></p>
+                    <p><span class="label">Address:</span> <span class="value">{{ $quotation->customer->address ?? 'N/A' }}</span></p>
+                    <p><span class="label">Company:</span> <span class="value">{{ $quotation->customer->company ?? 'N/A' }}</span></p>
                 @else
                     <p><span class="value">Walk-in Customer</span></p>
                 @endif
