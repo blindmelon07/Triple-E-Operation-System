@@ -411,8 +411,8 @@
             <tbody>
                 @foreach($quotation->quotation_items as $item)
                     <tr>
-                        <td class="product-name">{{ $item->product->name }}</td>
-                        <td>{{ number_format($item->quantity, $item->product->unit->value === 'piece' ? 0 : 2) }} {{ $item->product->unit->value }}</td>
+                        <td class="product-name">{{ $item->product_description ?? $item->product?->name }}</td>
+                        <td>{{ number_format($item->quantity, $item->unit === 'piece' ? 0 : 2) }} {{ $item->unit }}</td>
                         <td>₱{{ number_format($item->unit_price, 2) }}</td>
                         <td>₱{{ number_format($item->price, 2) }}</td>
                     </tr>

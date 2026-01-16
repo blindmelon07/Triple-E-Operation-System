@@ -66,7 +66,10 @@ class QuotationsTable
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === QuotationStatus::Pending->value)
+                    ->visible(fn ($record) =>
+                        $record->status === QuotationStatus::Pending->value &&
+                        (auth()->user()->hasRole('super_admin') || auth()->user()->hasPermissionTo('approve_quotation'))
+                    )
                     ->action(function ($record) {
                         $record->update(['status' => QuotationStatus::Approved->value]);
                         Notification::make()
@@ -79,7 +82,10 @@ class QuotationsTable
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === QuotationStatus::Pending->value)
+                    ->visible(fn ($record) =>
+                        $record->status === QuotationStatus::Pending->value &&
+                        (auth()->user()->hasRole('super_admin') || auth()->user()->hasPermissionTo('approve_quotation'))
+                    )
                     ->action(function ($record) {
                         $record->update(['status' => QuotationStatus::Rejected->value]);
                         Notification::make()

@@ -14,7 +14,7 @@ class EditQuotation extends EditRecord
 {
     protected static string $resource = QuotationResource::class;
 
-    protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
+    protected function mutateFormDataBeforeSave(array $data): array
     {
         $total = 0;
         if (!empty($data['quotation_items'])) {
@@ -24,7 +24,15 @@ class EditQuotation extends EditRecord
         }
         $data['total'] = $total;
 
-        return parent::handleRecordUpdate($record, $data);
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        // Recalculate total after items are saved
+        $this->record->refresh();
+        $total = $this->record->quotation_items()->sum('price');
+        $this->record->updateQuietly(['total' => $total]);
     }
 
     protected function getHeaderActions(): array
@@ -35,7 +43,10 @@ class EditQuotation extends EditRecord
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn () => $this->record->status === QuotationStatus::Pending->value)
+                ->visible(fn () =>
+                    $this->record->status === QuotationStatus::Pending->value &&
+                    (auth()->user()->hasRole('super_admin') || auth()->user()->hasPermissionTo('approve_quotation'))
+                )
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Approved->value]);
                     Notification::make()
@@ -49,7 +60,10 @@ class EditQuotation extends EditRecord
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->requiresConfirmation()
-                ->visible(fn () => $this->record->status === QuotationStatus::Pending->value)
+                ->visible(fn () =>
+                    $this->record->status === QuotationStatus::Pending->value &&
+                    (auth()->user()->hasRole('super_admin') || auth()->user()->hasPermissionTo('approve_quotation'))
+                )
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Rejected->value]);
                     Notification::make()

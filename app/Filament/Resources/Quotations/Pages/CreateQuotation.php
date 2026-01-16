@@ -9,7 +9,7 @@ class CreateQuotation extends CreateRecord
 {
     protected static string $resource = QuotationResource::class;
 
-    protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
         $total = 0;
         if (!empty($data['quotation_items'])) {
@@ -19,6 +19,14 @@ class CreateQuotation extends CreateRecord
         }
         $data['total'] = $total;
 
-        return parent::handleRecordCreation($data);
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        // Recalculate total after items are saved
+        $this->record->refresh();
+        $total = $this->record->quotation_items()->sum('price');
+        $this->record->updateQuietly(['total' => $total]);
     }
 }

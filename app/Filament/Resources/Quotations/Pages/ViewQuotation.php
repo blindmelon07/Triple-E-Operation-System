@@ -21,7 +21,10 @@ class ViewQuotation extends ViewRecord
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn () => $this->record->status === QuotationStatus::Pending->value)
+                ->visible(fn () =>
+                    $this->record->status === QuotationStatus::Pending->value &&
+                    (auth()->user()->hasRole('super_admin') || auth()->user()->hasPermissionTo('approve_quotation'))
+                )
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Approved->value]);
                     Notification::make()
@@ -35,7 +38,10 @@ class ViewQuotation extends ViewRecord
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->requiresConfirmation()
-                ->visible(fn () => $this->record->status === QuotationStatus::Pending->value)
+                ->visible(fn () =>
+                    $this->record->status === QuotationStatus::Pending->value &&
+                    (auth()->user()->hasRole('super_admin') || auth()->user()->hasPermissionTo('approve_quotation'))
+                )
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Rejected->value]);
                     Notification::make()

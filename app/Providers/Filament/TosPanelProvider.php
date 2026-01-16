@@ -29,6 +29,7 @@ class TosPanelProvider extends PanelProvider
             ->path('/')
             ->profile()
             ->login()
+            ->sidebarCollapsibleOnDesktop(true)
             ->colors([
                 'primary' => Color::Blue,
             ])
