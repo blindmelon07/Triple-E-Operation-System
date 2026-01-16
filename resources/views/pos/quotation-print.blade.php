@@ -29,10 +29,16 @@
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #3b82f6;
+        }
+        
+        .company-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
         .company-info h1 {
@@ -55,6 +61,7 @@
             color: #1e40af;
             text-transform: uppercase;
             letter-spacing: 2px;
+            margin: 0;
         }
         
         .quotation-title .number {
@@ -348,15 +355,18 @@
 
     <div class="container">
         <!-- Header -->
-        <div class="header">
-            <div class="company-info">
-                <h1>Tri-E Enterprises</h1>
-                <p>Your Trusted Business Partner</p>
-                <p style="margin-top: 10px;">Maharlika Highway,Cabidan Sorsogon City</p>
-                <p>Phone: (+639) 993-052-2540</p>
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="company-info" style="display: flex; align-items: center; gap: 15px;">
+                <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 60px;">
+                <div>
+                    <h1 style="margin: 0;">Tri-E Enterprises</h1>
+                    <p>Your Trusted Business Partner</p>
+                    <p style="margin-top: 10px;">Maharlika Highway,Cabidan Sorsogon City</p>
+                    <p>Phone: (+639) 993-052-2540</p>
+                </div>
             </div>
-            <div class="quotation-title">
-                <h2>Quotation</h2>
+            <div class="quotation-title" style="text-align: right;">
+                <h2 style="margin: 0;">Quotation</h2>
                 <p class="number">{{ $quotation->quotation_number }}</p>
                 <span class="status status-{{ $quotation->status }}">{{ ucfirst($quotation->status) }}</span>
             </div>
