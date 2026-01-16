@@ -352,8 +352,8 @@
             <div class="company-info">
                 <h1>Tri-E Enterprises</h1>
                 <p>Your Trusted Business Partner</p>
-                <p style="margin-top: 10px;">123 Business Street, City</p>
-                <p>Phone: (123) 456-7890</p>
+                <p style="margin-top: 10px;">Maharlika Highway,Cabidan Sorsogon City</p>
+                <p>Phone: (+639) 998-865-3755</p>
             </div>
             <div class="quotation-title">
                 <h2>Quotation</h2>
