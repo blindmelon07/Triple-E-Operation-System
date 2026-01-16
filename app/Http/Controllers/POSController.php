@@ -28,7 +28,12 @@ class POSController extends Controller
                     'category' => $product->category,
                     'inventory' => $product->inventory,
                 ];
-            });
+            })
+            ->sortByDesc(function ($product) {
+                // Sort by stock quantity (descending), products with stock appear first
+                return $product['inventory']->quantity ?? 0;
+            })
+            ->values(); // Reset array keys
 
         $customers = Customer::orderBy('name')->get();
         $categories = Category::all();
