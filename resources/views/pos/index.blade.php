@@ -919,7 +919,7 @@
                 
                 <!-- Message -->
                 <p class="text-gray-600 dark:text-gray-400 text-center mb-6">
-                    Are you sure you want to clear the cart? This action cannot be undone.
+                    Are you sure you want to clear the cart? This action cannot be undone!
                 </p>
 
                 <!-- Cart Summary -->
