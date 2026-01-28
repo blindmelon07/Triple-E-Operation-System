@@ -12,14 +12,14 @@
         }
 
         @page {
-            size: 8.5in 5.5in;
-            margin: 0.3in;
+            size: 8.5in 11in;
+            margin: 0.5in;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 9px;
-            line-height: 1.3;
+            font-size: 12px;
+            line-height: 1.4;
             color: #333;
             background: #fff;
         }
@@ -27,7 +27,7 @@
         .container {
             max-width: 100%;
             margin: 0;
-            padding: 10px;
+            padding: 15px;
         }
         
         /* Header */
@@ -35,27 +35,27 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #3b82f6;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3b82f6;
         }
 
         .company-info {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
         }
 
         .company-info h1 {
-            font-size: 14px;
+            font-size: 20px;
             color: #1e40af;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         .company-info p {
             color: #666;
-            font-size: 7px;
-            line-height: 1.2;
+            font-size: 10px;
+            line-height: 1.4;
         }
 
         .quotation-title {
@@ -63,27 +63,27 @@
         }
 
         .quotation-title h2 {
-            font-size: 13px;
+            font-size: 22px;
             color: #1e40af;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             margin: 0;
         }
 
         .quotation-title .number {
-            font-size: 9px;
+            font-size: 12px;
             color: #666;
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .quotation-title .status {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 7px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
-            margin-top: 4px;
+            margin-top: 6px;
         }
         
         .status-pending {
@@ -105,45 +105,45 @@
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 20px;
+            margin-bottom: 20px;
         }
 
         .info-box {
-            padding: 6px;
+            padding: 12px;
             background: #f8fafc;
-            border-radius: 4px;
+            border-radius: 6px;
         }
 
         .info-box h3 {
-            font-size: 7px;
+            font-size: 10px;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
 
         .info-box p {
-            margin-bottom: 2px;
-            font-size: 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
         }
 
         .info-box .label {
             color: #64748b;
-            font-size: 7px;
+            font-size: 10px;
         }
 
         .info-box .value {
             color: #1e293b;
             font-weight: 500;
-            font-size: 8px;
+            font-size: 11px;
         }
         
         /* Table */
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
         }
 
         .items-table thead {
@@ -152,10 +152,10 @@
         }
 
         .items-table th {
-            padding: 4px 6px;
+            padding: 10px 12px;
             text-align: left;
             font-weight: 600;
-            font-size: 7px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
@@ -181,8 +181,8 @@
         }
 
         .items-table td {
-            padding: 4px 6px;
-            font-size: 8px;
+            padding: 10px 12px;
+            font-size: 11px;
         }
 
         .items-table .product-name {
@@ -194,29 +194,29 @@
         .summary {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
         }
 
         .summary-box {
-            width: 140px;
+            width: 220px;
             background: #f8fafc;
-            border-radius: 4px;
-            padding: 6px;
+            border-radius: 6px;
+            padding: 12px;
         }
 
         .summary-row {
             display: flex;
             justify-content: space-between;
-            padding: 3px 0;
+            padding: 6px 0;
             border-bottom: 1px solid #e2e8f0;
-            font-size: 8px;
+            font-size: 11px;
         }
 
         .summary-row:last-child {
             border-bottom: none;
-            padding-top: 4px;
-            margin-top: 2px;
-            border-top: 1px solid #1e40af;
+            padding-top: 8px;
+            margin-top: 4px;
+            border-top: 2px solid #1e40af;
         }
 
         .summary-row .label {
@@ -230,7 +230,7 @@
 
         .summary-row.total .label,
         .summary-row.total .value {
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 700;
             color: #1e40af;
         }
@@ -238,51 +238,51 @@
         /* Notes */
         .notes {
             background: #fffbeb;
-            border-left: 2px solid #f59e0b;
-            padding: 6px;
-            margin-bottom: 10px;
-            border-radius: 0 4px 4px 0;
+            border-left: 3px solid #f59e0b;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 0 6px 6px 0;
         }
 
         .notes h3 {
-            font-size: 7px;
+            font-size: 10px;
             color: #92400e;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 3px;
+            margin-bottom: 6px;
         }
 
         .notes p {
             color: #78350f;
-            font-size: 7px;
+            font-size: 11px;
         }
 
         /* Footer */
         .footer {
             text-align: center;
-            padding-top: 8px;
+            padding-top: 15px;
             border-top: 1px solid #e2e8f0;
             color: #64748b;
-            font-size: 6px;
+            font-size: 10px;
         }
 
         .footer p {
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         /* Validity Notice */
         .validity-notice {
             background: #dbeafe;
-            border-radius: 4px;
-            padding: 6px;
+            border-radius: 6px;
+            padding: 10px;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         .validity-notice p {
             color: #1e40af;
             font-weight: 500;
-            font-size: 7px;
+            font-size: 11px;
         }
         
         /* Print Styles */
@@ -368,8 +368,8 @@
     <div class="container">
         <!-- Header -->
         <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-            <div class="company-info" style="display: flex; align-items: center; gap: 8px;">
-                <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 30px;">
+            <div class="company-info" style="display: flex; align-items: center; gap: 12px;">
+                <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 50px;">
                 <div>
                     <h1 style="margin: 0;">Tri-E Enterprises</h1>
                     <p>Your Trusted Business Partner</p>
@@ -459,19 +459,19 @@
         @endif
 
         <!-- Signatures -->
-        <div style="margin-top: 20px; display: table; width: 100%;">
-            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 5px;">
-                <div style="border-top: 1px solid #333; padding-top: 2px; margin-top: 20px; font-weight: bold; font-size: 7px;">
+        <div style="margin-top: 40px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 15px;">
+                <div style="border-top: 1px solid #333; padding-top: 5px; margin-top: 40px; font-weight: bold; font-size: 10px;">
                     Prepared By
                 </div>
             </div>
-            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 5px;">
-                <div style="border-top: 1px solid #333; padding-top: 2px; margin-top: 20px; font-weight: bold; font-size: 7px;">
+            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 15px;">
+                <div style="border-top: 1px solid #333; padding-top: 5px; margin-top: 40px; font-weight: bold; font-size: 10px;">
                     Approved By
                 </div>
             </div>
-            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 5px;">
-                <div style="border-top: 1px solid #333; padding-top: 2px; margin-top: 20px; font-weight: bold; font-size: 7px;">
+            <div style="display: table-cell; width: 33.33%; text-align: center; padding: 0 15px;">
+                <div style="border-top: 1px solid #333; padding-top: 5px; margin-top: 40px; font-weight: bold; font-size: 10px;">
                     Received By
                 </div>
             </div>
@@ -479,19 +479,19 @@
 
         <!-- Validity Notice -->
         @if($quotation->valid_until)
-            <div style="text-align: center; margin-top: 10px; padding: 4px; background: #dbeafe; border-radius: 3px;">
-                <p style="color: #1e40af; font-weight: 500; font-size: 7px;">
+            <div style="text-align: center; margin-top: 20px; padding: 10px; background: #dbeafe; border-radius: 6px;">
+                <p style="color: #1e40af; font-weight: 500; font-size: 11px;">
                     This quotation is valid until <strong>{{ $quotation->valid_until->format('F d, Y') }}</strong>
                 </p>
             </div>
         @endif
 
         <!-- Footer -->
-        <div class="footer" style="margin-top: 8px;">
+        <div class="footer" style="margin-top: 20px;">
             <p><strong>Prices are subject to change without prior notice.</strong></p>
-            <p style="margin-top: 3px;">Thank you for considering our quotation!</p>
+            <p style="margin-top: 5px;">Thank you for considering our quotation!</p>
             <p>For any questions, please contact us at (+639) 993-052-2540</p>
-            <p style="margin-top: 3px; font-size: 6px; color: #94a3b8;">
+            <p style="margin-top: 5px; font-size: 9px; color: #94a3b8;">
                 Generated on {{ now()->format('F d, Y h:i A') }}
             </p>
         </div>
