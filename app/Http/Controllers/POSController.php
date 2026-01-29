@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\QuotationStatus;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
@@ -200,7 +201,10 @@ class POSController extends Controller
     {
         $quotation->load(['customer', 'quotation_items.product']);
 
-        return view('pos.quotation-print', compact('quotation'));
+        // Check if quotation is approved before allowing print
+        $isApproved = $quotation->status === QuotationStatus::Approved->value;
+
+        return view('pos.quotation-print', compact('quotation', 'isApproved'));
     }
 
     public function printReceipt(Sale $sale, Request $request): \Illuminate\Contracts\View\View

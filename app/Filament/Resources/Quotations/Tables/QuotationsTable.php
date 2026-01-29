@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Quotations\Tables;
 
 use App\Enums\QuotationStatus;
+use App\Mail\QuotationApprovedMail;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -12,6 +13,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Mail;
 
 class QuotationsTable
 {
@@ -72,6 +74,13 @@ class QuotationsTable
                     )
                     ->action(function ($record) {
                         $record->update(['status' => QuotationStatus::Approved->value]);
+
+                        // Send email notification to the creator
+                        if ($record->creator && $record->creator->email) {
+                            $record->load(['customer']);
+                            Mail::to($record->creator->email)->send(new QuotationApprovedMail($record));
+                        }
+
                         Notification::make()
                             ->title('Quotation Approved')
                             ->success()

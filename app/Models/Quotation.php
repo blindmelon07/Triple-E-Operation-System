@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\User;
 
 #[ObservedBy([QuotationObserver::class])]
 class Quotation extends Model
@@ -22,6 +23,7 @@ class Quotation extends Model
         'total',
         'notes',
         'status',
+        'created_by',
     ];
 
     protected function casts(): array
@@ -68,5 +70,10 @@ class Quotation extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

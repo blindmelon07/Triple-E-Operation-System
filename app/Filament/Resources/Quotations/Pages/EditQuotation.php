@@ -4,11 +4,13 @@ namespace App\Filament\Resources\Quotations\Pages;
 
 use App\Enums\QuotationStatus;
 use App\Filament\Resources\Quotations\QuotationResource;
+use App\Mail\QuotationApprovedMail;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Mail;
 
 class EditQuotation extends EditRecord
 {
@@ -49,6 +51,13 @@ class EditQuotation extends EditRecord
                 )
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Approved->value]);
+
+                    // Send email notification to the creator
+                    if ($this->record->creator && $this->record->creator->email) {
+                        $this->record->load(['customer']);
+                        Mail::to($this->record->creator->email)->send(new QuotationApprovedMail($this->record));
+                    }
+
                     Notification::make()
                         ->title('Quotation Approved')
                         ->body('The quotation has been approved successfully.')

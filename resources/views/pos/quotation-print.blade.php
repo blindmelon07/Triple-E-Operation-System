@@ -346,17 +346,127 @@
             width: 18px;
             height: 18px;
         }
+
+        /* Approval Required Overlay */
+        .approval-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .approval-message {
+            background: white;
+            padding: 40px 50px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .approval-message .icon {
+            width: 80px;
+            height: 80px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .approval-message .icon svg {
+            width: 40px;
+            height: 40px;
+            color: #f59e0b;
+        }
+
+        .approval-message h2 {
+            font-size: 24px;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .approval-message p {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .approval-message .quotation-info {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .approval-message .quotation-info p {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+
+        .approval-message .btn-back {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .approval-message .btn-back:hover {
+            background: #2563eb;
+        }
+
+        .content-disabled {
+            filter: blur(3px);
+            pointer-events: none;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
+    @if(!$isApproved)
+    <!-- Approval Required Overlay -->
+    <div class="approval-overlay no-print">
+        <div class="approval-message">
+            <div class="icon">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h2>Approval Required</h2>
+            <p>This quotation requires admin approval before it can be printed.</p>
+            <div class="quotation-info">
+                <p><strong>Quotation #:</strong> {{ $quotation->quotation_number }}</p>
+                <p><strong>Status:</strong> {{ ucfirst($quotation->status) }}</p>
+                <p><strong>Date:</strong> {{ $quotation->date->format('F d, Y') }}</p>
+            </div>
+            <button class="btn-back" onclick="window.history.back()">Go Back</button>
+        </div>
+    </div>
+    @endif
+
     <!-- Print Actions -->
     <div class="print-actions no-print">
+        @if($isApproved)
         <button class="btn btn-primary" onclick="window.print()">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Print
         </button>
+        @endif
         <button class="btn btn-secondary" onclick="window.close()">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -365,7 +475,7 @@
         </button>
     </div>
 
-    <div class="container">
+    <div class="container {{ !$isApproved ? 'content-disabled' : '' }}">
         <!-- Header -->
         <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="company-info" style="display: flex; align-items: center; gap: 12px;">
