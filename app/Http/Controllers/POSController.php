@@ -142,10 +142,13 @@ class POSController extends Controller
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:products,id',
+            'items.*.id' => 'nullable|exists:products,id',
+            'items.*.is_manual' => 'nullable|boolean',
+            'items.*.name' => 'required|string|max:255',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit' => 'required|string',
             'total' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
             'valid_days' => 'nullable|integer|min:1|max:365',
@@ -167,10 +170,14 @@ class POSController extends Controller
 
             foreach ($validated['items'] as $item) {
                 $itemPrice = $item['unit_price'] * $item['quantity'];
+                $isManual = $item['is_manual'] ?? false;
 
                 QuotationItem::create([
                     'quotation_id' => $quotation->id,
-                    'product_id' => $item['id'],
+                    'product_id' => $isManual ? null : $item['id'],
+                    'product_description' => $isManual ? $item['name'] : null,
+                    'is_manual' => $isManual,
+                    'unit' => $item['unit'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'price' => $itemPrice,

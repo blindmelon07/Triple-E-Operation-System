@@ -206,7 +206,19 @@
             <div class="hidden lg:flex w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-col">
                 <!-- Cart Header -->
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Current Sale</h2>
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Current Sale</h2>
+                        <button
+                            @click="openCustomItemModal()"
+                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition touch-btn flex items-center gap-1"
+                            title="Add Custom Item (not in inventory)"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Custom
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Customer Selection -->
@@ -256,7 +268,10 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
-                                <h4 class="font-medium text-gray-900 dark:text-white text-sm mb-2 pr-6" x-text="item.name"></h4>
+                                <div class="flex items-center gap-2 mb-2 pr-6">
+                                    <h4 class="font-medium text-gray-900 dark:text-white text-sm" x-text="item.name"></h4>
+                                    <span x-show="item.is_manual" class="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs rounded font-medium">Custom</span>
+                                </div>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-2" x-text="'₱' + parseFloat(item.unit_price).toFixed(2) + ' per ' + item.unit"></p>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
@@ -364,8 +379,20 @@
                 >
                     <!-- Mobile Cart Header -->
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between safe-area-top">
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Current Sale</h2>
-                        <button 
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Current Sale</h2>
+                            <button
+                                @click="openCustomItemModal()"
+                                class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg transition touch-btn flex items-center gap-1"
+                                title="Add Custom Item"
+                            >
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Custom
+                            </button>
+                        </div>
+                        <button
                             @click="showMobileCart = false"
                             class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn"
                         >
@@ -422,7 +449,10 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h4 class="font-medium text-gray-900 dark:text-white text-base mb-2 pr-8" x-text="item.name"></h4>
+                                    <div class="flex items-center gap-2 mb-2 pr-8">
+                                        <h4 class="font-medium text-gray-900 dark:text-white text-base" x-text="item.name"></h4>
+                                        <span x-show="item.is_manual" class="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs rounded font-medium">Custom</span>
+                                    </div>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-3" x-text="'₱' + parseFloat(item.unit_price).toFixed(2) + ' per ' + item.unit"></p>
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-3">
@@ -1008,7 +1038,10 @@
                     <div class="max-h-40 overflow-y-auto space-y-2">
                         <template x-for="(item, index) in cart" :key="'quot-item-' + index">
                             <div class="flex justify-between text-sm">
-                                <span class="text-gray-700 dark:text-gray-300" x-text="item.name + ' × ' + item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
+                                <span class="text-gray-700 dark:text-gray-300">
+                                    <span x-text="item.name + ' × ' + item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
+                                    <span x-show="item.is_manual" class="ml-1 px-1 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs rounded">Custom</span>
+                                </span>
                                 <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
                             </div>
                         </template>
@@ -1106,6 +1139,147 @@
                         class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
                     >
                         Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Item Modal -->
+    <div
+        x-show="showCustomItemModal"
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showCustomItemModal = false"
+        @keydown.escape.window="showCustomItemModal = false"
+    >
+        <div
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+        >
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Add Custom Item</h3>
+                    </div>
+                    <button
+                        @click="showCustomItemModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Add an item that is not in the product inventory. This is only available for quotations.</p>
+
+                <!-- Form Fields -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Item Description *</label>
+                        <input
+                            type="text"
+                            x-model="customItem.name"
+                            placeholder="Enter item name or description"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity *</label>
+                            <input
+                                type="number"
+                                x-model="customItem.quantity"
+                                @input="calculateCustomItemPrice()"
+                                min="0.01"
+                                step="0.01"
+                                placeholder="1"
+                                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white text-base"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unit *</label>
+                            <select
+                                x-model="customItem.unit"
+                                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white text-base"
+                            >
+                                <option value="piece">Piece</option>
+                                <option value="liter">Liter</option>
+                                <option value="milliliter">Milliliter</option>
+                                <option value="kilo">Kilo</option>
+                                <option value="gram">Gram</option>
+                                <option value="foot">Foot</option>
+                                <option value="meter">Meter</option>
+                                <option value="cubic_meter">Cubic Meter</option>
+                                <option value="bag">Bag</option>
+                                <option value="knot">Knot</option>
+                                <option value="bundle">Bundle</option>
+                                <option value="box">Box</option>
+                                <option value="tube">Tube</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unit Price (₱) *</label>
+                        <input
+                            type="number"
+                            x-model="customItem.unit_price"
+                            @input="calculateCustomItemPrice()"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+
+                    <!-- Calculated Total -->
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Line Total</span>
+                            <span class="text-xl font-bold text-emerald-600 dark:text-emerald-400" x-text="'₱' + customItem.total.toFixed(2)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div x-show="customItemError" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm mt-4" x-text="customItemError"></div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3 mt-6">
+                    <button
+                        @click="showCustomItemModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold touch-btn"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="addCustomItemToCart()"
+                        class="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition font-semibold touch-btn flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add to Cart
                     </button>
                 </div>
             </div>
@@ -1317,6 +1491,15 @@
                 weightValue: 0,
                 weightUnit: 'kilo',
                 calculatedWeightPrice: 0,
+                showCustomItemModal: false,
+                customItemError: '',
+                customItem: {
+                    name: '',
+                    quantity: 1,
+                    unit: 'piece',
+                    unit_price: 0,
+                    total: 0
+                },
 
                 init() {
                     this.filteredProducts = this.products;
@@ -1675,6 +1858,63 @@
                     if (this.lastQuotationPrintUrl) {
                         window.open(this.lastQuotationPrintUrl, '_blank');
                     }
+                },
+
+                openCustomItemModal() {
+                    this.customItem = {
+                        name: '',
+                        quantity: 1,
+                        unit: 'piece',
+                        unit_price: 0,
+                        total: 0
+                    };
+                    this.customItemError = '';
+                    this.showCustomItemModal = true;
+                },
+
+                calculateCustomItemPrice() {
+                    const quantity = parseFloat(this.customItem.quantity) || 0;
+                    const unitPrice = parseFloat(this.customItem.unit_price) || 0;
+                    this.customItem.total = quantity * unitPrice;
+                },
+
+                addCustomItemToCart() {
+                    // Validate
+                    if (!this.customItem.name.trim()) {
+                        this.customItemError = 'Item description is required';
+                        return;
+                    }
+                    if (!this.customItem.quantity || this.customItem.quantity <= 0) {
+                        this.customItemError = 'Valid quantity is required';
+                        return;
+                    }
+                    if (!this.customItem.unit_price || this.customItem.unit_price < 0) {
+                        this.customItemError = 'Valid unit price is required';
+                        return;
+                    }
+
+                    // Add to cart with is_manual flag
+                    this.cart.push({
+                        id: null,
+                        is_manual: true,
+                        name: this.customItem.name.trim(),
+                        price: this.customItem.total,
+                        unit_price: parseFloat(this.customItem.unit_price),
+                        unit: this.customItem.unit,
+                        quantity: parseFloat(this.customItem.quantity),
+                        maxStock: Infinity
+                    });
+
+                    // Close modal and reset
+                    this.showCustomItemModal = false;
+                    this.customItem = {
+                        name: '',
+                        quantity: 1,
+                        unit: 'piece',
+                        unit_price: 0,
+                        total: 0
+                    };
+                    this.customItemError = '';
                 },
 
                 printReceipt(type) {

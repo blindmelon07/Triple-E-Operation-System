@@ -14,6 +14,7 @@ class QuotationItem extends Model
         'quotation_id',
         'product_id',
         'product_description',
+        'is_manual',
         'unit',
         'quantity',
         'unit_price',
@@ -23,6 +24,7 @@ class QuotationItem extends Model
     protected function casts(): array
     {
         return [
+            'is_manual' => 'boolean',
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'price' => 'decimal:2',
