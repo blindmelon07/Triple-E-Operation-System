@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\QuotationObserver;
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use App\Models\User;
 #[ObservedBy([QuotationObserver::class])]
 class Quotation extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $fillable = [
         'quotation_number',

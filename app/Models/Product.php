@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProductUnit;
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,7 +12,7 @@ class Product extends Model
     protected $fillable = ['name', 'category_id', 'supplier_id', 'price', 'cost_price', 'quantity', 'unit'];
 
     /** @use HasFactory<\Database\Factories\ProductFactory> */
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected function casts(): array
     {

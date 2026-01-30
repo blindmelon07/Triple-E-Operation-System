@@ -51,13 +51,13 @@ class ProfitLossReport extends Page
         return [
             Action::make('export_pdf')
                 ->label('Export PDF')
-                ->icon('heroicon-o-document-arrow-down')
+                ->icon(Heroicon::OutlinedDocumentArrowDown)
                 ->color('gray')
                 ->action(fn () => $this->exportPdf()),
 
             Action::make('export_excel')
                 ->label('Export Excel')
-                ->icon('heroicon-o-table-cells')
+                ->icon(Heroicon::OutlinedTableCells)
                 ->color('success')
                 ->action(fn () => $this->exportExcel()),
         ];

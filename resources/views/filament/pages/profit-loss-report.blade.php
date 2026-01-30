@@ -48,9 +48,9 @@
                 <div class="flex items-center gap-4">
                     <div class="flex-shrink-0">
                         @if($reportData['is_profitable'])
-                            <x-heroicon-o-arrow-trending-up class="w-12 h-12 text-green-600 dark:text-green-400" />
+                            <x-filament::icon icon="heroicon-o-arrow-trending-up" class="w-12 h-12 text-green-600 dark:text-green-400" />
                         @else
-                            <x-heroicon-o-arrow-trending-down class="w-12 h-12 text-red-600 dark:text-red-400" />
+                            <x-filament::icon icon="heroicon-o-arrow-trending-down" class="w-12 h-12 text-red-600 dark:text-red-400" />
                         @endif
                     </div>
                     <div class="flex-1">
@@ -80,7 +80,7 @@
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                        <x-heroicon-o-banknotes class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        <x-filament::icon icon="heroicon-o-banknotes" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
@@ -93,7 +93,7 @@
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                        <x-heroicon-o-cube class="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                        <x-filament::icon icon="heroicon-o-cube" class="w-6 h-6 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Cost of Goods Sold</p>
@@ -106,7 +106,7 @@
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-lg bg-green-100 dark:bg-green-900/50">
-                        <x-heroicon-o-chart-bar class="w-6 h-6 text-green-600 dark:text-green-400" />
+                        <x-filament::icon icon="heroicon-o-chart-bar" class="w-6 h-6 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Gross Profit</p>
@@ -122,7 +122,7 @@
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-lg bg-red-100 dark:bg-red-900/50">
-                        <x-heroicon-o-arrow-trending-down class="w-6 h-6 text-red-600 dark:text-red-400" />
+                        <x-filament::icon icon="heroicon-o-arrow-trending-down" class="w-6 h-6 text-red-600 dark:text-red-400" />
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Operating Expenses</p>
@@ -249,7 +249,7 @@
                         </div>
                     @else
                         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                            <x-heroicon-o-chart-pie class="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <x-filament::icon icon="heroicon-o-chart-pie" class="w-12 h-12 mx-auto mb-3 opacity-50" />
                             <p>No expenses recorded for this period</p>
                         </div>
                     @endif
