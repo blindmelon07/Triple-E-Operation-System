@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Quotations\Tables;
 
 use App\Enums\QuotationStatus;
 use App\Mail\QuotationApprovedMail;
+use App\Models\AuditLog;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -75,7 +76,19 @@ class QuotationsTable
                     ->action(function ($record) {
                         $record->update(['status' => QuotationStatus::Approved->value]);
 
-                        // Send email notification to the creator
+                        AuditLog::create([
+                            'user_id'         => auth()->id(),
+                            'user_name'       => auth()->user()?->name,
+                            'action'          => 'approved',
+                            'auditable_type'  => $record->getMorphClass(),
+                            'auditable_id'    => $record->getKey(),
+                            'auditable_label' => "Quotation {$record->quotation_number}",
+                            'old_values'      => ['status' => QuotationStatus::Pending->value],
+                            'new_values'      => ['status' => QuotationStatus::Approved->value],
+                            'ip_address'      => request()->ip(),
+                            'user_agent'      => request()->userAgent(),
+                        ]);
+
                         if ($record->creator && $record->creator->email) {
                             $record->load(['customer']);
                             Mail::to($record->creator->email)->send(new QuotationApprovedMail($record));
@@ -97,6 +110,20 @@ class QuotationsTable
                     )
                     ->action(function ($record) {
                         $record->update(['status' => QuotationStatus::Rejected->value]);
+
+                        AuditLog::create([
+                            'user_id'         => auth()->id(),
+                            'user_name'       => auth()->user()?->name,
+                            'action'          => 'rejected',
+                            'auditable_type'  => $record->getMorphClass(),
+                            'auditable_id'    => $record->getKey(),
+                            'auditable_label' => "Quotation {$record->quotation_number}",
+                            'old_values'      => ['status' => QuotationStatus::Pending->value],
+                            'new_values'      => ['status' => QuotationStatus::Rejected->value],
+                            'ip_address'      => request()->ip(),
+                            'user_agent'      => request()->userAgent(),
+                        ]);
+
                         Notification::make()
                             ->title('Quotation Rejected')
                             ->success()

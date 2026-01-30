@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MaintenanceRequests\Pages;
 
 use App\Filament\Resources\MaintenanceRequests\MaintenanceRequestResource;
+use App\Models\AuditLog;
 use App\Models\MaintenanceRecord;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -53,6 +54,19 @@ class ViewMaintenanceRequest extends ViewRecord
 
                     $record->update(['maintenance_record_id' => $maintenanceRecord->id]);
 
+                    AuditLog::create([
+                        'user_id'         => auth()->id(),
+                        'user_name'       => auth()->user()?->name,
+                        'action'          => 'approved',
+                        'auditable_type'  => $record->getMorphClass(),
+                        'auditable_id'    => $record->getKey(),
+                        'auditable_label' => "Maintenance Request {$record->request_number}",
+                        'old_values'      => ['status' => 'pending'],
+                        'new_values'      => ['status' => 'approved', 'maintenance_record_id' => $maintenanceRecord->id],
+                        'ip_address'      => request()->ip(),
+                        'user_agent'      => request()->userAgent(),
+                    ]);
+
                     Notification::make()
                         ->title('Request Approved!')
                         ->body("Maintenance record #{$maintenanceRecord->reference_number} has been created and scheduled.")
@@ -79,6 +93,19 @@ class ViewMaintenanceRequest extends ViewRecord
                         'status' => 'rejected',
                         'rejection_reason' => $data['rejection_reason'],
                         'rejected_at' => now(),
+                    ]);
+
+                    AuditLog::create([
+                        'user_id'         => auth()->id(),
+                        'user_name'       => auth()->user()?->name,
+                        'action'          => 'rejected',
+                        'auditable_type'  => $this->record->getMorphClass(),
+                        'auditable_id'    => $this->record->getKey(),
+                        'auditable_label' => "Maintenance Request {$this->record->request_number}",
+                        'old_values'      => ['status' => 'pending'],
+                        'new_values'      => ['status' => 'rejected', 'rejection_reason' => $data['rejection_reason']],
+                        'ip_address'      => request()->ip(),
+                        'user_agent'      => request()->userAgent(),
                     ]);
 
                     Notification::make()

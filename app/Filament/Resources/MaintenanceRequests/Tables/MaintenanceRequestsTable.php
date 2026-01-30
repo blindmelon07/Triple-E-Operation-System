@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MaintenanceRequests\Tables;
 
+use App\Models\AuditLog;
 use App\Models\MaintenanceRecord;
 use App\Models\MaintenanceRequest;
 use Filament\Actions\Action;
@@ -161,6 +162,19 @@ class MaintenanceRequestsTable
 
                         $record->update(['maintenance_record_id' => $maintenanceRecord->id]);
 
+                        AuditLog::create([
+                            'user_id'         => Auth::id(),
+                            'user_name'       => Auth::user()?->name,
+                            'action'          => 'approved',
+                            'auditable_type'  => $record->getMorphClass(),
+                            'auditable_id'    => $record->getKey(),
+                            'auditable_label' => "Maintenance Request {$record->request_number}",
+                            'old_values'      => ['status' => 'pending'],
+                            'new_values'      => ['status' => 'approved', 'maintenance_record_id' => $maintenanceRecord->id],
+                            'ip_address'      => request()->ip(),
+                            'user_agent'      => request()->userAgent(),
+                        ]);
+
                         Notification::make()
                             ->title('Request Approved')
                             ->body("Maintenance record #{$maintenanceRecord->reference_number} has been created.")
@@ -186,6 +200,19 @@ class MaintenanceRequestsTable
                             'status' => 'rejected',
                             'rejection_reason' => $data['rejection_reason'],
                             'rejected_at' => now(),
+                        ]);
+
+                        AuditLog::create([
+                            'user_id'         => Auth::id(),
+                            'user_name'       => Auth::user()?->name,
+                            'action'          => 'rejected',
+                            'auditable_type'  => $record->getMorphClass(),
+                            'auditable_id'    => $record->getKey(),
+                            'auditable_label' => "Maintenance Request {$record->request_number}",
+                            'old_values'      => ['status' => 'pending'],
+                            'new_values'      => ['status' => 'rejected', 'rejection_reason' => $data['rejection_reason']],
+                            'ip_address'      => request()->ip(),
+                            'user_agent'      => request()->userAgent(),
                         ]);
 
                         Notification::make()
@@ -227,6 +254,20 @@ class MaintenanceRequestsTable
                                     ]);
 
                                     $record->update(['maintenance_record_id' => $maintenanceRecord->id]);
+
+                                    AuditLog::create([
+                                        'user_id'         => Auth::id(),
+                                        'user_name'       => Auth::user()?->name,
+                                        'action'          => 'approved',
+                                        'auditable_type'  => $record->getMorphClass(),
+                                        'auditable_id'    => $record->getKey(),
+                                        'auditable_label' => "Maintenance Request {$record->request_number}",
+                                        'old_values'      => ['status' => 'pending'],
+                                        'new_values'      => ['status' => 'approved', 'maintenance_record_id' => $maintenanceRecord->id],
+                                        'ip_address'      => request()->ip(),
+                                        'user_agent'      => request()->userAgent(),
+                                    ]);
+
                                     $approved++;
                                 }
                             }

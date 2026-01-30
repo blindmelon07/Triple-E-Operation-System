@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Quotations\Pages;
 use App\Enums\QuotationStatus;
 use App\Filament\Resources\Quotations\QuotationResource;
 use App\Mail\QuotationApprovedMail;
+use App\Models\AuditLog;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -30,7 +31,19 @@ class ViewQuotation extends ViewRecord
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Approved->value]);
 
-                    // Send email notification to the creator
+                    AuditLog::create([
+                        'user_id'         => auth()->id(),
+                        'user_name'       => auth()->user()?->name,
+                        'action'          => 'approved',
+                        'auditable_type'  => $this->record->getMorphClass(),
+                        'auditable_id'    => $this->record->getKey(),
+                        'auditable_label' => "Quotation {$this->record->quotation_number}",
+                        'old_values'      => ['status' => QuotationStatus::Pending->value],
+                        'new_values'      => ['status' => QuotationStatus::Approved->value],
+                        'ip_address'      => request()->ip(),
+                        'user_agent'      => request()->userAgent(),
+                    ]);
+
                     if ($this->record->creator && $this->record->creator->email) {
                         $this->record->load(['customer']);
                         Mail::to($this->record->creator->email)->send(new QuotationApprovedMail($this->record));
@@ -53,6 +66,20 @@ class ViewQuotation extends ViewRecord
                 )
                 ->action(function () {
                     $this->record->update(['status' => QuotationStatus::Rejected->value]);
+
+                    AuditLog::create([
+                        'user_id'         => auth()->id(),
+                        'user_name'       => auth()->user()?->name,
+                        'action'          => 'rejected',
+                        'auditable_type'  => $this->record->getMorphClass(),
+                        'auditable_id'    => $this->record->getKey(),
+                        'auditable_label' => "Quotation {$this->record->quotation_number}",
+                        'old_values'      => ['status' => QuotationStatus::Pending->value],
+                        'new_values'      => ['status' => QuotationStatus::Rejected->value],
+                        'ip_address'      => request()->ip(),
+                        'user_agent'      => request()->userAgent(),
+                    ]);
+
                     Notification::make()
                         ->title('Quotation Rejected')
                         ->body('The quotation has been rejected.')

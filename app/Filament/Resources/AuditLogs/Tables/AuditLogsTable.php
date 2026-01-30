@@ -36,14 +36,18 @@ class AuditLogsTable
                     ->label('Action')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'created' => 'success',
-                        'updated' => 'info',
-                        'deleted' => 'danger',
-                        'login'   => 'primary',
-                        'logout'  => 'gray',
-                        default   => 'gray',
+                        'created'           => 'success',
+                        'updated'           => 'info',
+                        'deleted'           => 'danger',
+                        'login'             => 'primary',
+                        'logout'            => 'gray',
+                        'approved'          => 'success',
+                        'rejected'          => 'danger',
+                        'completed_sale'    => 'success',
+                        'created_quotation' => 'info',
+                        default             => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state)),
+                    ->formatStateUsing(fn (string $state): string => str_replace('_', ' ', ucfirst($state))),
 
                 TextColumn::make('auditable_type')
                     ->label('Model')
@@ -78,11 +82,15 @@ class AuditLogsTable
                 SelectFilter::make('action')
                     ->label('Action')
                     ->options([
-                        'created' => 'Created',
-                        'updated' => 'Updated',
-                        'deleted' => 'Deleted',
-                        'login'   => 'Login',
-                        'logout'  => 'Logout',
+                        'created'           => 'Created',
+                        'updated'           => 'Updated',
+                        'deleted'           => 'Deleted',
+                        'login'             => 'Login',
+                        'logout'            => 'Logout',
+                        'approved'          => 'Approved',
+                        'rejected'          => 'Rejected',
+                        'completed_sale'    => 'Completed Sale',
+                        'created_quotation' => 'Created Quotation',
                     ]),
 
                 SelectFilter::make('auditable_type')

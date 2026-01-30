@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\QuotationStatus;
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
@@ -87,6 +88,23 @@ class POSController extends Controller
             }
 
             DB::commit();
+
+            AuditLog::create([
+                'user_id'         => auth()->id(),
+                'user_name'       => auth()->user()?->name,
+                'action'          => 'completed_sale',
+                'auditable_type'  => Sale::class,
+                'auditable_id'    => $sale->id,
+                'auditable_label' => "Sale #{$sale->id}",
+                'new_values'      => [
+                    'total'          => $validated['total'],
+                    'payment_method' => $validated['payment_method'],
+                    'items_count'    => count($validated['items']),
+                    'customer_id'    => $validated['customer_id'] ?? null,
+                ],
+                'ip_address'      => $request->ip(),
+                'user_agent'      => $request->userAgent(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -185,6 +203,22 @@ class POSController extends Controller
             }
 
             DB::commit();
+
+            AuditLog::create([
+                'user_id'         => auth()->id(),
+                'user_name'       => auth()->user()?->name,
+                'action'          => 'created_quotation',
+                'auditable_type'  => Quotation::class,
+                'auditable_id'    => $quotation->id,
+                'auditable_label' => "Quotation {$quotation->quotation_number}",
+                'new_values'      => [
+                    'total'       => $validated['total'],
+                    'items_count' => count($validated['items']),
+                    'customer_id' => $validated['customer_id'] ?? null,
+                ],
+                'ip_address'      => $request->ip(),
+                'user_agent'      => $request->userAgent(),
+            ]);
 
             return response()->json([
                 'success' => true,
