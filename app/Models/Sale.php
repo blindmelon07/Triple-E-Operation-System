@@ -18,6 +18,8 @@ class Sale extends Model
         'customer_id',
         'date',
         'total',
+        'payment_method',
+        'payment_term_days',
         'payment_status',
         'amount_paid',
         'due_date',
@@ -38,11 +40,17 @@ class Sale extends Model
     protected static function booted(): void
     {
         static::creating(function (Sale $sale) {
-            if (! $sale->due_date && $sale->customer_id) {
-                $customer = Customer::find($sale->customer_id);
-                if ($customer && $customer->payment_term_days > 0) {
-                    $saleDate = $sale->date ?? now();
-                    $sale->due_date = $saleDate->copy()->addDays($customer->payment_term_days);
+            if (! $sale->due_date) {
+                $saleDate = $sale->date ?? now();
+
+                // COD payment term takes priority
+                if ($sale->payment_term_days) {
+                    $sale->due_date = $saleDate->copy()->addDays($sale->payment_term_days);
+                } elseif ($sale->customer_id) {
+                    $customer = Customer::find($sale->customer_id);
+                    if ($customer && $customer->payment_term_days > 0) {
+                        $sale->due_date = $saleDate->copy()->addDays($customer->payment_term_days);
+                    }
                 }
             }
         });

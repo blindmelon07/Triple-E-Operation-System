@@ -395,6 +395,11 @@
                 <p><span class="label">Date:</span> <span class="value">{{ $sale->date->format('F d, Y') }}</span></p>
                 <p><span class="label">Time:</span> <span class="value">{{ $sale->date->format('h:i A') }}</span></p>
                 <p><span class="label">Type:</span> <span class="value">{{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}</span></p>
+                <p><span class="label">Payment:</span> <span class="value">{{ match($sale->payment_method) { 'cash' => 'Cash', 'cod' => 'Cash on Delivery', 'card' => 'Card', 'gcash' => 'GCash', 'paymaya' => 'PayMaya', default => ucfirst($sale->payment_method ?? 'N/A') } }}</span></p>
+                @if($sale->payment_method === 'cod' && $sale->payment_term_days)
+                    <p><span class="label">Terms:</span> <span class="value">{{ $sale->payment_term_days }} Days</span></p>
+                    <p><span class="label">Due Date:</span> <span class="value" style="color: #dc2626; font-weight: 700;">{{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span></p>
+                @endif
             </div>
         </div>
 
@@ -437,6 +442,14 @@
                 </div>
             </div>
         </div>
+
+        @if($sale->payment_method === 'cod' && $sale->payment_term_days)
+        <div style="margin-bottom: 8px; padding: 6px 8px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 8px;">
+            <strong style="color: #92400e;">Payment Terms: Cash on Delivery — {{ $sale->payment_term_days }} Days</strong>
+            <br>
+            <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+        </div>
+        @endif
 
         <div class="received-note">
             @if($type === 'delivery')

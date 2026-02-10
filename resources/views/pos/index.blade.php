@@ -554,10 +554,38 @@
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                         >
                             <option value="cash">Cash</option>
+                            <option value="cod">Cash on Delivery (COD)</option>
                             <option value="card">Card</option>
                             <option value="gcash">GCash</option>
                             <option value="paymaya">PayMaya</option>
                         </select>
+                    </div>
+
+                    <div x-show="paymentMethod === 'cod'" x-cloak class="space-y-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" x-model="codWithTerms" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Add Payment Terms</span>
+                        </label>
+
+                        <div x-show="codWithTerms" x-cloak>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Terms</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <template x-for="days in [5, 10, 15, 30, 60]" :key="days">
+                                    <button
+                                        type="button"
+                                        @click="paymentTermDays = days"
+                                        :class="paymentTermDays === days
+                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'"
+                                        class="px-3 py-2 border rounded-lg text-sm font-medium transition"
+                                        x-text="days + ' Days'"
+                                    ></button>
+                                </template>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                Due date: <span class="font-medium" x-text="new Date(Date.now() + paymentTermDays * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })"></span>
+                            </p>
+                        </div>
                     </div>
 
                     <div x-show="paymentMethod === 'cash'">
@@ -1483,6 +1511,8 @@
                     address: ''
                 },
                 paymentMethod: 'cash',
+                codWithTerms: false,
+                paymentTermDays: 5,
                 cashReceived: 0,
                 change: 0,
                 lastSaleTotal: 0,
@@ -1782,6 +1812,7 @@
                                 items: this.cart,
                                 total: this.total,
                                 payment_method: this.paymentMethod,
+                                payment_term_days: (this.paymentMethod === 'cod' && this.codWithTerms) ? this.paymentTermDays : null,
                                 cash_received: this.cashReceived,
                                 change: this.change
                             })
@@ -1796,6 +1827,9 @@
                             this.showSuccessModal = true;
                             this.cart = [];
                             this.selectedCustomer = '';
+                            this.paymentMethod = 'cash';
+                            this.codWithTerms = false;
+                            this.paymentTermDays = 5;
                             this.cashReceived = 0;
                             this.change = 0;
                         } else {

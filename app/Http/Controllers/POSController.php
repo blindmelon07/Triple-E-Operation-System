@@ -53,6 +53,7 @@ class POSController extends Controller
             'items.*.price' => 'required|numeric|min:0',
             'total' => 'required|numeric|min:0',
             'payment_method' => 'required|string',
+            'payment_term_days' => 'nullable|integer|in:5,10,15,30,60',
             'cash_received' => 'nullable|numeric',
             'change' => 'nullable|numeric',
         ]);
@@ -65,6 +66,8 @@ class POSController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'date' => now(),
                 'total' => $validated['total'],
+                'payment_method' => $validated['payment_method'],
+                'payment_term_days' => $validated['payment_term_days'] ?? null,
             ]);
 
             // Create sale items
