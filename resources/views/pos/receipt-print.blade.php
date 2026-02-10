@@ -417,7 +417,7 @@
                 @foreach($sale->sale_items as $index => $item)
                     <tr>
                         <td style="text-align: center;">{{ $index + 1 }}</td>
-                        <td class="product-name">{{ $item->product?->name ?? 'Unknown Product' }}</td>
+                        <td class="product-name">{{ $item->is_manual ? $item->product_description : ($item->product?->name ?? 'Unknown Product') }}</td>
                         <td>{{ number_format($item->quantity, 2) }}</td>
                         <td>₱{{ number_format($item->price, 2) }}</td>
                     </tr>

@@ -48,9 +48,13 @@ class POSController extends Controller
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.id' => 'nullable|exists:products,id',
+            'items.*.is_manual' => 'nullable|boolean',
+            'items.*.name' => 'required|string|max:255',
+            'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit' => 'required|string',
             'total' => 'required|numeric|min:0',
             'payment_method' => 'required|string',
             'payment_term_days' => 'nullable|integer|in:5,10,15,30,60',
@@ -72,19 +76,25 @@ class POSController extends Controller
 
             // Create sale items
             foreach ($validated['items'] as $item) {
-                $product = Product::findOrFail($item['id']);
+                $isManual = $item['is_manual'] ?? false;
+                $itemPrice = $item['unit_price'] * $item['quantity'];
 
-                // Check if enough stock is available
-                if ($product->inventory && $product->inventory->quantity < $item['quantity']) {
-                    throw new \Exception("Not enough stock for product: {$product->name}");
+                if (!$isManual) {
+                    $product = Product::findOrFail($item['id']);
+
+                    // Check if enough stock is available
+                    if ($product->inventory && $product->inventory->quantity < $item['quantity']) {
+                        throw new \Exception("Not enough stock for product: {$product->name}");
+                    }
                 }
-
-                // Calculate price based on unit type
-                $itemPrice = $item['price'] * $item['quantity'];
 
                 SaleItem::create([
                     'sale_id' => $sale->id,
-                    'product_id' => $item['id'],
+                    'product_id' => $isManual ? null : $item['id'],
+                    'product_description' => $isManual ? $item['name'] : null,
+                    'is_manual' => $isManual,
+                    'unit' => $item['unit'],
+                    'unit_price' => $item['unit_price'],
                     'quantity' => $item['quantity'],
                     'price' => $itemPrice,
                 ]);
