@@ -12,6 +12,8 @@ class EmployeeCompensation extends Model
 {
     use HasFactory, Auditable;
 
+    protected $table = 'employee_compensations';
+
     protected $fillable = [
         'user_id',
         'daily_rate',
