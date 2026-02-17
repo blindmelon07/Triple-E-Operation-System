@@ -19,6 +19,9 @@ class EmployeeCompensation extends Model
         'daily_rate',
         'pay_period',
         'days_off',
+        'sss_enabled',
+        'philhealth_enabled',
+        'pagibig_enabled',
         'overtime_rate_multiplier',
         'late_deduction_type',
         'late_deduction_amount',
@@ -38,6 +41,9 @@ class EmployeeCompensation extends Model
             'allowance' => 'decimal:2',
             'pay_period' => PayPeriodType::class,
             'days_off' => 'array',
+            'sss_enabled' => 'boolean',
+            'philhealth_enabled' => 'boolean',
+            'pagibig_enabled' => 'boolean',
         ];
     }
 

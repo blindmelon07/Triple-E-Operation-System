@@ -7,6 +7,7 @@ use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -61,6 +62,25 @@ class EmployeeCompensationForm
                             ->helperText('Select the employee\'s weekly rest day(s)'),
                     ])
                     ->columns(2),
+
+                Section::make('Government Contributions')
+                    ->schema([
+                        Toggle::make('sss_enabled')
+                            ->label('SSS')
+                            ->default(true)
+                            ->helperText('Enable SSS deduction'),
+
+                        Toggle::make('philhealth_enabled')
+                            ->label('PhilHealth')
+                            ->default(true)
+                            ->helperText('Enable PhilHealth deduction'),
+
+                        Toggle::make('pagibig_enabled')
+                            ->label('Pag-IBIG')
+                            ->default(true)
+                            ->helperText('Enable Pag-IBIG deduction'),
+                    ])
+                    ->columns(3),
 
                 Section::make('Overtime & Late Settings')
                     ->schema([

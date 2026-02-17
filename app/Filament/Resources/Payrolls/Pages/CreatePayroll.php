@@ -133,18 +133,26 @@ class CreatePayroll extends CreateRecord
                 $lateDeduction = round((float) $comp->late_deduction_amount * $lateCount, 2);
             }
 
-            // Calculate government deductions based on monthly equivalent
+            // Calculate government deductions based on monthly equivalent (only if enabled per employee)
             $monthlyEquivalent = $comp->getMonthlyEquivalent();
 
-            $sssDeduction = GovernmentContribution::getSssDeduction($monthlyEquivalent);
-            $philhealthDeduction = GovernmentContribution::getPhilhealthDeduction($monthlyEquivalent);
-
-            // PhilHealth: if salary > 10k, compute 2.5% (capped at 2500)
-            if ($monthlyEquivalent > 10000) {
-                $philhealthDeduction = min(round($monthlyEquivalent * 0.025, 2), 2500);
+            $sssDeduction = 0;
+            if ($comp->sss_enabled) {
+                $sssDeduction = GovernmentContribution::getSssDeduction($monthlyEquivalent);
             }
 
-            $pagibigDeduction = GovernmentContribution::getPagibigDeduction($monthlyEquivalent);
+            $philhealthDeduction = 0;
+            if ($comp->philhealth_enabled) {
+                $philhealthDeduction = GovernmentContribution::getPhilhealthDeduction($monthlyEquivalent);
+                if ($monthlyEquivalent > 10000) {
+                    $philhealthDeduction = min(round($monthlyEquivalent * 0.025, 2), 2500);
+                }
+            }
+
+            $pagibigDeduction = 0;
+            if ($comp->pagibig_enabled) {
+                $pagibigDeduction = GovernmentContribution::getPagibigDeduction($monthlyEquivalent);
+            }
 
             // For semi-monthly, gov deductions are split in half (deducted per cutoff)
             if ($payroll->pay_period_type->value === 'semi_monthly') {
