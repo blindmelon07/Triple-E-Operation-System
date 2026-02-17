@@ -11,8 +11,8 @@
                 <x-filament::icon icon="heroicon-o-calendar" style="width: 1.5rem; height: 1.5rem; color: #3b82f6;" />
                 <div>
                     <p style="font-size: 0.875rem; color: #6b7280;">Today's Date</p>
-                    <p style="font-size: 1.25rem; font-weight: bold;">{{ now()->format('M d, Y') }}</p>
-                    <p style="font-size: 0.75rem; color: #9ca3af;">{{ now()->format('l') }}</p>
+                    <p style="font-size: 1.25rem; font-weight: bold;">{{ now()->timezone('Asia/Manila')->format('M d, Y') }}</p>
+                    <p style="font-size: 0.75rem; color: #9ca3af;">{{ now()->timezone('Asia/Manila')->format('l') }}</p>
                 </div>
             </div>
         </x-filament::section>

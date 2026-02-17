@@ -57,8 +57,8 @@ class MyAttendance extends Page implements HasForms, HasTable
             return;
         }
 
-        $now = now();
-        $lateThreshold = today()->setHour(9)->setMinute(0);
+        $now = now()->timezone('Asia/Manila');
+        $lateThreshold = today()->timezone('Asia/Manila')->setHour(9)->setMinute(0);
         $status = $now->greaterThan($lateThreshold)
             ? AttendanceStatus::Late
             : AttendanceStatus::Present;
@@ -108,7 +108,7 @@ class MyAttendance extends Page implements HasForms, HasTable
             return;
         }
 
-        $now = now();
+        $now = now()->timezone('Asia/Manila');
         $totalHours = Attendance::calculateTotalHours(
             $existing->time_in,
             $now->format('H:i:s')
