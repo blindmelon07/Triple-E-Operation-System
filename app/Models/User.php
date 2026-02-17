@@ -70,4 +70,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(LeaveRequest::class);
     }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<EmployeeCompensation, $this>
+     */
+    public function employeeCompensation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EmployeeCompensation::class);
+    }
+
+    /**
+     * @return HasMany<PayrollItem, $this>
+     */
+    public function payrollItems(): HasMany
+    {
+        return $this->hasMany(PayrollItem::class);
+    }
 }

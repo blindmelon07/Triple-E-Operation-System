@@ -115,7 +115,7 @@ class MyAttendance extends Page implements HasForms, HasTable
         );
 
         $status = $existing->status;
-        if ($totalHours && $totalHours < 4.5) {
+        if ($totalHours !== null && $totalHours < 4.5) {
             $status = AttendanceStatus::HalfDay;
         }
 
