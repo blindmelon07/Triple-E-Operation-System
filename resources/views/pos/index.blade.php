@@ -283,7 +283,15 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                                             </svg>
                                         </button>
-                                        <span class="w-12 text-center font-medium dark:text-white text-sm" x-text="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
+                                        <input
+                                            type="number"
+                                            :value="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"
+                                            @change="setQuantity(index, $event.target.value)"
+                                            @focus="$event.target.select()"
+                                            :step="item.unit === 'piece' ? 1 : 0.1"
+                                            min="1"
+                                            class="w-16 text-center font-medium dark:text-white text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-1 py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        >
                                         <button 
                                             @click="updateQuantity(index, item.unit === 'piece' ? 1 : 0.1)"
                                             class="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 touch-btn"
@@ -464,7 +472,15 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                                                 </svg>
                                             </button>
-                                            <span class="w-14 text-center font-medium dark:text-white text-lg" x-text="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"></span>
+                                            <input
+                                                type="number"
+                                                :value="item.quantity.toFixed(item.unit === 'piece' ? 0 : 2)"
+                                                @change="setQuantity(index, $event.target.value)"
+                                                @focus="$event.target.select()"
+                                                :step="item.unit === 'piece' ? 1 : 0.1"
+                                                min="1"
+                                                class="w-16 text-center font-medium dark:text-white text-lg bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-1 py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            >
                                             <button 
                                                 @click="updateQuantity(index, item.unit === 'piece' ? 1 : 0.1)"
                                                 class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-600 rounded-lg border border-gray-300 dark:border-gray-500 touch-btn"
@@ -1753,17 +1769,39 @@
                 updateQuantity(index, change) {
                     const item = this.cart[index];
                     const newQuantity = item.quantity + change;
-                    
+
                     if (newQuantity <= 0) {
                         this.removeFromCart(index);
                     } else {
                         const availableStock = this.getAvailableStock(item.id) + item.quantity;
-                        
+
                         if (newQuantity <= availableStock) {
                             item.quantity = newQuantity;
                         } else {
                             alert('Not enough stock available');
                         }
+                    }
+                },
+
+                setQuantity(index, value) {
+                    const item = this.cart[index];
+                    let newQuantity = parseFloat(value);
+
+                    if (isNaN(newQuantity) || newQuantity <= 0) {
+                        newQuantity = 1;
+                    }
+
+                    if (item.unit === 'piece') {
+                        newQuantity = Math.round(newQuantity);
+                    }
+
+                    const availableStock = this.getAvailableStock(item.id) + item.quantity;
+
+                    if (newQuantity <= availableStock) {
+                        item.quantity = newQuantity;
+                    } else {
+                        item.quantity = availableStock;
+                        alert('Not enough stock. Set to maximum available: ' + availableStock);
                     }
                 },
 
