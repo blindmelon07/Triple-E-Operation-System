@@ -129,6 +129,12 @@ class QuotationsTable
                             ->success()
                             ->send();
                     }),
+                Action::make('convert_to_sale')
+                    ->label('Convert to Sale')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->color('warning')
+                    ->visible(fn ($record) => $record->status === QuotationStatus::Approved->value)
+                    ->url(fn ($record) => '/pos?quotation_id=' . $record->id),
                 EditAction::make(),
             ])
             ->toolbarActions([

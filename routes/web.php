@@ -17,6 +17,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/print-receipt/{sale}', [POSController::class, 'printReceipt'])->name('pos.print-receipt');
     Route::get('/pos/recent-sales', [POSController::class, 'getRecentSales'])->name('pos.recent-sales');
 
+    // Cash Register
+    Route::post('/pos/register/open', [POSController::class, 'openRegister'])->name('pos.register.open');
+    Route::post('/pos/register/close', [POSController::class, 'closeRegister'])->name('pos.register.close');
+    Route::get('/pos/register/status', [POSController::class, 'registerStatus'])->name('pos.register.status');
+
     // Delivery Receipt
     Route::get('/delivery/{delivery}/print', [DeliveryController::class, 'printReceipt'])->name('delivery.print-receipt');
 });

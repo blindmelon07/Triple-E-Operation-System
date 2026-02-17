@@ -86,6 +86,15 @@ class ViewQuotation extends ViewRecord
                         ->success()
                         ->send();
                 }),
+            Action::make('convert_to_sale')
+                ->label('Convert to Sale')
+                ->icon('heroicon-o-shopping-cart')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Convert Quotation to Sale')
+                ->modalDescription('This will open the POS with the quotation items pre-loaded in the cart. You can add more items before completing the sale.')
+                ->visible(fn () => $this->record->status === QuotationStatus::Approved->value)
+                ->url(fn () => '/pos?quotation_id=' . $this->record->id),
             Action::make('print')
                 ->label('Print Quotation')
                 ->icon('heroicon-o-printer')

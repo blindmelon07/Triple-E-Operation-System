@@ -36,6 +36,30 @@ class EditQuotation extends EditRecord
         $this->record->refresh();
         $total = $this->record->quotation_items()->sum('price');
         $this->record->updateQuietly(['total' => $total]);
+
+        // Revert approved quotations back to pending for re-approval
+        if ($this->record->status === QuotationStatus::Approved->value) {
+            $this->record->updateQuietly(['status' => QuotationStatus::Pending->value]);
+
+            AuditLog::create([
+                'user_id'         => auth()->id(),
+                'user_name'       => auth()->user()?->name,
+                'action'          => 'reverted_to_pending',
+                'auditable_type'  => $this->record->getMorphClass(),
+                'auditable_id'    => $this->record->getKey(),
+                'auditable_label' => "Quotation {$this->record->quotation_number}",
+                'old_values'      => ['status' => QuotationStatus::Approved->value],
+                'new_values'      => ['status' => QuotationStatus::Pending->value],
+                'ip_address'      => request()->ip(),
+                'user_agent'      => request()->userAgent(),
+            ]);
+
+            Notification::make()
+                ->title('Quotation Requires Re-Approval')
+                ->body('This quotation was modified and has been reverted to Pending status for admin re-approval.')
+                ->warning()
+                ->send();
+        }
     }
 
     protected function getHeaderActions(): array

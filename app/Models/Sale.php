@@ -16,6 +16,7 @@ class Sale extends Model
 
     protected $fillable = [
         'customer_id',
+        'cash_register_session_id',
         'date',
         'total',
         'payment_method',
@@ -69,6 +70,11 @@ class Sale extends Model
     public function delivery(): HasOne
     {
         return $this->hasOne(Delivery::class);
+    }
+
+    public function cashRegisterSession(): BelongsTo
+    {
+        return $this->belongsTo(CashRegisterSession::class);
     }
 
     public function getBalanceAttribute(): float

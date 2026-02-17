@@ -90,6 +90,26 @@
                     <div class="flex items-center gap-2 sm:gap-4">
                         <span class="hidden sm:block text-sm text-gray-600 dark:text-gray-400" x-text="currentDateTime"></span>
 
+                        <!-- Register Status -->
+                        <template x-if="registerOpen">
+                            <div class="hidden sm:flex items-center gap-2">
+                                <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium rounded-full flex items-center gap-1">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    Register Open
+                                </span>
+                                <button
+                                    @click="openCloseRegisterModal()"
+                                    class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition touch-btn flex items-center gap-2 text-sm"
+                                    title="Close Register"
+                                >
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <span class="hidden lg:inline">Close Register</span>
+                                </button>
+                            </div>
+                        </template>
+
                         <!-- Reprint Button -->
                         <button
                             @click="showReprintModal = true"
@@ -1481,16 +1501,191 @@
         </div>
     </div>
 
+    <!-- Open Register Modal -->
+    <div
+        x-show="showOpenRegisterModal"
+        x-cloak
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Open Register</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Enter the starting cash amount to begin your shift</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Opening Cash Amount</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
+                        <input
+                            type="number"
+                            x-model.number="openingAmountInput"
+                            step="0.01"
+                            min="0"
+                            class="w-full pl-8 pr-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="0.00"
+                            @keydown.enter="openRegisterSession()"
+                            autofocus
+                        >
+                    </div>
+                </div>
+
+                <template x-if="registerError">
+                    <p class="text-sm text-red-600 dark:text-red-400 mb-4" x-text="registerError"></p>
+                </template>
+
+                <button
+                    @click="openRegisterSession()"
+                    :disabled="isOpeningRegister"
+                    class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span x-show="!isOpeningRegister">Open Register</span>
+                    <span x-show="isOpeningRegister">Opening...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Close Register Modal -->
+    <div
+        x-show="showCloseRegisterModal"
+        x-cloak
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
+        @click.self="showCloseRegisterModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Close Register</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Review your shift summary and enter actual cash count</p>
+                </div>
+
+                <!-- Session Summary -->
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4 space-y-3">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Opening Amount</span>
+                        <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerOpeningAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Total Sales</span>
+                        <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalSales.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Total Cash Sales</span>
+                        <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalCashSales.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Total Transactions</span>
+                        <span class="font-medium text-gray-900 dark:text-white" x-text="registerTotalTransactions"></span>
+                    </div>
+                    <div class="border-t border-gray-200 dark:border-gray-600 pt-3 flex justify-between">
+                        <span class="font-semibold text-gray-900 dark:text-white">Expected Cash on Hand</span>
+                        <span class="font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + registerExpectedCash.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                    </div>
+                </div>
+
+                <!-- Actual Cash Count -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Actual Cash Count</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
+                        <input
+                            type="number"
+                            x-model.number="closingAmountInput"
+                            step="0.01"
+                            min="0"
+                            class="w-full pl-8 pr-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="0.00"
+                        >
+                    </div>
+                </div>
+
+                <!-- Discrepancy Display -->
+                <template x-if="closingAmountInput > 0">
+                    <div class="mb-4 p-3 rounded-lg" :class="registerDiscrepancy >= 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium" :class="registerDiscrepancy >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'">
+                                <span x-show="registerDiscrepancy > 0">Overage</span>
+                                <span x-show="registerDiscrepancy < 0">Shortage</span>
+                                <span x-show="registerDiscrepancy === 0">Balanced</span>
+                            </span>
+                            <span class="font-bold" :class="registerDiscrepancy >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'" x-text="'₱' + Math.abs(registerDiscrepancy).toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Notes -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes (optional)</label>
+                    <textarea
+                        x-model="closingNotes"
+                        rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="Any notes about this shift..."
+                    ></textarea>
+                </div>
+
+                <template x-if="registerError">
+                    <p class="text-sm text-red-600 dark:text-red-400 mb-4" x-text="registerError"></p>
+                </template>
+
+                <div class="flex gap-3">
+                    <button
+                        @click="showCloseRegisterModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="closeRegisterSession()"
+                        :disabled="isClosingRegister"
+                        class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span x-show="!isClosingRegister">Close Register</span>
+                        <span x-show="isClosingRegister">Closing...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Overlay (blocks POS when register is closed) -->
+    <div
+        x-show="!registerOpen && !showOpenRegisterModal"
+        x-cloak
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+    >
+        <div class="text-center">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p class="text-white text-lg font-medium">Register is closed</p>
+            <button
+                @click="showOpenRegisterModal = true"
+                class="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+            >
+                Open Register
+            </button>
+        </div>
+    </div>
+
     <script>
         function posSystem() {
             return {
                 products: @json($products),
                 customers: @json($customers),
                 filteredProducts: [],
-                cart: [],
+                cart: @json($quotationCart ?: []),
                 searchQuery: '',
                 selectedCategory: '',
-                selectedCustomer: '',
+                selectedCustomer: @json($quotationCustomerId ?: ''),
+                quotationId: @json($quotationId),
                 showPaymentModal: false,
                 showSuccessModal: false,
                 showClearCartModal: false,
@@ -1547,6 +1742,22 @@
                     total: 0
                 },
 
+                // Cash Register
+                registerOpen: @json($registerSession !== null),
+                registerSessionId: @json($registerSession?->id),
+                registerOpeningAmount: @json($registerSession ? (float)$registerSession->opening_amount : 0),
+                registerTotalSales: @json($registerSession ? (float)$registerSession->total_sales : 0),
+                registerTotalCashSales: @json($registerSession ? (float)$registerSession->total_cash_sales : 0),
+                registerTotalTransactions: @json($registerSession ? (int)$registerSession->total_transactions : 0),
+                showOpenRegisterModal: @json($registerSession === null),
+                showCloseRegisterModal: false,
+                openingAmountInput: 0,
+                closingAmountInput: 0,
+                closingNotes: '',
+                isOpeningRegister: false,
+                isClosingRegister: false,
+                registerError: '',
+
                 init() {
                     this.filteredProducts = this.products;
                     this.updateDateTime();
@@ -1558,6 +1769,108 @@
                             this.fetchRecentSales();
                         }
                     });
+                },
+
+                get registerExpectedCash() {
+                    return this.registerOpeningAmount + this.registerTotalCashSales;
+                },
+
+                get registerDiscrepancy() {
+                    return this.closingAmountInput - this.registerExpectedCash;
+                },
+
+                async openRegisterSession() {
+                    if (this.openingAmountInput < 0) {
+                        this.registerError = 'Opening amount cannot be negative';
+                        return;
+                    }
+
+                    this.isOpeningRegister = true;
+                    this.registerError = '';
+
+                    try {
+                        const response = await fetch('/pos/register/open', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                opening_amount: parseFloat(this.openingAmountInput) || 0
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.registerOpen = true;
+                            this.registerSessionId = data.session.id;
+                            this.registerOpeningAmount = parseFloat(data.session.opening_amount);
+                            this.registerTotalSales = 0;
+                            this.registerTotalCashSales = 0;
+                            this.registerTotalTransactions = 0;
+                            this.showOpenRegisterModal = false;
+                            this.openingAmountInput = 0;
+                        } else {
+                            this.registerError = data.message || 'Failed to open register';
+                        }
+                    } catch (error) {
+                        this.registerError = 'Error opening register: ' + error.message;
+                    } finally {
+                        this.isOpeningRegister = false;
+                    }
+                },
+
+                openCloseRegisterModal() {
+                    this.closingAmountInput = 0;
+                    this.closingNotes = '';
+                    this.registerError = '';
+                    this.showCloseRegisterModal = true;
+                },
+
+                async closeRegisterSession() {
+                    if (this.closingAmountInput < 0) {
+                        this.registerError = 'Closing amount cannot be negative';
+                        return;
+                    }
+
+                    this.isClosingRegister = true;
+                    this.registerError = '';
+
+                    try {
+                        const response = await fetch('/pos/register/close', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                closing_amount: parseFloat(this.closingAmountInput) || 0,
+                                notes: this.closingNotes || null
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.registerOpen = false;
+                            this.registerSessionId = null;
+                            this.registerOpeningAmount = 0;
+                            this.registerTotalSales = 0;
+                            this.registerTotalCashSales = 0;
+                            this.registerTotalTransactions = 0;
+                            this.showCloseRegisterModal = false;
+                            this.showOpenRegisterModal = true;
+                        } else {
+                            this.registerError = data.message || 'Failed to close register';
+                        }
+                    } catch (error) {
+                        this.registerError = 'Error closing register: ' + error.message;
+                    } finally {
+                        this.isClosingRegister = false;
+                    }
                 },
 
                 getAvailableStock(productId) {
@@ -1849,6 +2162,8 @@
                             },
                             body: JSON.stringify({
                                 customer_id: this.selectedCustomer || null,
+                                cash_register_session_id: this.registerSessionId || null,
+                                quotation_id: this.quotationId || null,
                                 items: this.cart,
                                 total: this.total,
                                 payment_method: this.paymentMethod,
@@ -1861,12 +2176,22 @@
                         const data = await response.json();
 
                         if (data.success) {
+                            // Update register session totals locally
+                            if (this.registerSessionId) {
+                                this.registerTotalSales += this.total;
+                                this.registerTotalTransactions += 1;
+                                if (this.paymentMethod === 'cash') {
+                                    this.registerTotalCashSales += this.total;
+                                }
+                            }
+
                             this.lastSaleTotal = this.total;
                             this.lastSaleId = data.sale_id;
                             this.showPaymentModal = false;
                             this.showSuccessModal = true;
                             this.cart = [];
                             this.selectedCustomer = '';
+                            this.quotationId = null;
                             this.paymentMethod = 'cash';
                             this.codWithTerms = false;
                             this.paymentTermDays = 5;

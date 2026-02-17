@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CashRegisterStatus;
 use App\Enums\QuotationStatus;
 use App\Models\AuditLog;
+use App\Models\CashRegisterSession;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
@@ -16,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 
 class POSController extends Controller
 {
-    public function index(): \Illuminate\Contracts\View\View
+    public function index(Request $request): \Illuminate\Contracts\View\View
     {
         $products = Product::with(['category', 'inventory'])
             ->get()
@@ -32,21 +34,171 @@ class POSController extends Controller
                 ];
             })
             ->sortByDesc(function ($product) {
-                // Sort by stock quantity (descending), products with stock appear first
                 return $product['inventory']->quantity ?? 0;
             })
-            ->values(); // Reset array keys
+            ->values();
 
         $customers = Customer::orderBy('name')->get();
         $categories = Category::all();
 
-        return view('pos.index', compact('products', 'customers', 'categories'));
+        // Check for open cash register session
+        $registerSession = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        // Load quotation items if converting a quotation
+        $quotationCart = [];
+        $quotationId = null;
+        $quotationCustomerId = null;
+
+        if ($request->has('quotation_id')) {
+            $quotation = Quotation::with(['quotation_items.product', 'customer'])
+                ->find($request->query('quotation_id'));
+
+            if ($quotation && $quotation->status === QuotationStatus::Approved->value) {
+                $quotationId = $quotation->id;
+                $quotationCustomerId = $quotation->customer_id;
+
+                foreach ($quotation->quotation_items as $item) {
+                    $cartItem = [
+                        'id' => $item->is_manual ? null : $item->product_id,
+                        'is_manual' => (bool) $item->is_manual,
+                        'name' => $item->is_manual ? $item->product_description : ($item->product?->name ?? $item->product_description),
+                        'price' => (float) ($item->unit_price * $item->quantity),
+                        'unit_price' => (float) $item->unit_price,
+                        'unit' => $item->unit,
+                        'quantity' => (float) $item->quantity,
+                        'maxStock' => $item->is_manual ? 999999 : ($item->product?->inventory?->quantity ?? 0),
+                    ];
+                    $quotationCart[] = $cartItem;
+                }
+            }
+        }
+
+        return view('pos.index', compact(
+            'products', 'customers', 'categories', 'registerSession',
+            'quotationCart', 'quotationId', 'quotationCustomerId'
+        ));
+    }
+
+    public function openRegister(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'opening_amount' => 'required|numeric|min:0',
+        ]);
+
+        // Check if user already has an open session
+        $existing = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an open register session.',
+            ], 422);
+        }
+
+        $session = CashRegisterSession::create([
+            'user_id' => auth()->id(),
+            'opening_amount' => $validated['opening_amount'],
+            'opened_at' => now(),
+            'status' => CashRegisterStatus::Open,
+        ]);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'user_name' => auth()->user()?->name,
+            'action' => 'opened_register',
+            'auditable_type' => CashRegisterSession::class,
+            'auditable_id' => $session->id,
+            'auditable_label' => "Register Session #{$session->id}",
+            'new_values' => [
+                'opening_amount' => $validated['opening_amount'],
+            ],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Register opened successfully',
+            'session' => $session,
+        ]);
+    }
+
+    public function closeRegister(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'closing_amount' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $session = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No open register session found.',
+            ], 422);
+        }
+
+        $session->close($validated['closing_amount'], $validated['notes'] ?? null);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'user_name' => auth()->user()?->name,
+            'action' => 'closed_register',
+            'auditable_type' => CashRegisterSession::class,
+            'auditable_id' => $session->id,
+            'auditable_label' => "Register Session #{$session->id}",
+            'new_values' => [
+                'closing_amount' => $validated['closing_amount'],
+                'expected_amount' => $session->expected_amount,
+                'discrepancy' => $session->discrepancy,
+                'total_sales' => $session->total_sales,
+                'total_cash_sales' => $session->total_cash_sales,
+                'total_transactions' => $session->total_transactions,
+            ],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Register closed successfully',
+            'session' => $session->fresh(),
+        ]);
+    }
+
+    public function registerStatus(): \Illuminate\Http\JsonResponse
+    {
+        $session = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => true,
+                'open' => false,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'open' => true,
+            'session' => $session,
+        ]);
     }
 
     public function completeSale(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
+            'cash_register_session_id' => 'nullable|exists:cash_register_sessions,id',
+            'quotation_id' => 'nullable|exists:quotations,id',
             'items' => 'required|array|min:1',
             'items.*.id' => 'nullable|exists:products,id',
             'items.*.is_manual' => 'nullable|boolean',
@@ -68,6 +220,7 @@ class POSController extends Controller
             // Create the sale
             $sale = Sale::create([
                 'customer_id' => $validated['customer_id'],
+                'cash_register_session_id' => $validated['cash_register_session_id'] ?? null,
                 'date' => now(),
                 'total' => $validated['total'],
                 'payment_method' => $validated['payment_method'],
@@ -82,7 +235,6 @@ class POSController extends Controller
                 if (!$isManual) {
                     $product = Product::findOrFail($item['id']);
 
-                    // Check if enough stock is available
                     if ($product->inventory && $product->inventory->quantity < $item['quantity']) {
                         throw new \Exception("Not enough stock for product: {$product->name}");
                     }
@@ -98,6 +250,23 @@ class POSController extends Controller
                     'quantity' => $item['quantity'],
                     'price' => $itemPrice,
                 ]);
+            }
+
+            // Update cash register session totals
+            if (!empty($validated['cash_register_session_id'])) {
+                $session = CashRegisterSession::find($validated['cash_register_session_id']);
+                if ($session && $session->status === CashRegisterStatus::Open) {
+                    $isCash = in_array($validated['payment_method'], ['cash']);
+                    $session->addSale((float) $validated['total'], $isCash);
+                }
+            }
+
+            // Mark quotation as converted if applicable
+            if (!empty($validated['quotation_id'])) {
+                $quotation = Quotation::find($validated['quotation_id']);
+                if ($quotation && $quotation->status === QuotationStatus::Approved->value) {
+                    $quotation->update(['status' => QuotationStatus::ConvertedToSale->value]);
+                }
             }
 
             DB::commit();
@@ -255,7 +424,6 @@ class POSController extends Controller
     {
         $quotation->load(['customer', 'quotation_items.product']);
 
-        // Check if quotation is approved before allowing print
         $isApproved = $quotation->status === QuotationStatus::Approved->value;
 
         return view('pos.quotation-print', compact('quotation', 'isApproved'));
@@ -264,7 +432,7 @@ class POSController extends Controller
     public function printReceipt(Sale $sale, Request $request): \Illuminate\Contracts\View\View
     {
         $sale->load(['customer', 'sale_items.product']);
-        $type = $request->query('type', 'delivery'); // 'delivery' or 'pickup'
+        $type = $request->query('type', 'delivery');
 
         return view('pos.receipt-print', compact('sale', 'type'));
     }
