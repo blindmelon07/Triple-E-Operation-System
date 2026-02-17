@@ -12,14 +12,14 @@
         }
 
         @page {
-            size: 8.5in 5.5in;
-            margin: 0.3in;
+            size: 4.13in 5.85in;
+            margin: 0.15in;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 9px;
-            line-height: 1.3;
+            font-size: 7px;
+            line-height: 1.2;
             color: #333;
             background: #fff;
         }
@@ -27,7 +27,7 @@
         .container {
             max-width: 100%;
             margin: 0;
-            padding: 10px;
+            padding: 4px;
         }
 
         /* Header */
@@ -35,26 +35,26 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
             border-bottom: 1px solid #3b82f6;
         }
 
         .company-info {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
         }
 
         .company-info h1 {
-            font-size: 14px;
+            font-size: 10px;
             color: #1e40af;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .company-info p {
             color: #666;
-            font-size: 7px;
+            font-size: 5.5px;
             line-height: 1.2;
         }
 
@@ -63,21 +63,21 @@
         }
 
         .receipt-title h2 {
-            font-size: 13px;
+            font-size: 9px;
             color: #1e40af;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             margin: 0;
         }
 
         .receipt-title .type-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 7px;
+            padding: 1px 4px;
+            border-radius: 8px;
+            font-size: 5.5px;
             font-weight: 600;
             text-transform: uppercase;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .type-delivery {
@@ -91,54 +91,54 @@
         }
 
         .receipt-title .number {
-            font-size: 9px;
+            font-size: 7px;
             color: #666;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         /* Info Grid */
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 4px;
+            margin-bottom: 5px;
         }
 
         .info-box {
-            padding: 6px;
+            padding: 3px 4px;
             background: #f8fafc;
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         .info-box h3 {
-            font-size: 7px;
+            font-size: 5.5px;
             color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
         }
 
         .info-box p {
-            margin-bottom: 2px;
-            font-size: 8px;
+            margin-bottom: 1px;
+            font-size: 6px;
         }
 
         .info-box .label {
             color: #64748b;
-            font-size: 7px;
+            font-size: 5.5px;
         }
 
         .info-box .value {
             color: #1e293b;
             font-weight: 500;
-            font-size: 8px;
+            font-size: 6px;
         }
 
         /* Table */
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         .items-table thead {
@@ -147,12 +147,12 @@
         }
 
         .items-table th {
-            padding: 4px 6px;
+            padding: 2px 3px;
             text-align: left;
             font-weight: 600;
-            font-size: 7px;
+            font-size: 5.5px;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
         }
 
         .items-table th:last-child,
@@ -176,8 +176,8 @@
         }
 
         .items-table td {
-            padding: 4px 6px;
-            font-size: 8px;
+            padding: 2px 3px;
+            font-size: 6px;
         }
 
         .items-table .product-name {
@@ -189,28 +189,28 @@
         .summary {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         .summary-box {
-            width: 140px;
+            width: 110px;
             background: #f8fafc;
-            border-radius: 4px;
-            padding: 6px;
+            border-radius: 3px;
+            padding: 3px 4px;
         }
 
         .summary-row {
             display: flex;
             justify-content: space-between;
-            padding: 3px 0;
+            padding: 2px 0;
             border-bottom: 1px solid #e2e8f0;
-            font-size: 8px;
+            font-size: 6px;
         }
 
         .summary-row:last-child {
             border-bottom: none;
-            padding-top: 4px;
-            margin-top: 2px;
+            padding-top: 2px;
+            margin-top: 1px;
             border-top: 1px solid #1e40af;
         }
 
@@ -225,54 +225,54 @@
 
         .summary-row.total .label,
         .summary-row.total .value {
-            font-size: 10px;
+            font-size: 7.5px;
             font-weight: 700;
             color: #1e40af;
         }
 
         /* Received note */
         .received-note {
-            margin-top: 10px;
+            margin-top: 5px;
             font-style: italic;
-            font-size: 7px;
+            font-size: 5.5px;
             text-align: center;
             color: #666;
         }
 
         /* Signatures */
         .signature-section {
-            margin-top: 12px;
+            margin-top: 6px;
         }
 
         .signature-rows {
             display: flex;
-            gap: 8px;
+            gap: 4px;
         }
 
         .signature {
             flex: 1;
             text-align: center;
-            font-size: 7px;
+            font-size: 5.5px;
         }
 
         .signature .line {
             border-top: 1px solid #333;
-            margin-top: 20px;
-            padding-top: 2px;
+            margin-top: 14px;
+            padding-top: 1px;
         }
 
         /* Footer */
         .footer {
             text-align: center;
-            padding-top: 8px;
+            padding-top: 4px;
             border-top: 1px solid #e2e8f0;
             color: #64748b;
-            font-size: 6px;
-            margin-top: 10px;
+            font-size: 5px;
+            margin-top: 5px;
         }
 
         .footer p {
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         /* Print Styles */
@@ -359,7 +359,7 @@
         <!-- Header -->
         <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="company-info" style="display: flex; align-items: center; gap: 8px;">
-                <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 30px;">
+                <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 22px;">
                 <div>
                     <h1 style="margin: 0;">Tri-E Enterprises</h1>
                     <p>Your Trusted Business Partner</p>
@@ -444,7 +444,7 @@
         </div>
 
         @if($sale->payment_method === 'cod' && $sale->payment_term_days)
-        <div style="margin-bottom: 8px; padding: 6px 8px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 8px;">
+        <div style="margin-bottom: 4px; padding: 3px 4px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; font-size: 6px;">
             <strong style="color: #92400e;">Payment Terms: Cash on Delivery — {{ $sale->payment_term_days }} Days</strong>
             <br>
             <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
@@ -497,10 +497,10 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer" style="margin-top: 8px;">
+        <div class="footer" style="margin-top: 4px;">
             <p><strong>Thank you for your business!</strong></p>
-            <p style="margin-top: 3px;">For any questions, please contact us at (+639) 993-052-2540</p>
-            <p style="margin-top: 3px; font-size: 6px; color: #94a3b8;">
+            <p style="margin-top: 2px;">For any questions, please contact us at (+639) 993-052-2540</p>
+            <p style="margin-top: 2px; font-size: 5px; color: #94a3b8;">
                 Generated on {{ now()->format('F d, Y h:i A') }}
             </p>
         </div>
