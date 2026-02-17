@@ -16,6 +16,7 @@ class EmployeeCompensation extends Model
         'user_id',
         'daily_rate',
         'pay_period',
+        'days_off',
         'overtime_rate_multiplier',
         'late_deduction_type',
         'late_deduction_amount',
@@ -34,6 +35,7 @@ class EmployeeCompensation extends Model
             'late_deduction_amount' => 'decimal:2',
             'allowance' => 'decimal:2',
             'pay_period' => PayPeriodType::class,
+            'days_off' => 'array',
         ];
     }
 

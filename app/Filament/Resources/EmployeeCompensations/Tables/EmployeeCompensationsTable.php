@@ -33,6 +33,12 @@ class EmployeeCompensationsTable
                     ->formatStateUsing(fn (PayPeriodType $state): string => $state->getLabel())
                     ->sortable(),
 
+                TextColumn::make('days_off')
+                    ->label('Day(s) Off')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->color('gray'),
+
                 TextColumn::make('overtime_rate_multiplier')
                     ->label('OT Rate')
                     ->suffix('x')

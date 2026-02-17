@@ -58,11 +58,27 @@ class CreatePayroll extends CreateRecord
 
         foreach ($compensations as $comp) {
             $userId = $comp->user_id;
+            $daysOff = $comp->days_off ?? [];
 
-            // Query attendance records in the period
+            // Calculate working days in the period (excluding employee's days off)
+            $workingDaysInPeriod = 0;
+            $currentDate = $periodStart->copy();
+            while ($currentDate->lte($periodEnd)) {
+                $dayName = strtolower($currentDate->format('l'));
+                if (! in_array($dayName, $daysOff)) {
+                    $workingDaysInPeriod++;
+                }
+                $currentDate->addDay();
+            }
+
+            // Query attendance records in the period (exclude days off)
             $attendances = Attendance::where('user_id', $userId)
                 ->whereBetween('date', [$periodStart, $periodEnd])
-                ->get();
+                ->get()
+                ->filter(function ($attendance) use ($daysOff) {
+                    $dayName = strtolower(Carbon::parse($attendance->date)->format('l'));
+                    return ! in_array($dayName, $daysOff);
+                });
 
             // Count days worked (present or late)
             $daysWorked = $attendances->whereIn('status', [AttendanceStatus::Present, AttendanceStatus::Late])->count();
@@ -83,7 +99,7 @@ class CreatePayroll extends CreateRecord
 
             $daysWorked += (float) $paidLeaveDays;
 
-            // Count absences
+            // Count absences (only on working days, excluding days off)
             $daysAbsent = $attendances->where('status', AttendanceStatus::Absent)->count();
 
             // Count late records and calculate late minutes

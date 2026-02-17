@@ -44,8 +44,23 @@ class EmployeeCompensationForm
                             )
                             ->default(PayPeriodType::SemiMonthly->value)
                             ->required(),
+
+                        Select::make('days_off')
+                            ->label('Day(s) Off Per Week')
+                            ->multiple()
+                            ->options([
+                                'monday' => 'Monday',
+                                'tuesday' => 'Tuesday',
+                                'wednesday' => 'Wednesday',
+                                'thursday' => 'Thursday',
+                                'friday' => 'Friday',
+                                'saturday' => 'Saturday',
+                                'sunday' => 'Sunday',
+                            ])
+                            ->default(['sunday'])
+                            ->helperText('Select the employee\'s weekly rest day(s)'),
                     ])
-                    ->columns(3),
+                    ->columns(2),
 
                 Section::make('Overtime & Late Settings')
                     ->schema([
