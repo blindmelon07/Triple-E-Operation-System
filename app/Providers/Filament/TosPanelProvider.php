@@ -30,7 +30,11 @@ class TosPanelProvider extends PanelProvider
             ->path('/')
             ->profile()
             ->login()
-            ->sidebarCollapsibleOnDesktop(true)
+            // ->sidebarCollapsibleOnDesktop(true)
+            ->topNavigation()
+            ->brandLogo(asset('images/logo.png'))
+            ->brandLogoHeight('2rem')
+            ->brandName('')
             ->colors([
                 'primary' => Color::Blue,
             ])
