@@ -12,7 +12,7 @@
         }
 
         @page {
-            size: 4.13in 5.85in;
+            size: 4.13in auto;
             margin: 0.15in;
         }
 
@@ -27,7 +27,92 @@
         .container {
             max-width: 100%;
             margin: 0;
+            padding: 0;
+        }
+
+        /* Copy wrapper */
+        .receipt-copy {
             padding: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Watermark */
+        .watermark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            align-content: flex-start;
+            overflow: hidden;
+        }
+
+        .watermark span {
+            display: block;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: rgba(30, 64, 175, 0.07);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            transform: rotate(-35deg);
+            transform-origin: center center;
+            margin: 18px 0;
+            user-select: none;
+        }
+
+        /* Ensure receipt content sits above watermark */
+        .receipt-copy > *:not(.watermark) {
+            position: relative;
+            z-index: 1;
+        }
+
+        @media print {
+            .watermark span {
+                color: rgba(30, 64, 175, 0.07);
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* Copy label banner */
+        .copy-label {
+            text-align: center;
+            font-size: 6px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #64748b;
+            border: 1px dashed #cbd5e1;
+            border-radius: 3px;
+            padding: 1px 4px;
+            margin-bottom: 4px;
+        }
+
+        /* Cut line separator */
+        .cut-line {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 4px 0;
+            color: #94a3b8;
+            font-size: 5.5px;
+            letter-spacing: 0.5px;
+        }
+
+        .cut-line::before,
+        .cut-line::after {
+            content: '';
+            flex: 1;
+            border-top: 1px dashed #94a3b8;
         }
 
         /* Header */
@@ -356,154 +441,328 @@
     </div>
 
     <div class="container">
-        <!-- Header -->
-        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-            <div class="company-info" style="display: flex; align-items: center; gap: 8px;">
-                <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 22px;">
-                <div>
-                    <h1 style="margin: 0;">Tri-E Enterprises</h1>
-                    <p>Your Trusted Business Partner</p>
-                    <p style="margin-top: 3px;">Maharlika Highway,Cabidan Sorsogon City</p>
-                    <p>Phone: (+639) 993-052-2540</p>
+
+        {{-- ===== OFFICE COPY ===== --}}
+        <div class="receipt-copy">
+            <div class="watermark">
+                @for($i = 0; $i < 6; $i++)
+                    <span>Tri-E Enterprises</span>
+                @endfor
+            </div>
+            <div class="copy-label">Office Copy</div>
+
+            <!-- Header -->
+            <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="company-info" style="display: flex; align-items: center; gap: 8px;">
+                    <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 22px;">
+                    <div>
+                        <h1 style="margin: 0;">Tri-E Enterprises</h1>
+                        <p>Your Trusted Business Partner</p>
+                        <p style="margin-top: 3px;">Maharlika Highway,Cabidan Sorsogon City</p>
+                        <p>Phone: (+639) 993-052-2540</p>
+                    </div>
+                </div>
+                <div class="receipt-title" style="text-align: right;">
+                    <h2 style="margin: 0;">{{ $type === 'delivery' ? 'Delivery' : 'Pick Up' }} Receipt</h2>
+                    <p class="number">RECEIPT-{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</p>
+                    <span class="type-badge {{ $type === 'delivery' ? 'type-delivery' : 'type-pickup' }}">
+                        {{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}
+                    </span>
                 </div>
             </div>
-            <div class="receipt-title" style="text-align: right;">
-                <h2 style="margin: 0;">{{ $type === 'delivery' ? 'Delivery' : 'Pick Up' }} Receipt</h2>
-                <p class="number">RECEIPT-{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</p>
-                <span class="type-badge {{ $type === 'delivery' ? 'type-delivery' : 'type-pickup' }}">
-                    {{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}
-                </span>
-            </div>
-        </div>
 
-        <!-- Info Grid -->
-        <div class="info-grid">
-            <div class="info-box">
-                <h3>Customer Information</h3>
-                @if($sale->customer)
-                    <p><span class="label">Name:</span> <span class="value">{{ $sale->customer->name }}</span></p>
-                    <p><span class="label">Phone:</span> <span class="value">{{ $sale->customer->phone ?? 'N/A' }}</span></p>
-                    <p><span class="label">Email:</span> <span class="value">{{ $sale->customer->email ?? 'N/A' }}</span></p>
-                    <p><span class="label">Address:</span> <span class="value">{{ $sale->customer->address ?? 'N/A' }}</span></p>
-                    <p><span class="label">Company:</span> <span class="value">{{ $sale->customer->company ?? 'N/A' }}</span></p>
-                @else
-                    <p><span class="value">Walk-in Customer</span></p>
-                @endif
+            <!-- Info Grid -->
+            <div class="info-grid">
+                <div class="info-box">
+                    <h3>Customer Information</h3>
+                    @if($sale->customer)
+                        <p><span class="label">Name:</span> <span class="value">{{ $sale->customer->name }}</span></p>
+                        <p><span class="label">Phone:</span> <span class="value">{{ $sale->customer->phone ?? 'N/A' }}</span></p>
+                        <p><span class="label">Email:</span> <span class="value">{{ $sale->customer->email ?? 'N/A' }}</span></p>
+                        <p><span class="label">Address:</span> <span class="value">{{ $sale->customer->address ?? 'N/A' }}</span></p>
+                        <p><span class="label">Company:</span> <span class="value">{{ $sale->customer->company ?? 'N/A' }}</span></p>
+                    @else
+                        <p><span class="value">Walk-in Customer</span></p>
+                    @endif
+                </div>
+                <div class="info-box">
+                    <h3>Receipt Details</h3>
+                    <p><span class="label">Date:</span> <span class="value">{{ $sale->date->format('F d, Y') }}</span></p>
+                    <p><span class="label">Time:</span> <span class="value">{{ $sale->date->format('h:i A') }}</span></p>
+                    <p><span class="label">Type:</span> <span class="value">{{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}</span></p>
+                    <p><span class="label">Payment:</span> <span class="value">{{ match($sale->payment_method) { 'cash' => 'Cash', 'cod' => 'Cash on Delivery', 'card' => 'Card', 'gcash' => 'GCash', 'paymaya' => 'PayMaya', default => ucfirst($sale->payment_method ?? 'N/A') } }}</span></p>
+                    @if($sale->payment_method === 'cod' && $sale->payment_term_days)
+                        <p><span class="label">Terms:</span> <span class="value">{{ $sale->payment_term_days }} Days</span></p>
+                        <p><span class="label">Due Date:</span> <span class="value" style="color: #dc2626; font-weight: 700;">{{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span></p>
+                    @endif
+                </div>
             </div>
-            <div class="info-box">
-                <h3>Receipt Details</h3>
-                <p><span class="label">Date:</span> <span class="value">{{ $sale->date->format('F d, Y') }}</span></p>
-                <p><span class="label">Time:</span> <span class="value">{{ $sale->date->format('h:i A') }}</span></p>
-                <p><span class="label">Type:</span> <span class="value">{{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}</span></p>
-                <p><span class="label">Payment:</span> <span class="value">{{ match($sale->payment_method) { 'cash' => 'Cash', 'cod' => 'Cash on Delivery', 'card' => 'Card', 'gcash' => 'GCash', 'paymaya' => 'PayMaya', default => ucfirst($sale->payment_method ?? 'N/A') } }}</span></p>
-                @if($sale->payment_method === 'cod' && $sale->payment_term_days)
-                    <p><span class="label">Terms:</span> <span class="value">{{ $sale->payment_term_days }} Days</span></p>
-                    <p><span class="label">Due Date:</span> <span class="value" style="color: #dc2626; font-weight: 700;">{{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span></p>
-                @endif
-            </div>
-        </div>
 
-        <!-- Items Table -->
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%">#</th>
-                    <th style="width: 50%">Product</th>
-                    <th style="width: 20%">Quantity</th>
-                    <th style="width: 25%">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($sale->sale_items as $index => $item)
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
                     <tr>
-                        <td style="text-align: center;">{{ $index + 1 }}</td>
-                        <td class="product-name">{{ $item->is_manual ? $item->product_description : ($item->product?->name ?? 'Unknown Product') }}</td>
-                        <td>{{ number_format($item->quantity, 2) }}</td>
-                        <td>₱{{ number_format($item->price, 2) }}</td>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 50%">Product</th>
+                        <th style="width: 20%">Quantity</th>
+                        <th style="width: 25%">Total</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach($sale->sale_items as $index => $item)
+                        <tr>
+                            <td style="text-align: center;">{{ $index + 1 }}</td>
+                            <td class="product-name">{{ $item->is_manual ? $item->product_description : ($item->product?->name ?? 'Unknown Product') }}</td>
+                            <td>{{ number_format($item->quantity, 2) }}</td>
+                            <td>₱{{ number_format($item->price, 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
 
-        <!-- Summary -->
-        <div class="summary">
-            <div class="summary-box">
-                <div class="summary-row">
-                    <span class="label">Subtotal</span>
-                    <span class="value">₱{{ number_format($sale->total, 2) }}</span>
-                </div>
-                <div class="summary-row">
-                    <span class="label">Tax (0%)</span>
-                    <span class="value">₱0.00</span>
-                </div>
-                <div class="summary-row total">
-                    <span class="label">Total</span>
-                    <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+            <!-- Summary -->
+            <div class="summary">
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="label">Subtotal</span>
+                        <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Tax (0%)</span>
+                        <span class="value">₱0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="label">Total</span>
+                        <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        @if($sale->payment_method === 'cod' && $sale->payment_term_days)
-        <div style="margin-bottom: 4px; padding: 3px 4px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; font-size: 6px;">
-            <strong style="color: #92400e;">Payment Terms: Cash on Delivery — {{ $sale->payment_term_days }} Days</strong>
-            <br>
-            <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
-        </div>
-        @endif
-
-        <div class="received-note">
-            @if($type === 'delivery')
-                Received the above articles in good order and condition for delivery
-            @else
-                Customer will pick up the above articles
+            @if($sale->payment_method === 'cod' && $sale->payment_term_days)
+            <div style="margin-bottom: 4px; padding: 3px 4px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; font-size: 6px;">
+                <strong style="color: #92400e;">Payment Terms: Cash on Delivery — {{ $sale->payment_term_days }} Days</strong>
+                <br>
+                <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+            </div>
             @endif
-        </div>
 
-        <!-- Signature Section -->
-        <div class="signature-section">
-            <div class="signature-rows">
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Prepared By</div>
-                </div>
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Checker</div>
-                </div>
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Approved By</div>
-                </div>
+            <div class="received-note">
                 @if($type === 'delivery')
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Driver/Truck #</div>
-                </div>
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Received By</div>
-                </div>
+                    Received the above articles in good order and condition for delivery
                 @else
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Released By</div>
-                </div>
-                <div class="signature">
-                    <div class="line"></div>
-                    <div>Picked Up By</div>
-                </div>
+                    Customer will pick up the above articles
                 @endif
             </div>
+
+            <!-- Signature Section -->
+            <div class="signature-section">
+                <div class="signature-rows">
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Prepared By</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Checker</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Approved By</div>
+                    </div>
+                    @if($type === 'delivery')
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Driver/Truck #</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Received By</div>
+                    </div>
+                    @else
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Released By</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Picked Up By</div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer" style="margin-top: 4px;">
+                <p><strong>Thank you for your business!</strong></p>
+                <p style="margin-top: 2px;">For any questions, please contact us at (+639) 993-052-2540</p>
+                <p style="margin-top: 2px; font-size: 5px; color: #94a3b8;">
+                    Generated on {{ now()->format('F d, Y h:i A') }}
+                </p>
+            </div>
         </div>
 
-        <!-- Footer -->
-        <div class="footer" style="margin-top: 4px;">
-            <p><strong>Thank you for your business!</strong></p>
-            <p style="margin-top: 2px;">For any questions, please contact us at (+639) 993-052-2540</p>
-            <p style="margin-top: 2px; font-size: 5px; color: #94a3b8;">
-                Generated on {{ now()->format('F d, Y h:i A') }}
-            </p>
+        {{-- ===== CUT LINE ===== --}}
+        <div class="cut-line">✂ CUT HERE</div>
+
+        {{-- ===== CUSTOMER'S COPY ===== --}}
+        <div class="receipt-copy">
+            <div class="watermark">
+                @for($i = 0; $i < 6; $i++)
+                    <span>Tri-E Enterprises</span>
+                @endfor
+            </div>
+            <div class="copy-label">Customer's Copy</div>
+
+            <!-- Header -->
+            <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="company-info" style="display: flex; align-items: center; gap: 8px;">
+                    <img src="{{ asset('images/logo.png') }}" alt="Company Logo" style="max-height: 22px;">
+                    <div>
+                        <h1 style="margin: 0;">Tri-E Enterprises</h1>
+                        <p>Your Trusted Business Partner</p>
+                        <p style="margin-top: 3px;">Maharlika Highway,Cabidan Sorsogon City</p>
+                        <p>Phone: (+639) 993-052-2540</p>
+                    </div>
+                </div>
+                <div class="receipt-title" style="text-align: right;">
+                    <h2 style="margin: 0;">{{ $type === 'delivery' ? 'Delivery' : 'Pick Up' }} Receipt</h2>
+                    <p class="number">RECEIPT-{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</p>
+                    <span class="type-badge {{ $type === 'delivery' ? 'type-delivery' : 'type-pickup' }}">
+                        {{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Info Grid -->
+            <div class="info-grid">
+                <div class="info-box">
+                    <h3>Customer Information</h3>
+                    @if($sale->customer)
+                        <p><span class="label">Name:</span> <span class="value">{{ $sale->customer->name }}</span></p>
+                        <p><span class="label">Phone:</span> <span class="value">{{ $sale->customer->phone ?? 'N/A' }}</span></p>
+                        <p><span class="label">Email:</span> <span class="value">{{ $sale->customer->email ?? 'N/A' }}</span></p>
+                        <p><span class="label">Address:</span> <span class="value">{{ $sale->customer->address ?? 'N/A' }}</span></p>
+                        <p><span class="label">Company:</span> <span class="value">{{ $sale->customer->company ?? 'N/A' }}</span></p>
+                    @else
+                        <p><span class="value">Walk-in Customer</span></p>
+                    @endif
+                </div>
+                <div class="info-box">
+                    <h3>Receipt Details</h3>
+                    <p><span class="label">Date:</span> <span class="value">{{ $sale->date->format('F d, Y') }}</span></p>
+                    <p><span class="label">Time:</span> <span class="value">{{ $sale->date->format('h:i A') }}</span></p>
+                    <p><span class="label">Type:</span> <span class="value">{{ $type === 'delivery' ? 'For Delivery' : 'For Pick Up' }}</span></p>
+                    <p><span class="label">Payment:</span> <span class="value">{{ match($sale->payment_method) { 'cash' => 'Cash', 'cod' => 'Cash on Delivery', 'card' => 'Card', 'gcash' => 'GCash', 'paymaya' => 'PayMaya', default => ucfirst($sale->payment_method ?? 'N/A') } }}</span></p>
+                    @if($sale->payment_method === 'cod' && $sale->payment_term_days)
+                        <p><span class="label">Terms:</span> <span class="value">{{ $sale->payment_term_days }} Days</span></p>
+                        <p><span class="label">Due Date:</span> <span class="value" style="color: #dc2626; font-weight: 700;">{{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span></p>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 50%">Product</th>
+                        <th style="width: 20%">Quantity</th>
+                        <th style="width: 25%">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sale->sale_items as $index => $item)
+                        <tr>
+                            <td style="text-align: center;">{{ $index + 1 }}</td>
+                            <td class="product-name">{{ $item->is_manual ? $item->product_description : ($item->product?->name ?? 'Unknown Product') }}</td>
+                            <td>{{ number_format($item->quantity, 2) }}</td>
+                            <td>₱{{ number_format($item->price, 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+
+            <!-- Summary -->
+            <div class="summary">
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="label">Subtotal</span>
+                        <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Tax (0%)</span>
+                        <span class="value">₱0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="label">Total</span>
+                        <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            @if($sale->payment_method === 'cod' && $sale->payment_term_days)
+            <div style="margin-bottom: 4px; padding: 3px 4px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; font-size: 6px;">
+                <strong style="color: #92400e;">Payment Terms: Cash on Delivery — {{ $sale->payment_term_days }} Days</strong>
+                <br>
+                <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+            </div>
+            @endif
+
+            <div class="received-note">
+                @if($type === 'delivery')
+                    Received the above articles in good order and condition for delivery
+                @else
+                    Customer will pick up the above articles
+                @endif
+            </div>
+
+            <!-- Signature Section -->
+            <div class="signature-section">
+                <div class="signature-rows">
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Prepared By</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Checker</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Approved By</div>
+                    </div>
+                    @if($type === 'delivery')
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Driver/Truck #</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Received By</div>
+                    </div>
+                    @else
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Released By</div>
+                    </div>
+                    <div class="signature">
+                        <div class="line"></div>
+                        <div>Picked Up By</div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer" style="margin-top: 4px;">
+                <p><strong>Thank you for your business!</strong></p>
+                <p style="margin-top: 2px;">For any questions, please contact us at (+639) 993-052-2540</p>
+                <p style="margin-top: 2px; font-size: 5px; color: #94a3b8;">
+                    Generated on {{ now()->format('F d, Y h:i A') }}
+                </p>
+            </div>
         </div>
+
     </div>
 
     <script>
