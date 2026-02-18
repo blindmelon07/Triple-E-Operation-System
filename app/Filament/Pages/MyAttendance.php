@@ -27,7 +27,7 @@ class MyAttendance extends Page implements HasForms, HasTable
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFingerPrint;
 
     protected static ?string $navigationLabel = 'My Attendance';
-
+ protected static bool $shouldRegisterNavigation = false;
     protected static ?string $title = 'My Attendance';
 
     protected static string|UnitEnum|null $navigationGroup = 'Attendance Management';

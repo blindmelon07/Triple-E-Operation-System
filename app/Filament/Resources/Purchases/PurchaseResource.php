@@ -19,6 +19,7 @@ class PurchaseResource extends Resource
 {
     protected static string|UnitEnum|null $navigationGroup = 'Inventory & Sales';
     protected static ?string $model = Purchase::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 

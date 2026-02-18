@@ -20,6 +20,7 @@ class ExpenseCategoryResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Finance';
 
     protected static ?string $model = ExpenseCategory::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 

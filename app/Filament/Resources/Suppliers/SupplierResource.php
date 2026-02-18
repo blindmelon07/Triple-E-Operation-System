@@ -19,6 +19,7 @@ class SupplierResource extends Resource
 {
     protected static string|UnitEnum|null $navigationGroup = 'Inventory & Sales';
     protected static ?string $model = Supplier::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 

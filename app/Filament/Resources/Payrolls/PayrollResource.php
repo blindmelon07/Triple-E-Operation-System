@@ -23,6 +23,7 @@ class PayrollResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Payroll';
 
     protected static ?string $model = Payroll::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 

@@ -31,6 +31,7 @@ use UnitEnum;
 class DeliveryResource extends Resource
 {
     protected static ?string $model = Delivery::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMapPin;
 
@@ -77,11 +78,11 @@ class DeliveryResource extends Resource
                     ->schema([
                         Select::make('rating')
                             ->options([
-                                1 => '⭐ 1 Star',
-                                2 => '⭐⭐ 2 Stars',
-                                3 => '⭐⭐⭐ 3 Stars',
-                                4 => '⭐⭐⭐⭐ 4 Stars',
-                                5 => '⭐⭐⭐⭐⭐ 5 Stars',
+                                1 => 'â­ 1 Star',
+                                2 => 'â­â­ 2 Stars',
+                                3 => 'â­â­â­ 3 Stars',
+                                4 => 'â­â­â­â­ 4 Stars',
+                                5 => 'â­â­â­â­â­ 5 Stars',
                             ]),
                         Textarea::make('customer_feedback')
                             ->rows(2),
@@ -111,7 +112,7 @@ class DeliveryResource extends Resource
                             ->color(fn (DeliveryStatus $state): string => $state->getColor())
                             ->formatStateUsing(fn (DeliveryStatus $state): string => $state->getLabel()),
                         TextEntry::make('rating')
-                            ->formatStateUsing(fn (?int $state) => $state ? str_repeat('⭐', $state) : 'No rating yet'),
+                            ->formatStateUsing(fn (?int $state) => $state ? str_repeat('â­', $state) : 'No rating yet'),
                     ])->columns(3),
                 Section::make('Delivered Items')
                     ->schema([
@@ -176,7 +177,7 @@ class DeliveryResource extends Resource
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('rating')
-                    ->formatStateUsing(fn (?int $state) => $state ? str_repeat('⭐', $state) : '-')
+                    ->formatStateUsing(fn (?int $state) => $state ? str_repeat('â­', $state) : '-')
                     ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime()

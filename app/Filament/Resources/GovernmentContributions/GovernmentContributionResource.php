@@ -20,6 +20,7 @@ class GovernmentContributionResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Payroll';
 
     protected static ?string $model = GovernmentContribution::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
 

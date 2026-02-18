@@ -20,6 +20,7 @@ class MaintenanceTypeResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Fleet Management';
 
     protected static ?string $model = MaintenanceType::class;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 

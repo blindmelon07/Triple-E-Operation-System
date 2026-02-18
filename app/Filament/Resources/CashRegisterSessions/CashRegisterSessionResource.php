@@ -18,6 +18,7 @@ class CashRegisterSessionResource extends Resource
 {
     protected static string|UnitEnum|null $navigationGroup = 'Inventory & Sales';
     protected static ?string $model = CashRegisterSession::class;
+    protected static bool $shouldRegisterNavigation = false;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
     protected static ?string $navigationLabel = 'Cash Register';
     protected static ?int $navigationSort = 5;
