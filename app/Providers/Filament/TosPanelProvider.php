@@ -8,6 +8,7 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationItem;
+use App\Filament\Pages\Home;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -67,13 +68,6 @@ class TosPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
-            ->homeUrl(function (): string {
-                $user = auth()->user();
-                if ($user && $user->hasRole('cashier')) {
-                    return '/pos';
-                }
-
-                return Dashboard::getUrl();
-            });
+            ->homeUrl(fn (): string => Home::getUrl());
     }
 }
