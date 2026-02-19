@@ -11,9 +11,10 @@
             box-sizing: border-box;
         }
 
+        /* Use A4 landscape so two A6 receipts fit side-by-side */
         @page {
-            size: 4.13in auto;
-            margin: 0.15in;
+            size: 297mm 210mm; /* width x height -> landscape */
+            margin: 6mm 6mm; /* small margins to maximize printable area */
         }
 
         body {
@@ -25,16 +26,31 @@
         }
 
         .container {
+            /* constrain layout to A4 landscape page width and place receipts side-by-side */
+            width: 297mm;
             max-width: 100%;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap; /* prevent vertical wrapping */
+            gap: 0;
+            align-items: flex-start;
+            justify-content: flex-start;
         }
 
         /* Copy wrapper */
         .receipt-copy {
-            padding: 4px;
+            /* A6 size: 105mm x 148mm; use width 105mm and explicit height */
+            padding: 6mm;
             position: relative;
             overflow: hidden;
+            width: 105mm;
+            height: 148mm; /* exact A6 height to avoid stacking */
+            box-sizing: border-box;
+            background: #fff;
+            page-break-inside: avoid;
+            flex: 0 0 105mm;
         }
 
         /* Watermark */
@@ -55,17 +71,17 @@
 
         .watermark span {
             display: block;
-            width: 100%;
+            width: 160%;
             text-align: center;
-            font-size: 18px;
+            font-size: 12px;
             font-weight: 900;
-            color: rgba(30, 64, 175, 0.07);
-            letter-spacing: 2px;
+            color: rgba(30, 64, 175, 0.04);
+            letter-spacing: 1.5px;
             text-transform: uppercase;
             white-space: nowrap;
-            transform: rotate(-35deg);
+            transform: rotate(-30deg);
             transform-origin: center center;
-            margin: 18px 0;
+            margin: 6px 0;
             user-select: none;
         }
 
@@ -86,33 +102,46 @@
         /* Copy label banner */
         .copy-label {
             text-align: center;
-            font-size: 6px;
-            font-weight: 700;
+            font-size: 9px;
+            font-weight: 800;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: #64748b;
-            border: 1px dashed #cbd5e1;
-            border-radius: 3px;
-            padding: 1px 4px;
-            margin-bottom: 4px;
+            color: #334155;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
         }
 
         /* Cut line separator */
+        /* Vertical dashed cut divider to go between side-by-side A6 receipts */
         .cut-line {
+            width: 8mm;
             display: flex;
             align-items: center;
-            gap: 4px;
-            margin: 4px 0;
-            color: #94a3b8;
-            font-size: 5.5px;
-            letter-spacing: 0.5px;
+            justify-content: center;
+            margin: 0;
+            align-self: flex-start;
+            position: relative;
+            flex: 0 0 8mm;
         }
 
-        .cut-line::before,
-        .cut-line::after {
-            content: '';
-            flex: 1;
-            border-top: 1px dashed #94a3b8;
+        .cut-line .divider {
+            width: 1px;
+            height: 148mm;
+            border-left: 1px dashed #94a3b8;
+        }
+
+        .cut-line .label {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%) rotate(90deg);
+            color: #94a3b8;
+            font-size: 9px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            background: #fff;
+            padding: 2px 4px;
         }
 
         /* Header */
@@ -602,7 +631,10 @@
         </div>
 
         {{-- ===== CUT LINE ===== --}}
-        <div class="cut-line">✂ CUT HERE</div>
+        <div class="cut-line">
+            <div class="divider"></div>
+            <div class="label">✂ CUT HERE</div>
+        </div>
 
         {{-- ===== CUSTOMER'S COPY ===== --}}
         <div class="receipt-copy">
