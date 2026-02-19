@@ -89,7 +89,7 @@ class Home extends Page
         ];
 
         // ── SALES & CUSTOMERS ─────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_quotation')) {
+        if ($isAdmin || $user->can('ViewAny:Quotation')) {
             $cards[] = [
                 'title'       => 'Quotations',
                 'description' => 'Create and manage customer price quotations',
@@ -101,7 +101,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_sale')) {
+        if ($isAdmin || $user->can('ViewAny:Sale')) {
             $cards[] = [
                 'title'       => 'Sales',
                 'description' => 'View and manage completed sales transactions',
@@ -113,7 +113,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_customer')) {
+        if ($isAdmin || $user->can('ViewAny:Customer')) {
             $cards[] = [
                 'title'       => 'Customers',
                 'description' => 'Manage customer profiles and contact details',
@@ -126,7 +126,7 @@ class Home extends Page
         }
 
         // ── INVENTORY ─────────────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_product')) {
+        if ($isAdmin || $user->can('ViewAny:Product')) {
             $cards[] = [
                 'title'       => 'Products',
                 'description' => 'Manage product catalogue, pricing and stock',
@@ -138,7 +138,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_category')) {
+        if ($isAdmin || $user->can('ViewAny:Category')) {
             $cards[] = [
                 'title'       => 'Categories',
                 'description' => 'Manage product categories and classification',
@@ -150,7 +150,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_supplier')) {
+        if ($isAdmin || $user->can('ViewAny:Supplier')) {
             $cards[] = [
                 'title'       => 'Suppliers',
                 'description' => 'Manage supplier contacts and information',
@@ -163,7 +163,7 @@ class Home extends Page
         }
 
         // ── PURCHASING ────────────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_purchase')) {
+        if ($isAdmin || $user->can('ViewAny:Purchase')) {
             $cards[] = [
                 'title'       => 'Purchases',
                 'description' => 'Create and track purchase orders from suppliers',
@@ -176,7 +176,7 @@ class Home extends Page
         }
 
         // ── DELIVERIES ────────────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_delivery')) {
+        if ($isAdmin || $user->can('ViewAny:Delivery')) {
             $cards[] = [
                 'title'       => 'Deliveries',
                 'description' => 'Track and manage delivery orders and status',
@@ -188,7 +188,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_driver')) {
+        if ($isAdmin || $user->can('ViewAny:Driver')) {
             $cards[] = [
                 'title'       => 'Drivers',
                 'description' => 'Manage drivers and their assignments',
@@ -201,7 +201,7 @@ class Home extends Page
         }
 
         // ── FLEET & MAINTENANCE ───────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_vehicle')) {
+        if ($isAdmin || $user->can('ViewAny:Vehicle')) {
             $cards[] = [
                 'title'       => 'Vehicles',
                 'description' => 'Manage fleet vehicles and records',
@@ -213,7 +213,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_maintenance_record')) {
+        if ($isAdmin || $user->can('ViewAny:MaintenanceRecord')) {
             $cards[] = [
                 'title'       => 'Maintenance Records',
                 'description' => 'View completed vehicle maintenance history',
@@ -225,7 +225,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_maintenance_request')) {
+        if ($isAdmin || $user->can('ViewAny:MaintenanceRequest')) {
             $cards[] = [
                 'title'       => 'Maintenance Requests',
                 'description' => 'Submit and track vehicle maintenance requests',
@@ -237,7 +237,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_maintenance_type')) {
+        if ($isAdmin || $user->can('ViewAny:MaintenanceType')) {
             $cards[] = [
                 'title'       => 'Maintenance Types',
                 'description' => 'Configure maintenance categories and types',
@@ -250,7 +250,7 @@ class Home extends Page
         }
 
         // ── HR & PAYROLL ──────────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_payroll')) {
+        if ($isAdmin || $user->can('ViewAny:Payroll')) {
             $cards[] = [
                 'title'       => 'Payroll',
                 'description' => 'Process and manage employee payroll runs',
@@ -262,7 +262,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_attendance')) {
+        if ($isAdmin || $user->can('ViewAny:Attendance')) {
             $cards[] = [
                 'title'       => 'Attendance',
                 'description' => 'View and manage all employee attendance logs',
@@ -274,7 +274,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_leave_request')) {
+        if ($isAdmin || $user->can('ViewAny:LeaveRequest')) {
             $cards[] = [
                 'title'       => 'Leave Requests',
                 'description' => 'Review and approve employee leave applications',
@@ -286,7 +286,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_leave_type')) {
+        if ($isAdmin || $user->can('ViewAny:LeaveType')) {
             $cards[] = [
                 'title'       => 'Leave Types',
                 'description' => 'Configure available leave types and entitlements',
@@ -298,7 +298,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_employee_compensation')) {
+        if ($isAdmin || $user->can('ViewAny:EmployeeCompensation')) {
             $cards[] = [
                 'title'       => 'Compensations',
                 'description' => 'Manage employee salary and compensation setup',
@@ -310,7 +310,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_government_contribution')) {
+        if ($isAdmin || $user->can('ViewAny:GovernmentContribution')) {
             $cards[] = [
                 'title'       => 'Gov. Contributions',
                 'description' => 'Manage SSS, PhilHealth and Pag-IBIG contributions',
@@ -323,7 +323,7 @@ class Home extends Page
         }
 
         // ── EXPENSES & FINANCE ────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_expense')) {
+        if ($isAdmin || $user->can('ViewAny:Expense')) {
             $cards[] = [
                 'title'       => 'Expenses',
                 'description' => 'Record and categorize business expenses',
@@ -335,7 +335,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_expense_category')) {
+        if ($isAdmin || $user->can('ViewAny:ExpenseCategory')) {
             $cards[] = [
                 'title'       => 'Expense Categories',
                 'description' => 'Configure expense types and categories',
@@ -347,7 +347,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_cash_register_session')) {
+        if ($isAdmin || $user->can('ViewAny:CashRegisterSession')) {
             $cards[] = [
                 'title'       => 'Cash Register',
                 'description' => 'View open and closed cash register sessions',
@@ -360,7 +360,7 @@ class Home extends Page
         }
 
         // ── REPORTS ───────────────────────────────────────────────────────────
-        if ($isAdmin || $user->can('page_SalesReport')) {
+        if ($isAdmin || $user->can('View:SalesReport')) {
             $cards[] = [
                 'title'       => 'Sales Report',
                 'description' => 'View detailed sales analytics and summaries',
@@ -372,7 +372,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('page_FinancialDashboard')) {
+        if ($isAdmin || $user->can('View:FinancialDashboard')) {
             $cards[] = [
                 'title'       => 'Financial Dashboard',
                 'description' => 'Overview of revenue, expenses and profit',
@@ -384,7 +384,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('page_ProfitLossReport')) {
+        if ($isAdmin || $user->can('View:ProfitLossReport')) {
             $cards[] = [
                 'title'       => 'Profit & Loss',
                 'description' => 'Profit and loss statement for any period',
@@ -396,7 +396,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('page_InventoryReport')) {
+        if ($isAdmin || $user->can('View:InventoryReport')) {
             $cards[] = [
                 'title'       => 'Inventory Report',
                 'description' => 'Stock levels, movements and valuation report',
@@ -408,7 +408,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('page_ProductsReport')) {
+        if ($isAdmin || $user->can('View:ProductsReport')) {
             $cards[] = [
                 'title'       => 'Products Report',
                 'description' => 'Product performance and sales breakdown',
@@ -420,7 +420,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('page_AgingReport')) {
+        if ($isAdmin || $user->can('View:AgingReport')) {
             $cards[] = [
                 'title'       => 'Aging Report',
                 'description' => 'Outstanding receivables by aging bucket',
@@ -432,7 +432,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('page_DriverKpiDashboard')) {
+        if ($isAdmin || $user->can('View:DriverKpiDashboard')) {
             $cards[] = [
                 'title'       => 'Driver KPI',
                 'description' => 'Driver performance metrics and KPI dashboard',
@@ -445,7 +445,7 @@ class Home extends Page
         }
 
         // ── ADMINISTRATION ────────────────────────────────────────────────────
-        if ($isAdmin || $user->can('view_any_role')) {
+        if ($isAdmin || $user->can('ViewAny:Role')) {
             $cards[] = [
                 'title'       => 'Roles & Permissions',
                 'description' => 'Manage roles and their permission assignments',
@@ -457,7 +457,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_user')) {
+        if ($isAdmin || $user->can('ViewAny:User')) {
             $cards[] = [
                 'title'       => 'User Management',
                 'description' => 'Manage system users, roles and access',
@@ -469,7 +469,7 @@ class Home extends Page
             ];
         }
 
-        if ($isAdmin || $user->can('view_any_audit_log')) {
+        if ($isAdmin || $user->can('ViewAny:AuditLog')) {
             $cards[] = [
                 'title'       => 'Audit Logs',
                 'description' => 'Track all system changes and user activity',
