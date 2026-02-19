@@ -10,7 +10,8 @@
         body { font-family: 'Arial', sans-serif; font-size:11px; color:#111; background:#fff }
 
         .container {
-            width: 760px;
+            width: 720px;
+            max-width: 100%;
             margin: 8px auto;
             padding: 12px;
             background: #f7e1e1; /* paper pink tone */
@@ -61,7 +62,36 @@
 
         .footer { text-align:center; margin-top:10px; font-size:10px; color:#444 }
 
-        @media print { .print-actions{display:none!important} }
+        @media print {
+            @page {
+                size: A6 portrait;
+                margin: 5mm 4mm;
+            }
+            html, body { width: 100%; margin: 0; padding: 0; }
+            .print-actions { display: none !important; }
+            .container {
+                width: 100% !important;
+                margin: 0 !important;
+                border: none !important;
+                padding: 4px !important;
+                font-size: 7.5px !important;
+            }
+            .company-info h1 { font-size: 10px !important; }
+            .company-info p { font-size: 7px !important; }
+            .receipt-meta .title { font-size: 9px !important; }
+            .receipt-meta { font-size: 7px !important; }
+            .info-box { font-size: 7px !important; padding: 3px !important; }
+            .items-table { font-size: 7px !important; }
+            .items-table thead th { padding: 3px 4px !important; }
+            .items-table tbody td { padding: 3px 4px !important; }
+            .summary-box { font-size: 7.5px !important; }
+            .signature { font-size: 7px !important; }
+            .signature .line { margin-top: 16px !important; }
+            .signature-section { margin-top: 8px !important; }
+            .received-note { margin-top: 6px !important; font-size: 7px !important; }
+            .info-grid { margin-top: 4px !important; gap: 6px !important; }
+            img { height: 30px !important; }
+        }
     </style>
 </head>
 <body>
