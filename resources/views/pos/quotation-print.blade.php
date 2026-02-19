@@ -12,8 +12,8 @@
         }
 
         @page {
-            size: 8.5in 11in;
-            margin: 0.5in;
+            size: A4 portrait;
+            margin: 15mm 12mm;
         }
 
         body {
