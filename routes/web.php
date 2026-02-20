@@ -24,6 +24,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Delivery Receipt
     Route::get('/delivery/{delivery}/print', [DeliveryController::class, 'printReceipt'])->name('delivery.print-receipt');
+
+    // CSRF token refresh for long-running POS sessions
+    Route::get('/pos/csrf-token', fn () => response()->json(['token' => csrf_token()]))->name('pos.csrf-token');
 });
 
 Route::post('/tos/pos/complete-sale', [POSController::class, 'completeSale'])->name('filament.admin.pages.pos.complete-sale');

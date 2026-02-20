@@ -1763,6 +1763,15 @@
                     this.updateDateTime();
                     setInterval(() => this.updateDateTime(), 1000);
 
+                    // Refresh CSRF token every 90 minutes to prevent session expiry issues
+                    setInterval(async () => {
+                        try {
+                            const res = await fetch('/pos/csrf-token');
+                            const data = await res.json();
+                            document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.token);
+                        } catch (e) {}
+                    }, 90 * 60 * 1000);
+
                     // Watch for reprint modal opening
                     this.$watch('showReprintModal', (value) => {
                         if (value && this.recentSales.length === 0) {
@@ -2151,27 +2160,51 @@
 
                 async confirmPayment() {
                     this.isProcessing = true;
-                    
+
                     try {
-                        const response = await fetch('/pos/complete-sale', {
+                        // If token is stale (419), refresh it first then retry once
+                        const csrfToken = () => document.querySelector('meta[name="csrf-token"]').content;
+                        const refreshCsrf = async () => {
+                            const r = await fetch('/pos/csrf-token');
+                            const d = await r.json();
+                            document.querySelector('meta[name="csrf-token"]').setAttribute('content', d.token);
+                        };
+
+                        const payload = {
+                            customer_id: this.selectedCustomer || null,
+                            cash_register_session_id: this.registerSessionId || null,
+                            quotation_id: this.quotationId || null,
+                            items: this.cart,
+                            total: this.total,
+                            payment_method: this.paymentMethod,
+                            payment_term_days: (this.paymentMethod === 'cod' && this.codWithTerms) ? this.paymentTermDays : null,
+                            cash_received: this.cashReceived,
+                            change: this.change
+                        };
+
+                        let response = await fetch('/pos/complete-sale', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                'X-CSRF-TOKEN': csrfToken()
                             },
-                            body: JSON.stringify({
-                                customer_id: this.selectedCustomer || null,
-                                cash_register_session_id: this.registerSessionId || null,
-                                quotation_id: this.quotationId || null,
-                                items: this.cart,
-                                total: this.total,
-                                payment_method: this.paymentMethod,
-                                payment_term_days: (this.paymentMethod === 'cod' && this.codWithTerms) ? this.paymentTermDays : null,
-                                cash_received: this.cashReceived,
-                                change: this.change
-                            })
+                            body: JSON.stringify(payload)
                         });
+
+                        // Token expired mid-session — refresh and retry once
+                        if (response.status === 419) {
+                            await refreshCsrf();
+                            response = await fetch('/pos/complete-sale', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken()
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                        }
 
                         const data = await response.json();
 
