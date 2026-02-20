@@ -597,7 +597,7 @@
                         </select>
                     </div>
 
-                    <div x-show="paymentMethod === 'cod'" x-cloak class="space-y-3">
+                    <div class="space-y-3">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" x-model="codWithTerms" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Add Payment Terms</span>
@@ -2177,7 +2177,7 @@
                             items: this.cart,
                             total: this.total,
                             payment_method: this.paymentMethod,
-                            payment_term_days: (this.paymentMethod === 'cod' && this.codWithTerms) ? this.paymentTermDays : null,
+                            payment_term_days: this.codWithTerms ? this.paymentTermDays : null,
                             cash_received: this.cashReceived,
                             change: this.change
                         };
