@@ -18,6 +18,29 @@ class PurchasesTable
                 TextColumn::make('date')->date(),
                 TextColumn::make('purchase_items_count')->counts('purchase_items')->label('Items'),
                 TextColumn::make('total')->money('PHP')->label('Total'),
+                TextColumn::make('receipt_status')
+                    ->label('Receipt')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'received' => 'success',
+                        'partial'  => 'warning',
+                        'pending'  => 'danger',
+                        default    => 'gray',
+                    }),
+                TextColumn::make('payment_status')
+                    ->label('Payment')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'paid'    => 'success',
+                        'partial' => 'warning',
+                        'unpaid'  => 'danger',
+                        default   => 'gray',
+                    }),
+                TextColumn::make('due_date')
+                    ->label('Due Date')
+                    ->date()
+                    ->sortable()
+                    ->color(fn ($record) => $record->due_date && $record->due_date->isPast() && $record->payment_status !== 'paid' ? 'danger' : null),
             ])
             ->filters([
                 //

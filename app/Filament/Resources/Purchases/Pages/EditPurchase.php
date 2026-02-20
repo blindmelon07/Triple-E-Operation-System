@@ -15,7 +15,7 @@ class EditPurchase extends EditRecord
         $total = 0;
         if (!empty($data['purchase_items'])) {
             foreach ($data['purchase_items'] as $item) {
-                $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 1);
+                $total += ($item['price'] ?? 0) * ($item['quantity_received'] ?? 0);
             }
         }
         $data['total'] = $total;

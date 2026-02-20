@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PurchaseItem extends Model
 {
-    protected $fillable = ['purchase_id', 'product_id', 'quantity', 'price'];
+    protected $fillable = ['purchase_id', 'product_id', 'quantity', 'quantity_received', 'unit', 'price'];
 
     /** @use HasFactory<\Database\Factories\PurchaseItemFactory> */
     use HasFactory;
@@ -25,47 +25,53 @@ class PurchaseItem extends Model
     protected static function booted(): void
     {
         static::created(function (PurchaseItem $item) {
-            // Update inventory
-            $inventory = $item->product->inventory;
-            if ($inventory) {
-                $inventory->increment('quantity', $item->quantity ?? 1);
-            } else {
-                // Create inventory record if it doesn't exist
-                Inventory::create([
-                    'product_id' => $item->product_id,
-                    'quantity' => $item->quantity ?? 1,
-                ]);
+            $received = $item->quantity_received ?? 0;
+            if ($received > 0) {
+                $inventory = $item->product->inventory;
+                if ($inventory) {
+                    $inventory->increment('quantity', $received);
+                } else {
+                    Inventory::create([
+                        'product_id' => $item->product_id,
+                        'quantity' => $received,
+                    ]);
+                }
             }
 
-            // Recalculate purchase total
             $item->recalculatePurchaseTotal();
         });
 
         static::updated(function (PurchaseItem $item) {
-            // Handle inventory changes if quantity changed
-            if ($item->isDirty('quantity')) {
-                $oldQuantity = $item->getOriginal('quantity') ?? 0;
-                $newQuantity = $item->quantity ?? 0;
-                $difference = $newQuantity - $oldQuantity;
+            if ($item->isDirty('quantity_received')) {
+                $oldReceived = $item->getOriginal('quantity_received') ?? 0;
+                $newReceived = $item->quantity_received ?? 0;
+                $difference = $newReceived - $oldReceived;
 
-                $inventory = $item->product->inventory;
-                if ($inventory && $difference !== 0) {
-                    $inventory->increment('quantity', $difference);
+                if ($difference !== 0) {
+                    $inventory = $item->product->inventory;
+                    if ($inventory) {
+                        $inventory->increment('quantity', $difference);
+                    } elseif ($difference > 0) {
+                        Inventory::create([
+                            'product_id' => $item->product_id,
+                            'quantity' => $difference,
+                        ]);
+                    }
                 }
             }
 
-            // Recalculate purchase total
             $item->recalculatePurchaseTotal();
         });
 
         static::deleted(function (PurchaseItem $item) {
-            // Reduce inventory when item is deleted
-            $inventory = $item->product->inventory;
-            if ($inventory) {
-                $inventory->decrement('quantity', $item->quantity ?? 0);
+            $received = $item->quantity_received ?? 0;
+            if ($received > 0) {
+                $inventory = $item->product->inventory;
+                if ($inventory) {
+                    $inventory->decrement('quantity', $received);
+                }
             }
 
-            // Recalculate purchase total
             $item->recalculatePurchaseTotal();
         });
     }
@@ -78,7 +84,7 @@ class PurchaseItem extends Model
         $purchase = $this->purchase;
         if ($purchase) {
             $total = $purchase->purchase_items()->get()->sum(function ($item) {
-                return ($item->price ?? 0) * ($item->quantity ?? 1);
+                return ($item->price ?? 0) * ($item->quantity_received ?? 0);
             });
             $purchase->updateQuietly(['total' => $total]);
         }

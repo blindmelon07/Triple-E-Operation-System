@@ -57,6 +57,24 @@ class Purchase extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function getReceiptStatusAttribute(): string
+    {
+        $items = $this->purchase_items;
+        if ($items->isEmpty()) {
+            return 'pending';
+        }
+        $allReceived = $items->every(fn ($i) => $i->quantity_received >= $i->quantity);
+        $anyReceived = $items->some(fn ($i) => $i->quantity_received > 0);
+        if ($allReceived) {
+            return 'received';
+        }
+        if ($anyReceived) {
+            return 'partial';
+        }
+
+        return 'pending';
+    }
+
     public function getBalanceAttribute(): float
     {
         return (float) $this->total - (float) $this->amount_paid;
