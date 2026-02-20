@@ -384,6 +384,13 @@ class POSController extends Controller
                 ]);
             }
 
+            // Recalculate total now that all items exist.
+            // QuotationObserver.saved fires during Quotation::create (before items are
+            // created), which would reset the total to 0. We correct it here.
+            $quotation->updateQuietly([
+                'total' => $quotation->quotation_items()->sum('price'),
+            ]);
+
             DB::commit();
 
             AuditLog::create([

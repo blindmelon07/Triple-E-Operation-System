@@ -49,7 +49,13 @@ class QuotationObserver
      */
     public function saved(Quotation $quotation): void
     {
-        // Recalculate total after save
+        // Skip recalculation on initial creation — items don't exist yet at this point.
+        // The POS controller and Filament pages each handle the recalculation after items are saved.
+        if ($quotation->wasRecentlyCreated) {
+            return;
+        }
+
+        // Recalculate total on subsequent updates (e.g. approve/reject/edit)
         $total = $quotation->quotation_items()->sum('price');
 
         if ($quotation->total != $total) {

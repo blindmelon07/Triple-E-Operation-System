@@ -6,7 +6,11 @@
       "Bash(php check_attendance.php:*)",
       "Bash(php:*)",
       "Bash(git -C /c/xampp2/htdocs/TOS ls-files)",
-      "Bash(wsl pwd:*)"
+      "Bash(wsl pwd:*)",
+      "Bash(pandoc:*)",
+      "Bash(python -c:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)"
     ]
   }
 }
