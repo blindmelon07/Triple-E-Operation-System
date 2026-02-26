@@ -42,6 +42,14 @@ class PurchaseItem extends Model
         });
 
         static::updated(function (PurchaseItem $item) {
+            // Skip if the record was just created in this request — inventory
+            // was already updated by the created event, so don't double-count.
+            if ($item->wasRecentlyCreated) {
+                $item->recalculatePurchaseTotal();
+
+                return;
+            }
+
             if ($item->isDirty('quantity_received')) {
                 $oldReceived = $item->getOriginal('quantity_received') ?? 0;
                 $newReceived = $item->quantity_received ?? 0;
