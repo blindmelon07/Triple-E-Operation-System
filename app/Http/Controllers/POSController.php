@@ -13,6 +13,7 @@ use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -170,7 +171,26 @@ class POSController extends Controller
             'success' => true,
             'message' => 'Register closed successfully',
             'session' => $session->fresh(),
+            'report_url' => route('pos.register.sales-report', $session->id),
         ]);
+    }
+
+    public function registerSalesReport(CashRegisterSession $session): \Illuminate\Http\Response
+    {
+        $session->load('user');
+
+        $sales = Sale::with(['customer', 'sale_items'])
+            ->withCount('sale_items')
+            ->where('cash_register_session_id', $session->id)
+            ->orderBy('date')
+            ->get();
+
+        $pdf = Pdf::loadView('pos.register-sales-report', compact('session', 'sales'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'register-report-' . ($session->closed_at?->format('Y-m-d') ?? now()->format('Y-m-d')) . '-session-' . $session->id . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function registerStatus(): \Illuminate\Http\JsonResponse
@@ -217,6 +237,11 @@ class POSController extends Controller
         try {
             DB::beginTransaction();
 
+            // Sales with payment terms are unpaid until collected; all others are paid immediately.
+            $hasCreditTerms = !empty($validated['payment_term_days']);
+            $paymentStatus = $hasCreditTerms ? 'unpaid' : 'paid';
+            $amountPaid    = $hasCreditTerms ? 0 : $validated['total'];
+
             // Create the sale
             $sale = Sale::create([
                 'customer_id' => $validated['customer_id'],
@@ -225,6 +250,9 @@ class POSController extends Controller
                 'total' => $validated['total'],
                 'payment_method' => $validated['payment_method'],
                 'payment_term_days' => $validated['payment_term_days'] ?? null,
+                'payment_status' => $paymentStatus,
+                'amount_paid' => $amountPaid,
+                'paid_date' => $hasCreditTerms ? null : now()->toDateString(),
             ]);
 
             // Create sale items
@@ -252,8 +280,9 @@ class POSController extends Controller
                 ]);
             }
 
-            // Update cash register session totals
-            if (!empty($validated['cash_register_session_id'])) {
+            // Only count paid sales toward register session totals.
+            // Credit/term sales (unpaid) are excluded until collected.
+            if (!$hasCreditTerms && !empty($validated['cash_register_session_id'])) {
                 $session = CashRegisterSession::find($validated['cash_register_session_id']);
                 if ($session && $session->status === CashRegisterStatus::Open) {
                     $isCash = in_array($validated['payment_method'], ['cash']);

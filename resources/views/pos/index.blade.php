@@ -1872,6 +1872,10 @@
                             this.registerTotalTransactions = 0;
                             this.showCloseRegisterModal = false;
                             this.showOpenRegisterModal = true;
+
+                            if (data.report_url) {
+                                window.open(data.report_url, '_blank');
+                            }
                         } else {
                             this.registerError = data.message || 'Failed to close register';
                         }

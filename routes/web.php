@@ -21,6 +21,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/pos/register/open', [POSController::class, 'openRegister'])->name('pos.register.open');
     Route::post('/pos/register/close', [POSController::class, 'closeRegister'])->name('pos.register.close');
     Route::get('/pos/register/status', [POSController::class, 'registerStatus'])->name('pos.register.status');
+    Route::get('/pos/register/{session}/sales-report', [POSController::class, 'registerSalesReport'])->name('pos.register.sales-report');
 
     // Delivery Receipt
     Route::get('/delivery/{delivery}/print', [DeliveryController::class, 'printReceipt'])->name('delivery.print-receipt');

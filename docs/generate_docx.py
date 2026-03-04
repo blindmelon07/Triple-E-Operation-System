@@ -179,10 +179,25 @@ add_table(
     [2.0, 4.5]
 )
 add_para('The register tracks:')
-for b in ['Total sales (all payment methods)', 'Total cash sales only',
-          'Total number of transactions', 'Expected cash vs actual closing amount (discrepancy)']:
+for b in ['Total sales (paid immediately — excludes credit/term sales)',
+          'Total cash sales only',
+          'Total number of transactions',
+          'Expected cash vs actual closing amount (discrepancy)']:
     add_bullet(b)
 add_note('Only one open session per user at a time is allowed.')
+doc.add_paragraph()
+
+add_para('**Register Closure PDF Report**')
+add_para('When closing the register, a PDF report is automatically generated and downloaded in the browser. It contains:')
+for b in [
+    'Session summary cards — Opening amount, Total sales, Cash sales, Transaction count, Expected cash, Closing amount, Discrepancy (green if over, red if short)',
+    'Full sales transaction table — Time, Customer name, Items count, Payment method, Payment status, and Amount for every sale in the session',
+    'Session notes (if entered)',
+]:
+    add_bullet(b)
+add_para('Filename format: register-report-YYYY-MM-DD-session-{id}.pdf')
+add_para('The report can also be re-downloaded anytime via:')
+add_code_block('GET /pos/register/{session}/sales-report')
 doc.add_paragraph()
 
 # 1.2 Adding Products to Cart
@@ -247,11 +262,21 @@ add_para('When **Confirm Payment** is clicked:')
 for b in [
     'A Sale record is created.',
     'SaleItem records are created for each cart line — inventory is decremented automatically for non-manual items.',
-    'Cash register totals are updated.',
+    'Cash register totals are updated only for immediately-paid sales (no payment terms). Credit/term sales are excluded until collected.',
     'If converting from an approved quotation, the quotation status changes to converted_to_sale.',
     'A success modal appears with receipt print options (thermal or delivery receipt format).',
 ]:
     add_bullet(b)
+doc.add_paragraph()
+add_para('**Payment status rules at sale creation:**')
+add_table(
+    ['Condition', 'payment_status', 'amount_paid', 'Added to register?'],
+    [
+        ['No payment terms (cash, card, GCash, etc.)', 'paid',   '= total', 'Yes'],
+        ['Payment terms set (payment_term_days > 0)',  'unpaid', '0',       'No'],
+    ],
+    [2.5, 1.2, 1.2, 1.4]
+)
 doc.add_paragraph()
 
 # 1.6 Quotations
@@ -311,9 +336,10 @@ add_table(
         ['GET',  '/pos/recent-sales',                'Fetch last 50 sales for reprint'],
         ['GET',  '/pos/print-receipt/{sale}',        'Print receipt view'],
         ['GET',  '/pos/quotation/{quotation}/print', 'Print quotation view'],
-        ['GET',  '/pos/csrf-token',                  'Refresh CSRF token (long sessions)'],
+        ['GET',  '/pos/csrf-token',                           'Refresh CSRF token (long sessions)'],
+        ['GET',  '/pos/register/{session}/sales-report',     'Download register closure PDF report'],
     ],
-    [0.8, 2.5, 3.0]
+    [0.8, 2.8, 2.7]
 )
 
 doc.add_page_break()
@@ -435,6 +461,35 @@ add_table(
     [2.0, 4.0]
 )
 add_note('Inventory is decremented automatically when a SaleItem is saved (model hook). Manual items are excluded.')
+doc.add_paragraph()
+
+add_para('**Admin Panel — Sales List**')
+add_para('The Sales list table shows a colour-coded Status badge per record:')
+add_table(
+    ['Badge colour', 'Status'],
+    [
+        ['Green',  'paid'],
+        ['Yellow', 'partial'],
+        ['Red',    'unpaid / other'],
+    ],
+    [2.0, 2.5]
+)
+add_para('**Mark as Paid action**')
+add_para('A Mark as Paid button appears on rows where payment_term_days is set and payment_status ≠ paid. On confirm it sets:')
+for b in ['payment_status = paid', 'amount_paid = total', 'paid_date = today']:
+    add_bullet(b)
+add_note('This button never appears on cash/card/GCash/PayMaya sales — those have no payment terms and are paid immediately.')
+doc.add_paragraph()
+
+add_para('**Sales Summary CSV Download**')
+add_para('A Download Summary button in the page header exports an aggregated CSV grouped by date.')
+for b in [
+    'Select a period (Today, This Week, This Month, etc.) or a custom date range.',
+    'Columns: Date | Sales Count | Total per day, with a GRAND TOTAL row at the bottom.',
+    'File: app/Exports/SalesSummaryExport.php',
+    'Filename format: sales-summary-{period}-YYYY-MM-DD-HHiiss.csv',
+]:
+    add_bullet(b)
 doc.add_paragraph()
 
 # 2.6 Purchases
