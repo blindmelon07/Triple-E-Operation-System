@@ -20,6 +20,7 @@ class Sale extends Model
         'date',
         'total',
         'payment_method',
+        'reference_number',
         'payment_term_days',
         'payment_status',
         'amount_paid',

@@ -196,7 +196,7 @@
             @forelse($sales as $index => $sale)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $sale->date?->format('h:i A') }}</td>
+                    <td>{{ $sale->created_at?->setTimezone('Asia/Manila')->format('h:i A') }}</td>
                     <td>{{ $sale->customer?->name ?? 'Walk-in' }}</td>
                     <td>{{ $sale->sale_items_count ?? $sale->sale_items->count() }}</td>
                     <td>{{ match($sale->payment_method) {
@@ -208,7 +208,12 @@
                         default  => ucfirst($sale->payment_method ?? 'N/A')
                     } }}</td>
                     <td>{{ ucfirst($sale->payment_status ?? 'N/A') }}</td>
-                    <td>₱{{ number_format($sale->total, 2) }}</td>
+                    <td>
+                        ₱{{ number_format($sale->total, 2) }}
+                        @if($sale->payment_term_days)
+                            <br><span style="font-size:7px;color:#94a3b8;">({{ $sale->payment_term_days }}-day terms)</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>
@@ -220,7 +225,7 @@
             <tfoot>
                 <tr class="total-row">
                     <td colspan="6">TOTAL</td>
-                    <td>₱{{ number_format($sales->sum('total'), 2) }}</td>
+                    <td>₱{{ number_format($sales->where('payment_status', '!=', 'unpaid')->sum('total'), 2) }}</td>
                 </tr>
             </tfoot>
         @endif

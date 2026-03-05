@@ -624,6 +624,16 @@
                         </div>
                     </div>
 
+                    <div x-show="['card','gcash','paymaya'].includes(paymentMethod)" x-cloak>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reference Number</label>
+                        <input
+                            type="text"
+                            x-model="referenceNumber"
+                            placeholder="Enter reference / transaction number"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        >
+                    </div>
+
                     <div x-show="paymentMethod === 'cash'">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cash Received</label>
                         <input 
@@ -1722,6 +1732,7 @@
                     address: ''
                 },
                 paymentMethod: 'cash',
+                referenceNumber: '',
                 codWithTerms: false,
                 paymentTermDays: 5,
                 cashReceived: 0,
@@ -2181,6 +2192,7 @@
                             items: this.cart,
                             total: this.total,
                             payment_method: this.paymentMethod,
+                            reference_number: ['card','gcash','paymaya'].includes(this.paymentMethod) ? this.referenceNumber : null,
                             payment_term_days: this.codWithTerms ? this.paymentTermDays : null,
                             cash_received: this.cashReceived,
                             change: this.change
@@ -2230,6 +2242,7 @@
                             this.selectedCustomer = '';
                             this.quotationId = null;
                             this.paymentMethod = 'cash';
+                            this.referenceNumber = '';
                             this.codWithTerms = false;
                             this.paymentTermDays = 5;
                             this.cashReceived = 0;
