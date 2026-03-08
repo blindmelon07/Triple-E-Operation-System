@@ -34,6 +34,11 @@ class DailyTransactionReport extends Page implements HasTable
 
     protected static ?int $navigationSort = 1;
 
+    public static function canAccess(): bool
+    {
+        return auth()->check();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
