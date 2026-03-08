@@ -241,6 +241,66 @@ class POSController extends Controller
         return $pdf->download($filename);
     }
 
+    public function periodTransactionReport(Request $request): \Illuminate\Http\Response
+    {
+        $dateFrom = $request->query('date_from', today()->toDateString());
+        $dateTo   = $request->query('date_to',   today()->toDateString());
+
+        $sessions = CashRegisterSession::with('user')
+            ->where('status', 'Closed')
+            ->whereDate('opened_at', '>=', $dateFrom)
+            ->whereDate('opened_at', '<=', $dateTo)
+            ->orderBy('opened_at')
+            ->get();
+
+        $sessionIds = $sessions->pluck('id');
+
+        $sales = Sale::with(['customer', 'sale_items.product'])
+            ->whereIn('cash_register_session_id', $sessionIds)
+            ->orderByRaw('customer_id IS NULL ASC')
+            ->orderBy('created_at')
+            ->get();
+
+        $expenses = Expense::with('category')
+            ->whereDate('expense_date', '>=', $dateFrom)
+            ->whereDate('expense_date', '<=', $dateTo)
+            ->where('status', '!=', 'rejected')
+            ->orderBy('expense_date')
+            ->get();
+
+        $totalSales       = (float) $sales->sum('total');
+        $totalUnpaidSales = (float) $sales->where('payment_status', 'unpaid')->sum('total');
+        $totalPaidSales   = $totalSales - $totalUnpaidSales;
+        $nonCashPaidSales = (float) $sales->where('payment_status', '!=', 'unpaid')
+                                ->whereNotIn('payment_method', ['cash'])->sum('total');
+        $cashPaidSales    = $totalPaidSales - $nonCashPaidSales;
+        $totalExpenses    = (float) $expenses->sum('amount');
+        $pettyCash        = (float) $sessions->sum('opening_amount');
+
+        $incomeTotal      = $pettyCash + $totalSales;
+        $totalDeductions  = $totalUnpaidSales + $nonCashPaidSales;
+        $theoreticalCash  = $incomeTotal - $totalDeductions - $totalExpenses;
+        $actualCashOnHand = (float) $sessions->sum('closing_amount');
+        $discrepancy      = $actualCashOnHand - $theoreticalCash;
+
+        $periodLabel = \Carbon\Carbon::parse($dateFrom)->format('F d') === \Carbon\Carbon::parse($dateTo)->format('F d')
+            ? \Carbon\Carbon::parse($dateFrom)->format('F d, Y')
+            : \Carbon\Carbon::parse($dateFrom)->format('F d') . ' – ' . \Carbon\Carbon::parse($dateTo)->format('F d, Y');
+
+        $pdf = Pdf::loadView('pos.period-transaction-report', compact(
+            'sessions', 'sales', 'expenses', 'periodLabel',
+            'dateFrom', 'dateTo',
+            'totalSales', 'totalPaidSales', 'totalUnpaidSales',
+            'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
+            'pettyCash', 'incomeTotal', 'totalDeductions',
+            'theoreticalCash', 'actualCashOnHand', 'discrepancy'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'period-report-' . $dateFrom . '-to-' . $dateTo . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
     public function registerStatus(): \Illuminate\Http\JsonResponse
     {
         $session = CashRegisterSession::open()

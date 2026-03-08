@@ -11,7 +11,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class CashRegisterSessionPolicy
 {
     use HandlesAuthorization;
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:CashRegisterSession');
@@ -66,4 +66,5 @@ class CashRegisterSessionPolicy
     {
         return $authUser->can('Reorder:CashRegisterSession');
     }
+
 }

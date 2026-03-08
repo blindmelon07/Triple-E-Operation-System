@@ -3,18 +3,19 @@
 namespace App\Filament\Pages;
 
 use App\Models\CashRegisterSession;
+use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
+use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Forms\Components\DatePicker;
 use UnitEnum;
-use BackedEnum;
 
 class DailyTransactionReport extends Page implements HasTable
 {
@@ -32,6 +33,58 @@ class DailyTransactionReport extends Page implements HasTable
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
     protected static ?int $navigationSort = 1;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('generate_period_report')
+                ->label('Generate Period Report')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('primary')
+                ->form([
+                    Select::make('period')
+                        ->label('Period')
+                        ->options([
+                            'today'      => 'Today',
+                            'yesterday'  => 'Yesterday',
+                            'this_week'  => 'This Week',
+                            'last_week'  => 'Last Week',
+                            'this_month' => 'This Month',
+                            'last_month' => 'Last Month',
+                            'custom'     => 'Custom Range',
+                        ])
+                        ->required()
+                        ->live(),
+                    DatePicker::make('date_from')
+                        ->label('From')
+                        ->visible(fn ($get) => $get('period') === 'custom')
+                        ->required(fn ($get) => $get('period') === 'custom'),
+                    DatePicker::make('date_to')
+                        ->label('Until')
+                        ->visible(fn ($get) => $get('period') === 'custom')
+                        ->required(fn ($get) => $get('period') === 'custom'),
+                ])
+                ->action(function (array $data) {
+                    [$from, $to] = $this->resolveDateRange($data);
+                    $url = route('pos.reports.period', ['date_from' => $from, 'date_to' => $to]);
+                    $this->js("window.open('{$url}', '_blank')");
+                }),
+        ];
+    }
+
+    private function resolveDateRange(array $data): array
+    {
+        return match ($data['period']) {
+            'today'      => [today()->toDateString(), today()->toDateString()],
+            'yesterday'  => [today()->subDay()->toDateString(), today()->subDay()->toDateString()],
+            'this_week'  => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+            'last_week'  => [now()->subWeek()->startOfWeek()->toDateString(), now()->subWeek()->endOfWeek()->toDateString()],
+            'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+            'custom'     => [$data['date_from'], $data['date_to']],
+            default      => [today()->toDateString(), today()->toDateString()],
+        };
+    }
 
     public function table(Table $table): Table
     {
@@ -70,17 +123,55 @@ class DailyTransactionReport extends Page implements HasTable
                     ->sortable(),
             ])
             ->filters([
-                Filter::make('date_range')
+                Filter::make('period')
                     ->form([
-                        DatePicker::make('date_from')->label('From'),
-                        DatePicker::make('date_until')->label('Until'),
+                        Select::make('period')
+                            ->label('Period')
+                            ->options([
+                                'today'      => 'Today',
+                                'yesterday'  => 'Yesterday',
+                                'this_week'  => 'This Week',
+                                'last_week'  => 'Last Week',
+                                'this_month' => 'This Month',
+                                'last_month' => 'Last Month',
+                                'custom'     => 'Custom Range',
+                            ])
+                            ->placeholder('All Time')
+                            ->live(),
+                        DatePicker::make('date_from')
+                            ->label('From')
+                            ->visible(fn ($get) => $get('period') === 'custom'),
+                        DatePicker::make('date_until')
+                            ->label('Until')
+                            ->visible(fn ($get) => $get('period') === 'custom'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when($data['date_from'],
-                                fn (Builder $q, $d) => $q->whereDate('opened_at', '>=', $d))
-                            ->when($data['date_until'],
-                                fn (Builder $q, $d) => $q->whereDate('opened_at', '<=', $d));
+                        $period = $data['period'] ?? null;
+
+                        return match ($period) {
+                            'today'      => $query->whereDate('opened_at', today()),
+                            'yesterday'  => $query->whereDate('opened_at', today()->subDay()),
+                            'this_week'  => $query->whereBetween('opened_at', [now()->startOfWeek(), now()->endOfWeek()]),
+                            'last_week'  => $query->whereBetween('opened_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()]),
+                            'this_month' => $query->whereMonth('opened_at', now()->month)->whereYear('opened_at', now()->year),
+                            'last_month' => $query->whereMonth('opened_at', now()->subMonth()->month)->whereYear('opened_at', now()->subMonth()->year),
+                            'custom'     => $query
+                                ->when($data['date_from'],  fn ($q, $d) => $q->whereDate('opened_at', '>=', $d))
+                                ->when($data['date_until'], fn ($q, $d) => $q->whereDate('opened_at', '<=', $d)),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        return match ($data['period'] ?? null) {
+                            'today'      => 'Today',
+                            'yesterday'  => 'Yesterday',
+                            'this_week'  => 'This Week',
+                            'last_week'  => 'Last Week',
+                            'this_month' => 'This Month',
+                            'last_month' => 'Last Month',
+                            'custom'     => 'Custom: ' . ($data['date_from'] ?? '?') . ' → ' . ($data['date_until'] ?? '?'),
+                            default      => null,
+                        };
                     }),
             ])
             ->actions([
