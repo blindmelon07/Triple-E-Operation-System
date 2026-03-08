@@ -255,28 +255,67 @@ class POSController extends Controller
 
         $sessionIds = $sessions->pluck('id');
 
-        $sales = Sale::with(['customer', 'sale_items.product'])
+        $allSales = Sale::with(['customer', 'sale_items.product'])
             ->whereIn('cash_register_session_id', $sessionIds)
-            ->orderByRaw('customer_id IS NULL ASC')
             ->orderBy('created_at')
             ->get();
 
-        $expenses = Expense::with('category')
+        $allExpenses = Expense::with('category')
             ->whereDate('expense_date', '>=', $dateFrom)
             ->whereDate('expense_date', '<=', $dateTo)
             ->where('status', '!=', 'rejected')
             ->orderBy('expense_date')
             ->get();
 
-        $totalSales       = (float) $sales->sum('total');
-        $totalUnpaidSales = (float) $sales->where('payment_status', 'unpaid')->sum('total');
+        // Build one report block per session
+        $dayReports = [];
+        foreach ($sessions as $session) {
+            $sales    = $allSales->where('cash_register_session_id', $session->id)->values();
+            $sessDate = $session->opened_at->toDateString();
+            $expenses = $allExpenses->filter(
+                fn ($e) => optional($e->expense_date)->toDateString() === $sessDate
+            )->values();
+
+            $ts   = (float) $sales->sum('total');
+            $tus  = (float) $sales->where('payment_status', 'unpaid')->sum('total');
+            $tps  = $ts - $tus;
+            $nc   = (float) $sales->where('payment_status', '!=', 'unpaid')
+                            ->whereNotIn('payment_method', ['cash'])->sum('total');
+            $te   = (float) $expenses->sum('amount');
+            $pc   = (float) $session->opening_amount;
+            $it   = $pc + $ts;
+            $td   = $tus + $nc;
+            $tca  = $it - $td - $te;
+            $aca  = (float) ($session->closing_amount ?? 0);
+
+            $dayReports[] = [
+                'session'          => $session,
+                'sales'            => $sales,
+                'expenses'         => $expenses,
+                'totalSales'       => $ts,
+                'totalUnpaidSales' => $tus,
+                'totalPaidSales'   => $tps,
+                'nonCashPaidSales' => $nc,
+                'cashPaidSales'    => $tps - $nc,
+                'totalExpenses'    => $te,
+                'pettyCash'        => $pc,
+                'incomeTotal'      => $it,
+                'totalDeductions'  => $td,
+                'theoreticalCash'  => $tca,
+                'actualCashOnHand' => $aca,
+                'discrepancy'      => $aca - $tca,
+            ];
+        }
+
+        // Period totals for summary page
+        $totalSales       = (float) $allSales->sum('total');
+        $totalUnpaidSales = (float) $allSales->where('payment_status', 'unpaid')->sum('total');
         $totalPaidSales   = $totalSales - $totalUnpaidSales;
-        $nonCashPaidSales = (float) $sales->where('payment_status', '!=', 'unpaid')
+        $nonCashPaidSales = (float) $allSales->where('payment_status', '!=', 'unpaid')
                                 ->whereNotIn('payment_method', ['cash'])->sum('total');
         $cashPaidSales    = $totalPaidSales - $nonCashPaidSales;
-        $totalExpenses    = (float) $expenses->sum('amount');
+        $totalExpenses    = (float) $allExpenses->sum('amount');
         $pettyCash        = (float) $sessions->sum('opening_amount');
-
         $incomeTotal      = $pettyCash + $totalSales;
         $totalDeductions  = $totalUnpaidSales + $nonCashPaidSales;
         $theoreticalCash  = $incomeTotal - $totalDeductions - $totalExpenses;
@@ -288,8 +327,7 @@ class POSController extends Controller
             : \Carbon\Carbon::parse($dateFrom)->format('F d') . ' – ' . \Carbon\Carbon::parse($dateTo)->format('F d, Y');
 
         $pdf = Pdf::loadView('pos.period-transaction-report', compact(
-            'sessions', 'sales', 'expenses', 'periodLabel',
-            'dateFrom', 'dateTo',
+            'sessions', 'dayReports', 'periodLabel', 'dateFrom', 'dateTo',
             'totalSales', 'totalPaidSales', 'totalUnpaidSales',
             'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
             'pettyCash', 'incomeTotal', 'totalDeductions',
