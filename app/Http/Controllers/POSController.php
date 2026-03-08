@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\CashRegisterSession;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
@@ -179,16 +180,51 @@ class POSController extends Controller
     {
         $session->load('user');
 
-        $sales = Sale::with(['customer', 'sale_items'])
+        $sales = Sale::with(['customer', 'sale_items.product'])
             ->withCount('sale_items')
             ->where('cash_register_session_id', $session->id)
-            ->orderBy('date')
+            ->orderByRaw('customer_id IS NULL ASC')
+            ->orderBy('created_at')
             ->get();
 
-        $pdf = Pdf::loadView('pos.register-sales-report', compact('session', 'sales'))
-            ->setPaper('a4', 'portrait');
+        $sessionDate = $session->opened_at->toDateString();
 
-        $filename = 'register-report-' . ($session->closed_at?->format('Y-m-d') ?? now()->format('Y-m-d')) . '-session-' . $session->id . '.pdf';
+        $expenses = Expense::with('category')
+            ->whereDate('expense_date', $sessionDate)
+            ->where('status', '!=', 'rejected')
+            ->orderBy('expense_date')
+            ->get();
+
+        // --- Summary calculations ---
+        $totalSales        = (float) $sales->sum('total');
+        $totalUnpaidSales  = (float) $sales->where('payment_status', 'unpaid')->sum('total');
+        $totalPaidSales    = $totalSales - $totalUnpaidSales;
+        $nonCashPaidSales  = (float) $sales->where('payment_status', '!=', 'unpaid')
+                                ->whereNotIn('payment_method', ['cash'])->sum('total');
+        $cashPaidSales     = $totalPaidSales - $nonCashPaidSales;
+        $totalExpenses     = (float) $expenses->sum('amount');
+        $pettyCash         = (float) $session->opening_amount;
+
+        // Income total = opening petty cash + ALL sales (paid + unpaid)
+        $incomeTotal = $pettyCash + $totalSales;
+
+        // Deductions = unpaid (credit not collected) + non-cash received (went to bank)
+        $totalDeductions = $totalUnpaidSales + $nonCashPaidSales;
+
+        // Theoretical cash on hand = income - deductions - cash expenses
+        $theoreticalCash = $incomeTotal - $totalDeductions - $totalExpenses;
+        $actualCashOnHand = (float) ($session->closing_amount ?? 0);
+        $discrepancy = $actualCashOnHand - $theoreticalCash;
+
+        $pdf = Pdf::loadView('pos.register-sales-report', compact(
+            'session', 'sales', 'expenses',
+            'totalSales', 'totalPaidSales', 'totalUnpaidSales',
+            'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
+            'pettyCash', 'incomeTotal', 'totalDeductions',
+            'theoreticalCash', 'actualCashOnHand', 'discrepancy'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'daily-report-' . $sessionDate . '.pdf';
 
         return $pdf->download($filename);
     }
