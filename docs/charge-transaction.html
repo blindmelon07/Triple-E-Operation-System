@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charge Transaction – TOS Documentation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 13px;
+            color: #1e293b;
+            background: #f8fafc;
+            padding: 40px 60px;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .doc-header {
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 16px;
+            margin-bottom: 32px;
+        }
+        .doc-header .company {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .doc-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e40af;
+        }
+        .doc-header .subtitle {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        /* Section heading */
+        h2 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e40af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #eff6ff;
+            border-left: 4px solid #1e40af;
+            padding: 7px 12px;
+            margin: 28px 0 14px;
+        }
+
+        h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 18px 0 8px;
+        }
+
+        p {
+            line-height: 1.7;
+            margin-bottom: 10px;
+            color: #334155;
+        }
+
+        /* Step blocks */
+        .steps { counter-reset: step; }
+        .step {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 18px;
+            align-items: flex-start;
+        }
+        .step-number {
+            counter-increment: step;
+            min-width: 30px;
+            height: 30px;
+            background: #1e40af;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .step-body { flex: 1; }
+        .step-body strong {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 4px;
+            color: #1e293b;
+        }
+        .step-body p { margin: 0; font-size: 12.5px; }
+
+        /* Terms table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            font-size: 12.5px;
+        }
+        thead tr {
+            background: #1e40af;
+            color: #fff;
+        }
+        th {
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 11.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+        }
+        tbody tr:nth-child(even) { background: #f8fafc; }
+
+        /* Info / warning boxes */
+        .callout {
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin: 14px 0;
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+        .callout.info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+        }
+        .callout.warning {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+        }
+        .callout.success {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #166534;
+        }
+        .callout strong { font-weight: 700; }
+
+        /* Key rules list */
+        ul {
+            padding-left: 20px;
+            margin: 8px 0 12px;
+        }
+        ul li {
+            margin-bottom: 6px;
+            line-height: 1.6;
+            color: #334155;
+        }
+        ul li strong { color: #1e293b; }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge.unpaid { background: #fee2e2; color: #b91c1c; }
+        .badge.paid   { background: #dcfce7; color: #15803d; }
+
+        /* Footer */
+        .doc-footer {
+            border-top: 1px solid #e2e8f0;
+            margin-top: 40px;
+            padding-top: 12px;
+            font-size: 11px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        @media print {
+            body { padding: 20px 30px; background: #fff; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="doc-header">
+        <div class="company">Tri-E Enterprises OPC &nbsp;·&nbsp; TOS – Point of Sale System</div>
+        <h1>Charge Transaction</h1>
+        <div class="subtitle">User Guide &nbsp;·&nbsp; POS Module</div>
+    </div>
+
+    <!-- Overview -->
+    <h2>Overview</h2>
+    <p>
+        A <strong>Charge</strong> transaction is a credit sale where the customer takes the goods now and pays at a later date
+        based on an agreed payment term. No cash is collected at the time of the transaction.
+    </p>
+
+    <div class="callout info">
+        <strong>Important:</strong> Charge transactions are recorded in the system but will <strong>not appear in any
+        daily, register, or period report</strong> until the customer's payment has been collected and the record is
+        updated to <span class="badge paid">Paid</span>.
+    </div>
+
+    <!-- How to add -->
+    <h2>How to Add a Charge Transaction</h2>
+
+    <div class="steps">
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-body">
+                <strong>Add Items to the Cart</strong>
+                <p>Select the products the customer is taking. Adjust quantities as needed. Inventory will be deducted immediately when the sale is confirmed.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-body">
+                <strong>Select the Customer</strong>
+                <p>Charge transactions must always be linked to a named customer. Use the customer selector at the top of the cart panel. If the customer does not exist yet, click <strong>+ Add Customer</strong> to create one on the spot.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-body">
+                <strong>Click "Charge / Pay"</strong>
+                <p>Click the <strong>Charge / Pay</strong> button at the bottom of the cart to open the payment modal.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-body">
+                <strong>Select "Charge" as the Payment Method</strong>
+                <p>In the <strong>Payment Method</strong> dropdown, choose <strong>Charge</strong>. The Payment Terms selector will appear automatically below the dropdown.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-body">
+                <strong>Select the Payment Term</strong>
+                <p>Choose the number of days the customer has to settle the balance. The due date is calculated and displayed automatically.</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Term</th>
+                            <th>Due Date</th>
+                            <th>Typical Use</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>5 Days</td><td>Today + 5 days</td><td>Short-term / regular customers</td></tr>
+                        <tr><td>10 Days</td><td>Today + 10 days</td><td>Short-term credit</td></tr>
+                        <tr><td>15 Days</td><td>Today + 15 days</td><td>Semi-monthly terms</td></tr>
+                        <tr><td>30 Days</td><td>Today + 30 days</td><td>Standard monthly credit</td></tr>
+                        <tr><td>60 Days</td><td>Today + 60 days</td><td>Extended credit accounts</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">6</div>
+            <div class="step-body">
+                <strong>Confirm the Transaction</strong>
+                <p>Click <strong>Confirm Payment</strong>. The sale is saved and inventory is reduced. The transaction is tagged as <span class="badge unpaid">Unpaid</span> with ₱0.00 amount paid.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- What happens after -->
+    <h2>What Happens After Confirming</h2>
+    <ul>
+        <li>The sale is saved with <strong>payment_status = Unpaid</strong> and <strong>amount_paid = ₱0.00</strong>.</li>
+        <li>The due date is set based on today's date plus the selected term.</li>
+        <li>Inventory is <strong>deducted immediately</strong>.</li>
+        <li>The transaction <strong>does not count toward register session totals</strong> (no cash changed hands).</li>
+        <li>The transaction <strong>will not appear in any report</strong> (Daily, Register Closure, or Period Report) until it is marked as Paid.</li>
+        <li>The sale is visible in the <strong>Admin Panel → Sales</strong> with a filter by payment status.</li>
+    </ul>
+
+    <!-- How to collect payment -->
+    <h2>How to Collect Payment &amp; Close the Charge</h2>
+
+    <p>Once the customer settles their balance, update the transaction in the admin panel:</p>
+
+    <div class="steps">
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-body">
+                <strong>Go to Admin Panel → Sales</strong>
+                <p>Navigate to the Sales section in the admin panel.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-body">
+                <strong>Find the Charge Transaction</strong>
+                <p>Filter by <strong>Payment Method: Charge</strong> or <strong>Payment Status: Unpaid</strong> to locate the record.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-body">
+                <strong>Update the Record</strong>
+                <p>Open the sale and set:</p>
+                <ul style="margin-top:6px;">
+                    <li><strong>Payment Status</strong> → <span class="badge paid">Paid</span></li>
+                    <li><strong>Amount Paid</strong> → the amount collected</li>
+                    <li><strong>Paid Date</strong> → the date payment was received</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-body">
+                <strong>Save</strong>
+                <p>Once saved, the transaction will automatically be included in all reports going forward.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="callout success">
+        <strong>After marking as Paid:</strong> The transaction will appear in the Daily Transaction Report, Register Closure Report,
+        and Period Report under the session it was originally recorded in.
+    </div>
+
+    <!-- Key rules -->
+    <h2>Key Rules &amp; Reminders</h2>
+    <ul>
+        <li><strong>Always assign a customer.</strong> Charge sales must be tied to a named account for proper accounts receivable tracking.</li>
+        <li><strong>Reports exclude unpaid charges.</strong> Charge transactions only appear in reports once marked as Paid.</li>
+        <li><strong>Inventory is deducted at sale time.</strong> Regardless of payment status, stock is reduced immediately when the charge is confirmed.</li>
+        <li><strong>No cash is added to the register.</strong> Charge sales do not count toward the session's cash totals or transaction count.</li>
+        <li><strong>Monitor overdue accounts</strong> regularly via Admin Panel → Sales, filtering by Unpaid status and checking due dates.</li>
+    </ul>
+
+    <div class="callout warning">
+        <strong>Reminder:</strong> Do not use Charge for walk-in customers without a proper account. Always verify the customer's
+        credit standing before approving a charge transaction.
+    </div>
+
+    <!-- Footer -->
+    <div class="doc-footer">
+        <span>Tri-E Enterprises OPC &nbsp;·&nbsp; TOS Point of Sale System</span>
+        <span>Charge Transaction Guide &nbsp;·&nbsp; POS Module</span>
+    </div>
+
+</body>
+</html>
