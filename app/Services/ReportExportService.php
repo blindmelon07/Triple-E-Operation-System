@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Purchase;
+use App\Models\Sale;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -90,6 +92,153 @@ class ReportExportService
             // Net Profit
             fputcsv($file, ['NET PROFIT', number_format($reportData['net_profit'] ?? 0, 2)]);
             fputcsv($file, ['Net Profit Margin', number_format($reportData['net_profit_margin'] ?? 0, 1).'%']);
+
+            fclose($file);
+        };
+
+        return Response::stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Aging Report as PDF.
+     */
+    public function exportAgingPdf(): \Illuminate\Http\Response
+    {
+        $receivables = Sale::where('payment_status', '!=', 'paid')
+            ->whereNotNull('due_date')
+            ->with('customer')
+            ->orderBy('due_date')
+            ->get();
+
+        $payables = Purchase::where('payment_status', '!=', 'paid')
+            ->whereNotNull('due_date')
+            ->with('supplier')
+            ->orderBy('due_date')
+            ->get();
+
+        $stats = [
+            'receivables' => [
+                'current'       => $receivables->filter(fn ($s) => $s->days_overdue === null)->sum('balance'),
+                '1_30'          => $receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue <= 30)->sum('balance'),
+                '31_60'         => $receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue > 30 && $s->days_overdue <= 60)->sum('balance'),
+                '61_90'         => $receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue > 60 && $s->days_overdue <= 90)->sum('balance'),
+                'over_90'       => $receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue > 90)->sum('balance'),
+                'total'         => $receivables->sum('balance'),
+                'overdue_count' => $receivables->filter(fn ($s) => $s->days_overdue !== null)->count(),
+            ],
+            'payables' => [
+                'current'       => $payables->filter(fn ($p) => $p->days_overdue === null)->sum('balance'),
+                '1_30'          => $payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue <= 30)->sum('balance'),
+                '31_60'         => $payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue > 30 && $p->days_overdue <= 60)->sum('balance'),
+                '61_90'         => $payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue > 60 && $p->days_overdue <= 90)->sum('balance'),
+                'over_90'       => $payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue > 90)->sum('balance'),
+                'total'         => $payables->sum('balance'),
+                'overdue_count' => $payables->filter(fn ($p) => $p->days_overdue !== null)->count(),
+            ],
+        ];
+
+        $pdf = Pdf::loadView('exports.aging-report-pdf', [
+            'receivables' => $receivables,
+            'payables'    => $payables,
+            'stats'       => $stats,
+            'generatedAt' => now()->format('F d, Y h:i A'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->download('aging-report-'.now()->format('Y-m-d').'.pdf');
+    }
+
+    /**
+     * Export Aging Report as Excel (CSV).
+     */
+    public function exportAgingExcel(): StreamedResponse
+    {
+        $filename = 'aging-report-'.now()->format('Y-m-d').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+
+            // Title
+            fputcsv($file, ['Accounts Receivable & Payable Aging Report']);
+            fputcsv($file, ['Generated:', now()->format('F d, Y h:i A')]);
+            fputcsv($file, []);
+
+            // ── RECEIVABLES ──────────────────────────────────────────────
+            $receivables = Sale::where('payment_status', '!=', 'paid')
+                ->whereNotNull('due_date')
+                ->with('customer')
+                ->orderBy('due_date')
+                ->get();
+
+            fputcsv($file, ['ACCOUNTS RECEIVABLE (Customers Owe You)']);
+            fputcsv($file, ['Invoice #', 'Customer', 'Invoice Date', 'Due Date', 'Total', 'Paid', 'Balance', 'Days Overdue', 'Aging Bucket']);
+
+            foreach ($receivables as $sale) {
+                $daysOverdue = $sale->days_overdue;
+                fputcsv($file, [
+                    'INV-'.$sale->id,
+                    $sale->customer?->name ?? 'N/A',
+                    $sale->date,
+                    $sale->due_date,
+                    number_format($sale->total, 2),
+                    number_format($sale->amount_paid, 2),
+                    number_format($sale->balance, 2),
+                    $daysOverdue !== null ? $daysOverdue.' days' : 'Current',
+                    $sale->aging_bucket,
+                ]);
+            }
+
+            fputcsv($file, []);
+            fputcsv($file, ['RECEIVABLES SUMMARY']);
+            fputcsv($file, ['Bucket', 'Amount']);
+            fputcsv($file, ['Current', number_format($receivables->filter(fn ($s) => $s->days_overdue === null)->sum('balance'), 2)]);
+            fputcsv($file, ['1-30 Days', number_format($receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue <= 30)->sum('balance'), 2)]);
+            fputcsv($file, ['31-60 Days', number_format($receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue > 30 && $s->days_overdue <= 60)->sum('balance'), 2)]);
+            fputcsv($file, ['61-90 Days', number_format($receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue > 60 && $s->days_overdue <= 90)->sum('balance'), 2)]);
+            fputcsv($file, ['Over 90 Days', number_format($receivables->filter(fn ($s) => $s->days_overdue !== null && $s->days_overdue > 90)->sum('balance'), 2)]);
+            fputcsv($file, ['Total Outstanding', number_format($receivables->sum('balance'), 2)]);
+            fputcsv($file, []);
+
+            // ── PAYABLES ─────────────────────────────────────────────────
+            $payables = Purchase::where('payment_status', '!=', 'paid')
+                ->whereNotNull('due_date')
+                ->with('supplier')
+                ->orderBy('due_date')
+                ->get();
+
+            fputcsv($file, ['ACCOUNTS PAYABLE (You Owe Suppliers)']);
+            fputcsv($file, ['PO #', 'Supplier', 'Purchase Date', 'Due Date', 'Total', 'Paid', 'Balance', 'Days Overdue', 'Aging Bucket']);
+
+            foreach ($payables as $purchase) {
+                $daysOverdue = $purchase->days_overdue;
+                fputcsv($file, [
+                    'PO-'.$purchase->id,
+                    $purchase->supplier?->name ?? 'N/A',
+                    $purchase->date,
+                    $purchase->due_date,
+                    number_format($purchase->total, 2),
+                    number_format($purchase->amount_paid, 2),
+                    number_format($purchase->balance, 2),
+                    $daysOverdue !== null ? $daysOverdue.' days' : 'Current',
+                    $purchase->aging_bucket,
+                ]);
+            }
+
+            fputcsv($file, []);
+            fputcsv($file, ['PAYABLES SUMMARY']);
+            fputcsv($file, ['Bucket', 'Amount']);
+            fputcsv($file, ['Current', number_format($payables->filter(fn ($p) => $p->days_overdue === null)->sum('balance'), 2)]);
+            fputcsv($file, ['1-30 Days', number_format($payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue <= 30)->sum('balance'), 2)]);
+            fputcsv($file, ['31-60 Days', number_format($payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue > 30 && $p->days_overdue <= 60)->sum('balance'), 2)]);
+            fputcsv($file, ['61-90 Days', number_format($payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue > 60 && $p->days_overdue <= 90)->sum('balance'), 2)]);
+            fputcsv($file, ['Over 90 Days', number_format($payables->filter(fn ($p) => $p->days_overdue !== null && $p->days_overdue > 90)->sum('balance'), 2)]);
+            fputcsv($file, ['Total Outstanding', number_format($payables->sum('balance'), 2)]);
 
             fclose($file);
         };

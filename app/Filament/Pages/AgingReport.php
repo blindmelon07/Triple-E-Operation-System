@@ -6,6 +6,7 @@ use App\Models\Purchase;
 use App\Models\Sale;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
+use Filament\Actions\Action;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -266,6 +267,25 @@ class AgingReport extends Page implements HasForms, HasTable
                     ->preload(),
             ])
             ->defaultSort('due_date', 'asc');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('export_pdf')
+                ->label('Export PDF')
+                ->icon(Heroicon::OutlinedDocumentArrowDown)
+                ->color('gray')
+                ->url(route('aging-report.export-pdf'))
+                ->openUrlInNewTab(),
+
+            Action::make('export_excel')
+                ->label('Export Excel')
+                ->icon(Heroicon::OutlinedTableCells)
+                ->color('success')
+                ->url(route('aging-report.export-excel'))
+                ->openUrlInNewTab(),
+        ];
     }
 
     public function setActiveTab(string $tab): void

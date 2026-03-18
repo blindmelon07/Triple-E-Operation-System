@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\POSController;
+use App\Services\ReportExportService;
 use Illuminate\Support\Facades\Route;
 
 // Route::get('/', function () {
@@ -30,6 +31,10 @@ Route::middleware(['auth'])->group(function () {
 
     // CSRF token refresh for long-running POS sessions
     Route::get('/pos/csrf-token', fn () => response()->json(['token' => csrf_token()]))->name('pos.csrf-token');
+
+    // Aging Report exports
+    Route::get('/reports/aging/export-excel', fn () => (new ReportExportService)->exportAgingExcel())->name('aging-report.export-excel');
+    Route::get('/reports/aging/export-pdf', fn () => (new ReportExportService)->exportAgingPdf())->name('aging-report.export-pdf');
 });
 
 Route::post('/tos/pos/complete-sale', [POSController::class, 'completeSale'])->name('filament.admin.pages.pos.complete-sale');
