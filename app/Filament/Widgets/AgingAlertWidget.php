@@ -27,7 +27,7 @@ class AgingAlertWidget extends Widget
             ->limit(10)
             ->get()
             ->map(function ($sale) {
-                $daysOverdue = now()->diffInDays($sale->due_date);
+                $daysOverdue = (int) now()->diffInDays($sale->due_date);
 
                 return [
                     'id' => $sale->id,
@@ -50,7 +50,7 @@ class AgingAlertWidget extends Widget
             ->limit(10)
             ->get()
             ->map(function ($purchase) {
-                $daysOverdue = now()->diffInDays($purchase->due_date);
+                $daysOverdue = (int) now()->diffInDays($purchase->due_date);
 
                 return [
                     'id' => $purchase->id,

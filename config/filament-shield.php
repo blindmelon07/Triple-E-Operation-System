@@ -228,6 +228,8 @@ return [
 
     'custom_permissions' => [
         'approve_quotation' => 'Approve Quotation',
+        'record_payment_sale' => 'Record Payment (Sale)',
+        'record_payment_purchase' => 'Record Payment (Purchase)',
     ],
 
     /*

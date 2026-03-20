@@ -40,18 +40,20 @@
                         <h4 style="font-weight: 600; margin-bottom: 0.75rem; color: #dc2626;">🧾 Customer Invoices Overdue</h4>
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             @foreach($data['receivables'] as $item)
-                                <div style="background: #fff; border: 1px solid #fecaca; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
-                                        <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                <a href="{{ route('filament.tos.resources.sales.edit', ['record' => $item['id']]) }}" style="text-decoration: none; color: inherit; display: block;">
+                                    <div style="background: #fff; border: 1px solid #fecaca; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+                                        <div>
+                                            <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
+                                            <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <p style="font-weight: 600; color: #dc2626;">₱{{ number_format($item['amount'], 2) }}</p>
+                                            <p style="font-size: 0.75rem; color: {{ $item['severity'] === 'critical' ? '#7f1d1d' : ($item['severity'] === 'high' ? '#991b1b' : '#dc2626') }};">
+                                                {{ $item['days_overdue'] }} days overdue
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div style="text-align: right;">
-                                        <p style="font-weight: 600; color: #dc2626;">₱{{ number_format($item['amount'], 2) }}</p>
-                                        <p style="font-size: 0.75rem; color: {{ $item['severity'] === 'critical' ? '#7f1d1d' : ($item['severity'] === 'high' ? '#991b1b' : '#dc2626') }};">
-                                            {{ $item['days_overdue'] }} days overdue
-                                        </p>
-                                    </div>
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>
@@ -63,18 +65,20 @@
                         <h4 style="font-weight: 600; margin-bottom: 0.75rem; color: #ea580c;">📦 Supplier Bills Overdue</h4>
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             @foreach($data['payables'] as $item)
-                                <div style="background: #fff; border: 1px solid #fed7aa; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
-                                        <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                <a href="{{ route('filament.tos.resources.purchases.edit', ['record' => $item['id']]) }}" style="text-decoration: none; color: inherit; display: block;">
+                                    <div style="background: #fff; border: 1px solid #fed7aa; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+                                        <div>
+                                            <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
+                                            <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <p style="font-weight: 600; color: #ea580c;">₱{{ number_format($item['amount'], 2) }}</p>
+                                            <p style="font-size: 0.75rem; color: {{ $item['severity'] === 'critical' ? '#7c2d12' : ($item['severity'] === 'high' ? '#9a3412' : '#ea580c') }};">
+                                                {{ $item['days_overdue'] }} days overdue
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div style="text-align: right;">
-                                        <p style="font-weight: 600; color: #ea580c;">₱{{ number_format($item['amount'], 2) }}</p>
-                                        <p style="font-size: 0.75rem; color: {{ $item['severity'] === 'critical' ? '#7c2d12' : ($item['severity'] === 'high' ? '#9a3412' : '#ea580c') }};">
-                                            {{ $item['days_overdue'] }} days overdue
-                                        </p>
-                                    </div>
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>
