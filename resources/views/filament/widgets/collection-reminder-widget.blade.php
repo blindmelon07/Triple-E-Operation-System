@@ -60,22 +60,24 @@
                         <h4 style="font-weight: 600; margin-bottom: 0.75rem; color: #059669;">💰 To Collect from Customers</h4>
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             @foreach($data['receivables'] as $item)
-                                <div style="background: #fff; border: 1px solid {{ $item['urgency'] === 'due-today' ? '#fbbf24' : ($item['urgency'] === 'urgent' ? '#fcd34d' : '#d1fae5') }}; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
-                                        <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                <a href="{{ route('filament.tos.resources.sales.edit', ['record' => $item['id']]) }}" style="text-decoration: none; color: inherit; display: block;">
+                                    <div style="background: #fff; border: 1px solid {{ $item['urgency'] === 'due-today' ? '#fbbf24' : ($item['urgency'] === 'urgent' ? '#fcd34d' : '#d1fae5') }}; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+                                        <div>
+                                            <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
+                                            <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <p style="font-weight: 600; color: #059669;">₱{{ number_format($item['amount'], 2) }}</p>
+                                            <p style="font-size: 0.75rem; color: {{ $item['urgency'] === 'due-today' ? '#b45309' : ($item['urgency'] === 'urgent' ? '#d97706' : '#059669') }};">
+                                                @if($item['days_until_due'] == 0)
+                                                    Due today!
+                                                @else
+                                                    Due in {{ $item['days_until_due'] }} day(s)
+                                                @endif
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div style="text-align: right;">
-                                        <p style="font-weight: 600; color: #059669;">₱{{ number_format($item['amount'], 2) }}</p>
-                                        <p style="font-size: 0.75rem; color: {{ $item['urgency'] === 'due-today' ? '#b45309' : ($item['urgency'] === 'urgent' ? '#d97706' : '#059669') }};">
-                                            @if($item['days_until_due'] == 0)
-                                                Due today!
-                                            @else
-                                                Due in {{ $item['days_until_due'] }} day(s)
-                                            @endif
-                                        </p>
-                                    </div>
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>
@@ -87,22 +89,24 @@
                         <h4 style="font-weight: 600; margin-bottom: 0.75rem; color: #2563eb;">💳 To Pay to Suppliers</h4>
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             @foreach($data['payables'] as $item)
-                                <div style="background: #fff; border: 1px solid {{ $item['urgency'] === 'due-today' ? '#fbbf24' : ($item['urgency'] === 'urgent' ? '#fcd34d' : '#dbeafe') }}; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
-                                        <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                <a href="{{ route('filament.tos.resources.purchases.edit', ['record' => $item['id']]) }}" style="text-decoration: none; color: inherit; display: block;">
+                                    <div style="background: #fff; border: 1px solid {{ $item['urgency'] === 'due-today' ? '#fbbf24' : ($item['urgency'] === 'urgent' ? '#fcd34d' : '#dbeafe') }}; border-radius: 0.5rem; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+                                        <div>
+                                            <p style="font-weight: 600; font-size: 0.875rem;">{{ $item['reference'] }}</p>
+                                            <p style="font-size: 0.75rem; color: #6b7280;">{{ $item['name'] }}</p>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <p style="font-weight: 600; color: #2563eb;">₱{{ number_format($item['amount'], 2) }}</p>
+                                            <p style="font-size: 0.75rem; color: {{ $item['urgency'] === 'due-today' ? '#b45309' : ($item['urgency'] === 'urgent' ? '#d97706' : '#2563eb') }};">
+                                                @if($item['days_until_due'] == 0)
+                                                    Due today!
+                                                @else
+                                                    Due in {{ $item['days_until_due'] }} day(s)
+                                                @endif
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div style="text-align: right;">
-                                        <p style="font-weight: 600; color: #2563eb;">₱{{ number_format($item['amount'], 2) }}</p>
-                                        <p style="font-size: 0.75rem; color: {{ $item['urgency'] === 'due-today' ? '#b45309' : ($item['urgency'] === 'urgent' ? '#d97706' : '#2563eb') }};">
-                                            @if($item['days_until_due'] == 0)
-                                                Due today!
-                                            @else
-                                                Due in {{ $item['days_until_due'] }} day(s)
-                                            @endif
-                                        </p>
-                                    </div>
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>
