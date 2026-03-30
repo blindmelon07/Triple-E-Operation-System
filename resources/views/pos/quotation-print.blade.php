@@ -588,13 +588,13 @@
         </div>
 
         <!-- Validity Notice -->
-        @if($quotation->valid_until)
+        {{-- @if($quotation->valid_until)
             <div style="text-align: center; margin-top: 20px; padding: 10px; background: #dbeafe; border-radius: 6px;">
                 <p style="color: #1e40af; font-weight: 500; font-size: 11px;">
                     This quotation is valid until <strong>{{ $quotation->valid_until->format('F d, Y') }}</strong>
                 </p>
             </div>
-        @endif
+        @endif --}}
 
         <!-- Footer -->
         <div class="footer" style="margin-top: 20px;">
