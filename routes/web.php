@@ -17,6 +17,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/quotation/{quotation}/print', [POSController::class, 'printQuotation'])->name('pos.print-quotation');
     Route::get('/pos/print-receipt/{sale}', [POSController::class, 'printReceipt'])->name('pos.print-receipt');
     Route::get('/pos/recent-sales', [POSController::class, 'getRecentSales'])->name('pos.recent-sales');
+    Route::post('/pos/void-request/{sale}', [POSController::class, 'requestVoid'])->name('pos.void-request');
+
+    // Void Request approval flow
+    Route::get('/pos/void-requests/pending', [\App\Http\Controllers\VoidRequestController::class, 'pending'])->name('pos.void-requests.pending');
+    Route::get('/pos/void-requests/pending-count', [\App\Http\Controllers\VoidRequestController::class, 'pendingCount'])->name('pos.void-requests.pending-count');
+    Route::get('/pos/void-requests/{voidRequest}/status', [\App\Http\Controllers\VoidRequestController::class, 'status'])->name('pos.void-requests.status');
+    Route::post('/pos/void-requests/{voidRequest}/approve', [\App\Http\Controllers\VoidRequestController::class, 'approve'])->name('pos.void-requests.approve');
+    Route::post('/pos/void-requests/{voidRequest}/reject', [\App\Http\Controllers\VoidRequestController::class, 'reject'])->name('pos.void-requests.reject');
+    Route::post('/pos/void-requests/{voidRequest}/cancel', [\App\Http\Controllers\VoidRequestController::class, 'cancel'])->name('pos.void-requests.cancel');
 
     // Cash Register
     Route::post('/pos/register/open', [POSController::class, 'openRegister'])->name('pos.register.open');

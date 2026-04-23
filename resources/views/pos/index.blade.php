@@ -110,6 +110,25 @@
                             </div>
                         </template>
 
+                        @if($isManager)
+                        <!-- Manager: Void Approvals Bell -->
+                        <button
+                            @click="openVoidApprovalsPanel()"
+                            class="relative hidden sm:flex px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition touch-btn items-center gap-2"
+                            title="Pending Void Requests"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span class="hidden lg:inline">Approvals</span>
+                            <span
+                                x-show="pendingVoidCount > 0"
+                                x-text="pendingVoidCount"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse"
+                            ></span>
+                        </button>
+                        @endif
+
                         <!-- Reprint Button -->
                         <button
                             @click="showReprintModal = true"
@@ -1412,13 +1431,19 @@
 
                 <div class="space-y-3">
                     <template x-for="sale in filteredRecentSales" :key="sale.id">
-                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition cursor-pointer border border-transparent hover:border-purple-500"
-                             @click="selectedSaleForReprint = sale; showReprintTypeModal = true">
+                        <div
+                            class="rounded-lg p-4 transition border"
+                            :class="sale.is_voided
+                                ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 opacity-75'
+                                : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-transparent hover:border-purple-500'"
+                            @click="!sale.is_voided && (selectedSaleForReprint = sale, showReprintTypeModal = true)"
+                        >
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
-                                    <div class="flex items-center gap-2 mb-1">
+                                    <div class="flex items-center gap-2 mb-1 flex-wrap">
                                         <span class="font-semibold text-gray-900 dark:text-white" x-text="'Receipt #' + String(sale.id).padStart(6, '0')"></span>
                                         <span class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">Sale</span>
+                                        <span x-show="sale.is_voided" class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded font-semibold">VOIDED</span>
                                     </div>
                                     <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">
                                         <span class="font-medium">Customer:</span>
@@ -1432,9 +1457,22 @@
                                         <span class="font-medium">Items:</span>
                                         <span x-text="sale.sale_items_count + ' item(s)'"></span>
                                     </div>
+                                    <div x-show="sale.is_voided" class="text-xs text-red-600 dark:text-red-400 mt-1">
+                                        <span class="font-medium">Void reason:</span>
+                                        <span x-text="sale.void_reason"></span>
+                                    </div>
                                 </div>
-                                <div class="text-right">
-                                    <div class="text-lg font-bold text-purple-600 dark:text-purple-400" x-text="'₱' + parseFloat(sale.total).toFixed(2)"></div>
+                                <div class="text-right flex flex-col items-end gap-2">
+                                    <div class="text-lg font-bold"
+                                         :class="sale.is_voided ? 'text-red-400 line-through' : 'text-purple-600 dark:text-purple-400'"
+                                         x-text="'₱' + parseFloat(sale.total).toFixed(2)"></div>
+                                    <button
+                                        x-show="!sale.is_voided && registerSessionId && sale.cash_register_session_id == registerSessionId"
+                                        @click.stop="openVoidModal(sale)"
+                                        class="text-xs px-3 py-1 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg transition font-semibold"
+                                    >
+                                        Void
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1504,6 +1542,225 @@
             </div>
         </div>
     </div>
+
+    <!-- Void Transaction Modal -->
+    <div
+        x-show="showVoidModal"
+        x-cloak
+        @keydown.escape.window="showVoidModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showVoidModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Void Transaction</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="saleToVoid ? 'Receipt #' + String(saleToVoid.id).padStart(6, '0') + ' — ₱' + parseFloat(saleToVoid.total).toFixed(2) : ''"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    This will permanently void the sale and restore inventory. This action cannot be undone.
+                </p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for void <span class="text-red-500">*</span></label>
+                    <input
+                        type="text"
+                        x-model="voidReason"
+                        placeholder="e.g. Wrong item, customer cancelled..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-base"
+                        @keydown.enter="confirmVoid()"
+                    >
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+                <button
+                    @click="showVoidModal = false; voidReason = ''; saleToVoid = null"
+                    class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                >
+                    Cancel
+                </button>
+                <button
+                    @click="submitVoidRequest()"
+                    :disabled="!voidReason.trim() || isVoiding"
+                    class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                >
+                    <svg x-show="isVoiding" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span x-text="isVoiding ? 'Submitting...' : 'Request Void'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Void Waiting Modal (cashier polls for approval) -->
+    <div
+        x-show="showVoidWaitingModal"
+        x-cloak
+        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-8 text-center">
+            <div class="mb-4 flex justify-center">
+                <div class="p-4 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                    <svg class="w-10 h-10 text-yellow-600 dark:text-yellow-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Waiting for Approval</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Your void request has been sent to the manager.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Please wait while they review it...</p>
+            <div class="flex gap-3 justify-center">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-500"></div>
+            </div>
+            <button
+                @click="cancelVoidRequest()"
+                class="mt-6 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition text-sm font-medium"
+            >
+                Cancel Request
+            </button>
+        </div>
+    </div>
+
+    <!-- Void Rejected Modal -->
+    <div
+        x-show="showVoidRejectedModal"
+        x-cloak
+        @keydown.escape.window="showVoidRejectedModal = false"
+        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+        @click.self="showVoidRejectedModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-8 text-center">
+            <div class="mb-4 flex justify-center">
+                <div class="p-4 bg-red-100 dark:bg-red-900/30 rounded-full">
+                    <svg class="w-10 h-10 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Void Rejected</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">The manager has rejected this void request.</p>
+            <p class="text-sm font-medium text-red-600 dark:text-red-400 mb-6" x-text="'Reason: ' + voidRejectionReason"></p>
+            <button
+                @click="showVoidRejectedModal = false"
+                class="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+            >
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Manager: Void Approval Panel -->
+    @if($isManager)
+    <div
+        x-show="showVoidApprovalsPanel"
+        x-cloak
+        @keydown.escape.window="showVoidApprovalsPanel = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showVoidApprovalsPanel = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                        <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Pending Void Requests</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="pendingVoidRequests.length + ' request(s) waiting'"></p>
+                    </div>
+                </div>
+                <button @click="showVoidApprovalsPanel = false" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6">
+                <div x-show="isLoadingVoidRequests" class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                </div>
+                <div x-show="!isLoadingVoidRequests && pendingVoidRequests.length === 0" class="text-center py-10 text-gray-500 dark:text-gray-400">
+                    No pending void requests.
+                </div>
+                <div class="space-y-4">
+                    <template x-for="vr in pendingVoidRequests" :key="vr.id">
+                        <div class="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-700 rounded-xl p-4">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <p class="font-bold text-gray-900 dark:text-white" x-text="'Receipt #' + String(vr.sale_id).padStart(6, '0')"></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Customer:</span> <span x-text="vr.customer_name"></span></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Amount:</span> <span x-text="'₱' + parseFloat(vr.sale_total).toFixed(2)"></span></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Requested by:</span> <span x-text="vr.requested_by"></span></p>
+                                    <p class="text-sm text-orange-700 dark:text-orange-400 mt-1"><span class="font-medium">Reason:</span> <span x-text="vr.void_reason"></span></p>
+                                </div>
+                                <span class="text-xs text-gray-400" x-text="vr.created_at"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button
+                                    @click="approveVoidRequest(vr.id)"
+                                    class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-semibold"
+                                >
+                                    Approve
+                                </button>
+                                <button
+                                    @click="openRejectVoidModal(vr)"
+                                    class="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm font-semibold"
+                                >
+                                    Reject
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manager: Reject Reason Modal -->
+    <div
+        x-show="showRejectVoidModal"
+        x-cloak
+        @keydown.escape.window="showRejectVoidModal = false"
+        class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]"
+        @click.self="showRejectVoidModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Reject Void Request</h3>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for rejection <span class="text-red-500">*</span></label>
+            <input
+                type="text"
+                x-model="rejectVoidReason"
+                placeholder="e.g. Not authorized, sale is valid..."
+                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-base mb-4"
+                @keydown.enter="confirmRejectVoid()"
+            >
+            <div class="flex gap-3">
+                <button @click="showRejectVoidModal = false; rejectVoidReason = ''"
+                    class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 transition font-semibold">
+                    Cancel
+                </button>
+                <button @click="confirmRejectVoid()"
+                    :disabled="!rejectVoidReason.trim()"
+                    class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl transition font-semibold">
+                    Reject
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Open Register Modal -->
     <div
@@ -1701,6 +1958,26 @@
                 showQuotationSuccessModal: false,
                 showReprintModal: false,
                 showReprintTypeModal: false,
+                isManager: @json($isManager),
+                showVoidModal: false,
+                saleToVoid: null,
+                voidReason: '',
+                isVoiding: false,
+                // Cashier waiting flow
+                showVoidWaitingModal: false,
+                showVoidRejectedModal: false,
+                currentVoidRequestId: null,
+                voidPollInterval: null,
+                voidRejectionReason: '',
+                // Manager approval panel
+                showVoidApprovalsPanel: false,
+                pendingVoidRequests: [],
+                isLoadingVoidRequests: false,
+                pendingVoidCount: 0,
+                pendingCountPollInterval: null,
+                showRejectVoidModal: false,
+                rejectVoidReason: '',
+                voidRequestToReject: null,
                 outOfStockTitle: '',
                 outOfStockMessage: '',
                 outOfStockProduct: '',
@@ -1782,6 +2059,14 @@
                             this.fetchRecentSales();
                         }
                     });
+
+                    // Manager: poll pending void count every 10s
+                    if (this.isManager) {
+                        this.fetchPendingVoidCount();
+                        this.pendingCountPollInterval = setInterval(() => {
+                            this.fetchPendingVoidCount();
+                        }, 10000);
+                    }
                 },
 
                 get registerExpectedCash() {
@@ -2409,6 +2694,170 @@
                         this.showReprintTypeModal = false;
                         this.showReprintModal = false;
                     }
+                },
+
+                openVoidModal(sale) {
+                    this.saleToVoid = sale;
+                    this.voidReason = '';
+                    this.showVoidModal = true;
+                },
+
+                async submitVoidRequest() {
+                    if (!this.saleToVoid || !this.voidReason.trim() || this.isVoiding) return;
+
+                    this.isVoiding = true;
+                    try {
+                        const response = await fetch(`/pos/void-request/${this.saleToVoid.id}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ void_reason: this.voidReason.trim() }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.currentVoidRequestId = data.void_request_id;
+                            this.showVoidModal = false;
+                            this.showVoidWaitingModal = true;
+                            this.startVoidPolling();
+                        } else {
+                            alert(data.message || 'Failed to submit void request.');
+                        }
+                    } catch (e) {
+                        alert('An error occurred. Please try again.');
+                    } finally {
+                        this.isVoiding = false;
+                    }
+                },
+
+                startVoidPolling() {
+                    this.voidPollInterval = setInterval(async () => {
+                        try {
+                            const res = await fetch(`/pos/void-requests/${this.currentVoidRequestId}/status`, {
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                            });
+                            const data = await res.json();
+
+                            if (data.status === 'approved') {
+                                this.stopVoidPolling();
+                                this.showVoidWaitingModal = false;
+                                // Mark sale as voided in the local list
+                                const idx = this.recentSales.findIndex(s => s.id === this.saleToVoid?.id);
+                                if (idx !== -1) {
+                                    this.recentSales[idx].is_voided = true;
+                                    this.recentSales[idx].void_reason = this.voidReason;
+                                }
+                                this.searchRecentSales();
+                                this.saleToVoid = null;
+                                this.voidReason = '';
+                                this.currentVoidRequestId = null;
+                                alert('Void approved! The transaction has been voided.');
+                            } else if (data.status === 'rejected') {
+                                this.stopVoidPolling();
+                                this.showVoidWaitingModal = false;
+                                this.voidRejectionReason = data.rejection_reason || 'No reason provided.';
+                                this.showVoidRejectedModal = true;
+                                this.saleToVoid = null;
+                                this.currentVoidRequestId = null;
+                            }
+                        } catch (e) {}
+                    }, 3000);
+                },
+
+                stopVoidPolling() {
+                    if (this.voidPollInterval) {
+                        clearInterval(this.voidPollInterval);
+                        this.voidPollInterval = null;
+                    }
+                },
+
+                async cancelVoidRequest() {
+                    if (!this.currentVoidRequestId) return;
+                    try {
+                        await fetch(`/pos/void-requests/${this.currentVoidRequestId}/cancel`, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        });
+                    } catch (e) {}
+                    this.stopVoidPolling();
+                    this.showVoidWaitingModal = false;
+                    this.currentVoidRequestId = null;
+                    this.saleToVoid = null;
+                    this.voidReason = '';
+                },
+
+                // Manager methods
+                async fetchPendingVoidCount() {
+                    try {
+                        const res = await fetch('/pos/void-requests/pending-count', {
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        });
+                        const data = await res.json();
+                        this.pendingVoidCount = data.count || 0;
+                    } catch (e) {}
+                },
+
+                async openVoidApprovalsPanel() {
+                    this.showVoidApprovalsPanel = true;
+                    this.isLoadingVoidRequests = true;
+                    try {
+                        const res = await fetch('/pos/void-requests/pending', {
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        });
+                        const data = await res.json();
+                        if (data.success) this.pendingVoidRequests = data.requests;
+                    } catch (e) {} finally {
+                        this.isLoadingVoidRequests = false;
+                    }
+                },
+
+                async approveVoidRequest(id) {
+                    try {
+                        const res = await fetch(`/pos/void-requests/${id}/approve`, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.pendingVoidRequests = this.pendingVoidRequests.filter(vr => vr.id !== id);
+                            this.pendingVoidCount = Math.max(0, this.pendingVoidCount - 1);
+                            // Refresh the recent sales list if it is loaded
+                            if (this.recentSales.length > 0) this.fetchRecentSales();
+                        } else {
+                            alert(data.message || 'Failed to approve.');
+                        }
+                    } catch (e) { alert('An error occurred.'); }
+                },
+
+                openRejectVoidModal(vr) {
+                    this.voidRequestToReject = vr;
+                    this.rejectVoidReason = '';
+                    this.showRejectVoidModal = true;
+                },
+
+                async confirmRejectVoid() {
+                    if (!this.rejectVoidReason.trim() || !this.voidRequestToReject) return;
+                    try {
+                        const res = await fetch(`/pos/void-requests/${this.voidRequestToReject.id}/reject`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                            body: JSON.stringify({ rejection_reason: this.rejectVoidReason.trim() }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.pendingVoidRequests = this.pendingVoidRequests.filter(vr => vr.id !== this.voidRequestToReject.id);
+                            this.pendingVoidCount = Math.max(0, this.pendingVoidCount - 1);
+                            this.showRejectVoidModal = false;
+                            this.rejectVoidReason = '';
+                            this.voidRequestToReject = null;
+                        } else {
+                            alert(data.message || 'Failed to reject.');
+                        }
+                    } catch (e) { alert('An error occurred.'); }
                 },
 
                 get subtotal() {

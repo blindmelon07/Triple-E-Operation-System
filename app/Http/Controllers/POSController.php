@@ -14,6 +14,10 @@ use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\User;
+use App\Models\VoidRequest;
+use App\Notifications\VoidRequestNotification;
+use Spatie\Permission\Models\Role;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,9 +81,12 @@ class POSController extends Controller
             }
         }
 
+        $isManager = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+
         return view('pos.index', compact(
             'products', 'customers', 'categories', 'registerSession',
-            'quotationCart', 'quotationId', 'quotationCustomerId'
+            'quotationCart', 'quotationId', 'quotationCustomerId',
+            'isManager'
         ));
     }
 
@@ -643,5 +650,54 @@ class POSController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function requestVoid(Request $request, Sale $sale): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'void_reason' => 'required|string|max:255',
+        ]);
+
+        $session = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'No open register session.'], 422);
+        }
+
+        if ($sale->cash_register_session_id !== $session->id) {
+            return response()->json(['success' => false, 'message' => 'This sale does not belong to the current register session.'], 422);
+        }
+
+        if ($sale->is_voided) {
+            return response()->json(['success' => false, 'message' => 'This sale has already been voided.'], 422);
+        }
+
+        $existing = VoidRequest::where('sale_id', $sale->id)->where('status', 'pending')->first();
+        if ($existing) {
+            return response()->json(['success' => true, 'void_request_id' => $existing->id, 'message' => 'Void request already pending.']);
+        }
+
+        $voidRequest = VoidRequest::create([
+            'sale_id'                  => $sale->id,
+            'requested_by_id'          => auth()->id(),
+            'cash_register_session_id' => $session->id,
+            'void_reason'              => $validated['void_reason'],
+            'status'                   => 'pending',
+        ]);
+
+        // Notify all admins and super_admins via database notification
+        $existingRoles = Role::whereIn('name', ['admin', 'super_admin'])->pluck('name')->toArray();
+        if (!empty($existingRoles)) {
+            User::role($existingRoles)->get()
+                ->each(fn ($manager) => $manager->notify(new VoidRequestNotification($voidRequest)));
+        }
+
+        return response()->json([
+            'success'         => true,
+            'void_request_id' => $voidRequest->id,
+            'message'         => 'Void request submitted. Waiting for manager approval.',
+        ]);
     }
 }

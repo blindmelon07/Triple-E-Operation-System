@@ -92,4 +92,14 @@ class CashRegisterSession extends Model
             $this->increment('total_cash_sales', $amount);
         }
     }
+
+    public function reverseSale(float $amount, bool $isCash): void
+    {
+        $this->decrement('total_sales', $amount);
+        $this->decrement('total_transactions');
+
+        if ($isCash) {
+            $this->decrement('total_cash_sales', $amount);
+        }
+    }
 }

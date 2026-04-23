@@ -26,6 +26,9 @@ class Sale extends Model
         'amount_paid',
         'due_date',
         'paid_date',
+        'is_voided',
+        'voided_at',
+        'void_reason',
     ];
 
     protected function casts(): array
@@ -36,6 +39,8 @@ class Sale extends Model
             'paid_date' => 'date',
             'total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
+            'is_voided' => 'boolean',
+            'voided_at' => 'datetime',
         ];
     }
 
