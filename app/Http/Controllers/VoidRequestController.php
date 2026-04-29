@@ -66,18 +66,25 @@ class VoidRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        if ($voidRequest->status !== 'pending') {
-            return response()->json(['success' => false, 'message' => 'Request is no longer pending.'], 422);
-        }
-
-        $sale = $voidRequest->sale;
-
-        if ($sale->is_voided) {
-            return response()->json(['success' => false, 'message' => 'Sale is already voided.'], 422);
-        }
-
         try {
             DB::beginTransaction();
+
+            // Lock the row so concurrent approval requests queue up instead of racing
+            $voidRequest = VoidRequest::where('id', $voidRequest->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($voidRequest->status !== 'pending') {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Request is no longer pending.'], 422);
+            }
+
+            $sale = $voidRequest->sale;
+
+            if ($sale->is_voided) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Sale is already voided.'], 422);
+            }
 
             $sale->load('sale_items');
 
