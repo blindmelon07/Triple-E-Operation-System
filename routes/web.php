@@ -46,4 +46,4 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/aging/export-pdf', fn () => (new ReportExportService)->exportAgingPdf())->name('aging-report.export-pdf');
 });
 
-Route::post('/tos/pos/complete-sale', [POSController::class, 'completeSale'])->name('filament.admin.pages.pos.complete-sale');
+Route::middleware(['auth'])->post('/tos/pos/complete-sale', [POSController::class, 'completeSale'])->name('filament.admin.pages.pos.complete-sale');

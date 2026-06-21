@@ -16,4 +16,14 @@ class EditProduct extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function afterSave(): void
+    {
+        $quantity = $this->data['quantity'] ?? 0;
+
+        $this->record->inventory()->updateOrCreate(
+            ['product_id' => $this->record->id],
+            ['quantity' => $quantity]
+        );
+    }
 }

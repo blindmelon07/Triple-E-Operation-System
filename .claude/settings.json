@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/login)",
+      "Bash(curl -s -o /dev/null -w 'HTTP %{http_code}' -X POST http://localhost:8000/tos/pos/complete-sale -H 'Content-Type: application/json' -d '{\"items\":[],\"total\":0,\"payment_method\":\"cash\"}')",
+      "Bash(curl -s -o /dev/null -w 'HTTP %{http_code}' -X POST http://localhost:8000/tos/pos/complete-sale -H 'X-Requested-With: XMLHttpRequest' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"items\":[{\"name\":\"test\",\"quantity\":1,\"price\":100,\"unit_price\":100,\"unit\":\"pc\"}],\"total\":100,\"payment_method\":\"cash\"}')",
+      "Bash(curl -s -o /dev/null -w 'HTTP %{http_code}' -X POST http://localhost:8000/tos/pos/complete-sale -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"items\":[{\"name\":\"test\",\"quantity\":1,\"price\":100,\"unit_price\":100,\"unit\":\"pc\"}],\"total\":100,\"payment_method\":\"cash\"}')"
+    ]
+  }
+}
