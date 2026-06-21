@@ -49,7 +49,8 @@ class SalesTable
                             'paid_date'      => now()->toDateString(),
                         ]);
                     }),
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn (Sale $record): bool => $record->cashRegisterSession?->status !== 'Closed'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

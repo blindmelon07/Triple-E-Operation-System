@@ -33,6 +33,11 @@ class SaleResource extends Resource
         return SalesTable::configure($table);
     }
 
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return $record->cashRegisterSession?->status !== 'Closed';
+    }
+
     public static function getRelations(): array
     {
         return [
