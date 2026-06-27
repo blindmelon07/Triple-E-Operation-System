@@ -598,8 +598,34 @@
                 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Total Amount</label>
-                        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + total.toFixed(2)"></div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Delivery Fee</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
+                            <input
+                                type="number"
+                                x-model.number="deliveryFee"
+                                @input="calculateChange()"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                class="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-1.5">
+                        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <span>Items Total</span>
+                            <span x-text="'₱' + total.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400" x-show="deliveryFee > 0">
+                            <span>Delivery Fee</span>
+                            <span x-text="'₱' + deliveryFee.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between font-bold text-lg text-blue-600 dark:text-blue-400 border-t border-gray-200 dark:border-gray-600 pt-1.5">
+                            <span>Grand Total</span>
+                            <span x-text="'₱' + grandTotal.toFixed(2)"></span>
+                        </div>
                     </div>
 
                     <div>
@@ -649,8 +675,8 @@
 
                     <div x-show="paymentMethod === 'cash'">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cash Received</label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             x-model.number="cashReceived"
                             @input="calculateChange()"
                             step="0.01"
@@ -663,6 +689,9 @@
                             <span class="font-bold" :class="change < 0 ? 'text-red-600' : 'text-green-600'" x-text="'₱' + Math.abs(change).toFixed(2)"></span>
                         </div>
                     </div>
+                    <div x-show="paymentMethod === 'cod' && deliveryFee > 0" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2 text-sm text-blue-700 dark:text-blue-300">
+                        COD total includes ₱<span x-text="deliveryFee.toFixed(2)"></span> delivery fee.
+                    </div>
                 </div>
 
                 <div class="flex gap-3 mt-6">
@@ -672,7 +701,7 @@
                     >
                         Cancel
                     </button>
-                    <button 
+                    <button
                         @click="confirmPayment()"
                         :disabled="paymentMethod === 'cash' && change < 0"
                         class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition"
@@ -2005,6 +2034,7 @@
                 paymentMethod: 'cash',
                 referenceNumber: '',
                 paymentTermDays: 5,
+                deliveryFee: 0,
                 cashReceived: 0,
                 change: 0,
                 lastSaleTotal: 0,
@@ -2442,12 +2472,13 @@
                 },
 
                 calculateChange() {
-                    this.change = this.cashReceived - this.total;
+                    this.change = this.cashReceived - this.grandTotal;
                 },
 
                 processPayment() {
+                    this.deliveryFee = 0;
                     this.showPaymentModal = true;
-                    this.cashReceived = this.total;
+                    this.cashReceived = this.grandTotal;
                     this.calculateChange();
                 },
 
@@ -2468,7 +2499,8 @@
                             cash_register_session_id: this.registerSessionId || null,
                             quotation_id: this.quotationId || null,
                             items: this.cart,
-                            total: this.total,
+                            total: this.grandTotal,
+                            delivery_fee: this.deliveryFee,
                             payment_method: this.paymentMethod,
                             reference_number: ['card','gcash','paymaya'].includes(this.paymentMethod) ? this.referenceNumber : null,
                             payment_term_days: this.paymentMethod === 'charge' ? this.paymentTermDays : null,
@@ -2505,14 +2537,14 @@
                         if (data.success) {
                             // Update register session totals locally
                             if (this.registerSessionId) {
-                                this.registerTotalSales += this.total;
+                                this.registerTotalSales += this.grandTotal;
                                 this.registerTotalTransactions += 1;
                                 if (this.paymentMethod === 'cash') {
-                                    this.registerTotalCashSales += this.total;
+                                    this.registerTotalCashSales += this.grandTotal;
                                 }
                             }
 
-                            this.lastSaleTotal = this.total;
+                            this.lastSaleTotal = this.grandTotal;
                             this.lastSaleId = data.sale_id;
                             this.showPaymentModal = false;
                             this.showSuccessModal = true;
@@ -2522,6 +2554,7 @@
                             this.paymentMethod = 'cash';
                             this.referenceNumber = '';
                             this.paymentTermDays = 5;
+                            this.deliveryFee = 0;
                             this.cashReceived = 0;
                             this.change = 0;
                         } else {
@@ -2870,6 +2903,10 @@
 
                 get total() {
                     return this.subtotal + this.tax;
+                },
+
+                get grandTotal() {
+                    return this.total + (parseFloat(this.deliveryFee) || 0);
                 }
             }
         }

@@ -554,12 +554,18 @@
                 <div class="summary-box">
                     <div class="summary-row">
                         <span class="label">Subtotal</span>
-                        <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+                        <span class="value">₱{{ number_format($sale->total - $sale->delivery_fee, 2) }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="label">Tax (0%)</span>
                         <span class="value">₱0.00</span>
                     </div>
+                    @if($sale->delivery_fee > 0)
+                    <div class="summary-row">
+                        <span class="label">Delivery Fee</span>
+                        <span class="value">₱{{ number_format($sale->delivery_fee, 2) }}</span>
+                    </div>
+                    @endif
                     <div class="summary-row total">
                         <span class="label">Total</span>
                         <span class="value">₱{{ number_format($sale->total, 2) }}</span>
@@ -719,12 +725,18 @@
                 <div class="summary-box">
                     <div class="summary-row">
                         <span class="label">Subtotal</span>
-                        <span class="value">₱{{ number_format($sale->total, 2) }}</span>
+                        <span class="value">₱{{ number_format($sale->total - $sale->delivery_fee, 2) }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="label">Tax (0%)</span>
                         <span class="value">₱0.00</span>
                     </div>
+                    @if($sale->delivery_fee > 0)
+                    <div class="summary-row">
+                        <span class="label">Delivery Fee</span>
+                        <span class="value">₱{{ number_format($sale->delivery_fee, 2) }}</span>
+                    </div>
+                    @endif
                     <div class="summary-row total">
                         <span class="label">Total</span>
                         <span class="value">₱{{ number_format($sale->total, 2) }}</span>
