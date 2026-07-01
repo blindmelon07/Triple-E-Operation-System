@@ -13,6 +13,8 @@ class SaleItem extends Model
         'product_description',
         'unit',
         'unit_price',
+        'discount_amount',
+        'discount_is_flat',
         'is_manual',
         'quantity',
         'price',
@@ -21,6 +23,8 @@ class SaleItem extends Model
     protected $casts = [
         'is_manual' => 'boolean',
         'unit_price' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'discount_is_flat' => 'boolean',
         'price' => 'decimal:2',
     ];
 

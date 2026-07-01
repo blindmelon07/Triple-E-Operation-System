@@ -107,10 +107,8 @@ class ProductImportService
                 ['contact_info' => 'Auto-created for product imports']
             );
 
-            // Get or create a default category for imports without category
-            $defaultCategory = Category::firstOrCreate(
-                ['name' => 'Uncategorized']
-            );
+            // Get or create a default category for imports without category (created lazily, only if needed)
+            $defaultCategory = null;
 
             while (($row = fgetcsv($file)) !== false) {
                 // Skip empty rows
@@ -137,6 +135,8 @@ class ProductImportService
                 $category = null;
                 if (! empty($data['category'])) {
                     $category = Category::firstOrCreate(['name' => trim($data['category'])]);
+                } else {
+                    $defaultCategory ??= Category::firstOrCreate(['name' => 'Uncategorized']);
                 }
 
                 $unitValue = strtolower(trim($data['unit'] ?? 'piece'));

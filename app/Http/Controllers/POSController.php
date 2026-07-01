@@ -24,6 +24,15 @@ use Illuminate\Support\Facades\DB;
 
 class POSController extends Controller
 {
+    /**
+     * By default a discount is per piece (discount * quantity); checking "flat total"
+     * treats the entered amount as the whole line's discount instead.
+     */
+    private function effectiveDiscount(float $discountAmount, bool $isFlat, float $quantity): float
+    {
+        return $isFlat ? $discountAmount : $discountAmount * $quantity;
+    }
+
     public function index(Request $request): \Illuminate\Contracts\View\View
     {
         $products = Product::with(['category', 'inventory'])
@@ -70,8 +79,10 @@ class POSController extends Controller
                         'id' => $item->is_manual ? null : $item->product_id,
                         'is_manual' => (bool) $item->is_manual,
                         'name' => $item->is_manual ? $item->product_description : ($item->product?->name ?? $item->product_description),
-                        'price' => (float) ($item->unit_price * $item->quantity),
+                        'price' => (float) max(0, $item->unit_price * $item->quantity - $this->effectiveDiscount((float) $item->discount_amount, (bool) $item->discount_is_flat, (float) $item->quantity)),
                         'unit_price' => (float) $item->unit_price,
+                        'discount' => (float) $item->discount_amount,
+                        'discountIsFlat' => (bool) $item->discount_is_flat,
                         'unit' => $item->unit,
                         'quantity' => (float) $item->quantity,
                         'maxStock' => $item->is_manual ? 999999 : ($item->product?->inventory?->quantity ?? 0),
@@ -382,6 +393,8 @@ class POSController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.discountIsFlat' => 'nullable|boolean',
             'items.*.unit' => 'required|string',
             'total' => 'required|numeric|min:0',
             'delivery_fee' => 'nullable|numeric|min:0',
@@ -418,7 +431,9 @@ class POSController extends Controller
             // Create sale items
             foreach ($validated['items'] as $item) {
                 $isManual = $item['is_manual'] ?? false;
-                $itemPrice = $item['unit_price'] * $item['quantity'];
+                $discountAmount = $item['discount'] ?? 0;
+                $discountIsFlat = $item['discountIsFlat'] ?? false;
+                $itemPrice = max(0, $item['unit_price'] * $item['quantity'] - $this->effectiveDiscount($discountAmount, $discountIsFlat, $item['quantity']));
 
                 if (!$isManual) {
                     $product = Product::findOrFail($item['id']);
@@ -435,6 +450,8 @@ class POSController extends Controller
                     'is_manual' => $isManual,
                     'unit' => $item['unit'],
                     'unit_price' => $item['unit_price'],
+                    'discount_amount' => $discountAmount,
+                    'discount_is_flat' => $discountIsFlat,
                     'quantity' => $item['quantity'],
                     'price' => $itemPrice,
                 ]);
@@ -537,6 +554,8 @@ class POSController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.discountIsFlat' => 'nullable|boolean',
             'items.*.unit' => 'required|string',
             'total' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
@@ -558,8 +577,10 @@ class POSController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
-                $itemPrice = $item['unit_price'] * $item['quantity'];
                 $isManual = $item['is_manual'] ?? false;
+                $discountAmount = $item['discount'] ?? 0;
+                $discountIsFlat = $item['discountIsFlat'] ?? false;
+                $itemPrice = max(0, $item['unit_price'] * $item['quantity'] - $this->effectiveDiscount($discountAmount, $discountIsFlat, $item['quantity']));
 
                 QuotationItem::create([
                     'quotation_id' => $quotation->id,
@@ -569,6 +590,8 @@ class POSController extends Controller
                     'unit' => $item['unit'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
+                    'discount_amount' => $discountAmount,
+                    'discount_is_flat' => $discountIsFlat,
                     'price' => $itemPrice,
                 ]);
             }

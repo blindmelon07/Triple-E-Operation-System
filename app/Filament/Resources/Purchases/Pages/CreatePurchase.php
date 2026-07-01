@@ -14,7 +14,7 @@ class CreatePurchase extends CreateRecord
         $total = 0;
         if (!empty($data['purchase_items'])) {
             foreach ($data['purchase_items'] as $item) {
-                $total += ($item['price'] ?? 0) * ($item['quantity_received'] ?? 0);
+                $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
             }
         }
         $data['total'] = $total;

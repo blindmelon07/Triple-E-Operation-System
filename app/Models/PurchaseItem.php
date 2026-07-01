@@ -92,7 +92,7 @@ class PurchaseItem extends Model
         $purchase = $this->purchase;
         if ($purchase) {
             $total = $purchase->purchase_items()->get()->sum(function ($item) {
-                return ($item->price ?? 0) * ($item->quantity_received ?? 0);
+                return ($item->price ?? 0) * ($item->quantity ?? 0);
             });
             $purchase->updateQuietly(['total' => $total]);
         }

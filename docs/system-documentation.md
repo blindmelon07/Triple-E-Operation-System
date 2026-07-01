@@ -104,10 +104,14 @@ GET /pos/register/{session}/sales-report
 |---|---|
 | **+/−** buttons | Increment or decrement quantity (minimum 0.01) |
 | **Direct input** | Type quantity directly; validated against available stock |
+| **Discount ₱** | Optional per-item discount amount, entered directly on the cart line |
+| **"flat total" checkbox** | Unchecked (default): the discount is **per piece** — multiplied by quantity. Checked: the discount is a **flat total** for the whole line, regardless of quantity |
 | **Remove item** | Removes line from cart |
 | **Clear cart** | Requires confirmation before emptying |
 
-The cart total updates live as quantities change.
+The cart total updates live as quantities and discounts change. A discount can never exceed the line's own raw value (unit price × quantity) — it is clamped so a line's discounted price cannot go negative.
+
+The Cart Summary (and the Payment modal) show a **Discount** line, in red, whenever any item has a discount applied — this is the total of all per-item discounts, distinct from the flat, sale-wide **Delivery Fee** (see [1.5](#15-payment-processing)).
 
 ---
 
@@ -122,6 +126,18 @@ The cart total updates live as quantities change.
 ### 1.5 Payment Processing
 
 Click **Charge** to open the payment modal.
+
+**Delivery Fee:**
+An optional flat ₱ amount added to the whole sale (e.g. for delivery orders), entered directly in the payment modal. It is separate from item-level discounts and is always added after them.
+
+**Payment modal breakdown:**
+
+```
+Items Total        (raw subtotal — unit price × quantity, before discounts)
+– Discount         (sum of all per-item discounts, only shown if > 0)
++ Delivery Fee      (only shown if > 0)
+= Grand Total       (what the customer actually pays)
+```
 
 **Payment methods:**
 
@@ -313,7 +329,8 @@ Sales are created through the POS. They can also be created manually through the
 | customer_id | FK → Customer | Nullable (walk-in) |
 | cash_register_session_id | FK | Nullable |
 | date | date | Auto-set to current date |
-| total | decimal(10,2) | Sum of all sale items |
+| total | decimal(10,2) | Sum of all sale items, net of discounts, **plus** `delivery_fee` |
+| delivery_fee | decimal(10,2) | Optional flat fee added on top of the discounted items total; default `0` |
 | payment_method | string | cash / bank_transfer / check / credit_card / gcash / maya |
 | payment_term_days | integer | Nullable; set if terms applied |
 | due_date | date | Auto-calculated from customer terms or POS terms override |
@@ -328,6 +345,17 @@ Sales are created through the POS. They can also be created manually through the
 
 **Inventory impact:**
 When a `SaleItem` is created, inventory is decremented automatically (via model hook). Manual items are excluded.
+
+**Sale Items — per-line discount fields**
+
+| Field | Type | Notes |
+|---|---|---|
+| unit_price | decimal(10,2) | Product's unit price at time of sale |
+| discount_amount | decimal(10,2) | ₱ amount entered by the cashier on this line; default `0` |
+| discount_is_flat | boolean | `false` (default): `discount_amount` is per piece — multiplied by quantity. `true`: `discount_amount` is a flat total for the whole line |
+| price | decimal(10,2) | Final, post-discount line total: `unit_price × quantity − effective discount`, clamped at `0` |
+
+The sale's `total` is the sum of every line's post-discount `price`, plus `delivery_fee`.
 
 **Admin Panel — Sales List**
 
@@ -372,7 +400,7 @@ Purchases record stock received from suppliers.
 |---|---|---|
 | supplier_id | FK → Supplier | Required |
 | date | date | Purchase date |
-| total | decimal(10,2) | Auto-calculated from received items |
+| total | decimal(10,2) | Auto-calculated as price × quantity ordered, summed across all lines (what is owed to the supplier) |
 | due_date | date | Auto-calculated from supplier payment terms |
 | payment_status | string | unpaid / partial / paid |
 | amount_paid | decimal(10,2) | |
@@ -393,7 +421,7 @@ When a supplier can only fulfil part of an order:
 - Set `quantity` = total ordered
 - Set `quantity_received` = what physically arrived
 
-Only `quantity_received` drives inventory and the purchase total. The receipt status is calculated automatically:
+`quantity_received` drives inventory and the receipt status below; the purchase total (amount owed) is always based on the full ordered `quantity`, regardless of how much has arrived:
 
 | Status | Condition |
 |---|---|
@@ -434,6 +462,8 @@ Only `quantity_received` drives inventory and the purchase total. The receipt st
 - `creating` — auto-sets `created_by`
 - `created` — sends email notification to admins with `approve_quotation` permission
 - `saved` — recalculates `total` from items on updates (skipped on initial creation to avoid a timing issue)
+
+**Quotation Items** carry the same per-line discount fields as Sale Items — `discount_amount` and `discount_is_flat` (see [2.5](#25-sales)). When an approved quotation is converted to a sale, each item's discount carries over into the resulting `SaleItem` unchanged.
 
 **Quotation statuses:** See [Section 1.6](#16-quotations).
 
@@ -889,4 +919,4 @@ Quotation → Sale (Convert)
 
 ---
 
-*Generated: 2026-02-20*
+*Generated: 2026-02-20 · Updated: 2026-07-01 (per-item discounts & delivery fee)*

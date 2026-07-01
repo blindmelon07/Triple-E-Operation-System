@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\ProductImportService;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 
 use function Pest\Laravel\actingAs;
 
@@ -137,6 +138,9 @@ describe('Product Import', function () {
     });
 
     it('can download csv template', function () {
+        Permission::firstOrCreate(['name' => 'ViewAny:Product', 'guard_name' => 'web']);
+        $this->user->givePermissionTo('ViewAny:Product');
+
         actingAs($this->user);
 
         Livewire::test(ListProducts::class)

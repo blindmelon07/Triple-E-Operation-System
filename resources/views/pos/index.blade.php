@@ -340,7 +340,31 @@
                                             </svg>
                                         </button>
                                     </div>
-                                    <span class="font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
+                                    <div class="text-right">
+                                        <span x-show="item.discount > 0" class="block text-xs text-gray-400 line-through" x-text="'₱' + (item.unit_price * item.quantity).toFixed(2)"></span>
+                                        <span class="font-bold text-blue-600 dark:text-blue-400" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-end gap-2 mt-2">
+                                    <label class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400" title="Unchecked: discount is per piece (× quantity). Checked: discount is a flat total for this line.">
+                                        <input
+                                            type="checkbox"
+                                            x-model="item.discountIsFlat"
+                                            class="rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500"
+                                        >
+                                        flat total
+                                    </label>
+                                    <label class="text-xs text-gray-500 dark:text-gray-400">Discount</label>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">₱</span>
+                                    <input
+                                        type="number"
+                                        x-model.number="item.discount"
+                                        @input="item.discount = Math.max(0, item.discount || 0)"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        class="w-16 text-center text-xs dark:text-white bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-1 py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    >
                                 </div>
                             </div>
                         </template>
@@ -352,6 +376,10 @@
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
                         <span class="font-medium dark:text-white" x-text="'₱' + subtotal.toFixed(2)"></span>
+                    </div>
+                    <div class="flex justify-between text-sm" x-show="discountAmount > 0">
+                        <span class="text-gray-600 dark:text-gray-400">Discount</span>
+                        <span class="font-medium text-red-600 dark:text-red-400" x-text="'-₱' + discountAmount.toFixed(2)"></span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600 dark:text-gray-400">Tax (0%)</span>
@@ -529,7 +557,31 @@
                                                 </svg>
                                             </button>
                                         </div>
-                                        <span class="font-bold text-lg text-blue-600 dark:text-blue-400" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
+                                        <div class="text-right">
+                                            <span x-show="item.discount > 0" class="block text-xs text-gray-400 line-through" x-text="'₱' + (item.unit_price * item.quantity).toFixed(2)"></span>
+                                            <span class="font-bold text-lg text-blue-600 dark:text-blue-400" x-text="'₱' + calculateItemPrice(item).toFixed(2)"></span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-end gap-2 mt-3">
+                                        <label class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400" title="Unchecked: discount is per piece (× quantity). Checked: discount is a flat total for this line.">
+                                            <input
+                                                type="checkbox"
+                                                x-model="item.discountIsFlat"
+                                                class="rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500"
+                                            >
+                                            flat total
+                                        </label>
+                                        <label class="text-sm text-gray-500 dark:text-gray-400">Discount</label>
+                                        <span class="text-sm text-gray-500 dark:text-gray-400">₱</span>
+                                        <input
+                                            type="number"
+                                            x-model.number="item.discount"
+                                            @input="item.discount = Math.max(0, item.discount || 0)"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            class="w-20 text-center dark:text-white bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-1 py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        >
                                     </div>
                                 </div>
                             </template>
@@ -541,6 +593,10 @@
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
                             <span class="font-medium dark:text-white" x-text="'₱' + subtotal.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between text-sm" x-show="discountAmount > 0">
+                            <span class="text-gray-600 dark:text-gray-400">Discount</span>
+                            <span class="font-medium text-red-600 dark:text-red-400" x-text="'-₱' + discountAmount.toFixed(2)"></span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600 dark:text-gray-400">Tax (0%)</span>
@@ -616,7 +672,11 @@
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-1.5">
                         <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                             <span>Items Total</span>
-                            <span x-text="'₱' + total.toFixed(2)"></span>
+                            <span x-text="'₱' + subtotal.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400" x-show="discountAmount > 0">
+                            <span>Discount</span>
+                            <span class="text-red-600 dark:text-red-400" x-text="'-₱' + discountAmount.toFixed(2)"></span>
                         </div>
                         <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400" x-show="deliveryFee > 0">
                             <span>Delivery Fee</span>
@@ -2265,6 +2325,8 @@
                                 name: product.name,
                                 price: parseFloat(product.price),
                                 unit_price: parseFloat(product.price),
+                                discount: 0,
+                                discountIsFlat: false,
                                 unit: product.unit,
                                 quantity: 1,
                                 maxStock: product.inventory?.quantity || 0
@@ -2399,6 +2461,8 @@
                             name: this.pendingProduct.name,
                             price: parseFloat(this.pendingProduct.price),
                             unit_price: parseFloat(this.pendingProduct.price),
+                            discount: 0,
+                            discountIsFlat: false,
                             unit: this.pendingProduct.unit,
                             quantity: quantity,
                             maxStock: this.pendingProduct.inventory?.quantity || 0
@@ -2455,9 +2519,19 @@
                 },
 
                 calculateItemPrice(item) {
-                    // For weight/liquid units (kilo, gram, liter, milliliter), 
+                    // For weight/liquid units (kilo, gram, liter, milliliter),
                     // calculate price proportionally based on quantity
-                    return item.unit_price * item.quantity;
+                    const raw = item.unit_price * item.quantity;
+                    return raw - this.itemDiscountAmount(item);
+                },
+
+                itemDiscountAmount(item) {
+                    // By default the entered amount is per piece (× quantity);
+                    // "flat total" treats it as the whole line's discount instead.
+                    const raw = item.unit_price * item.quantity;
+                    const entered = item.discount || 0;
+                    const effective = item.discountIsFlat ? entered : entered * item.quantity;
+                    return Math.min(effective, raw);
                 },
 
                 clearCart() {
@@ -2660,6 +2734,8 @@
                         name: this.customItem.name.trim(),
                         price: this.customItem.total,
                         unit_price: parseFloat(this.customItem.unit_price),
+                        discount: 0,
+                        discountIsFlat: false,
                         unit: this.customItem.unit,
                         quantity: parseFloat(this.customItem.quantity),
                         maxStock: Infinity
@@ -2894,15 +2970,19 @@
                 },
 
                 get subtotal() {
-                    return this.cart.reduce((sum, item) => sum + this.calculateItemPrice(item), 0);
+                    return this.cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+                },
+
+                get discountAmount() {
+                    return this.cart.reduce((sum, item) => sum + this.itemDiscountAmount(item), 0);
                 },
 
                 get tax() {
-                    return this.subtotal * 0; // 0% tax, adjust as needed
+                    return (this.subtotal - this.discountAmount) * 0; // 0% tax, adjust as needed
                 },
 
                 get total() {
-                    return this.subtotal + this.tax;
+                    return this.subtotal - this.discountAmount + this.tax;
                 },
 
                 get grandTotal() {

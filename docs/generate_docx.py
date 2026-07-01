@@ -219,13 +219,17 @@ set_heading('1.3 Cart Operations', 2)
 add_table(
     ['Action', 'Behaviour'],
     [
-        ['+/− buttons',    'Increment or decrement quantity (minimum 0.01)'],
-        ['Direct input',   'Type quantity directly; validated against available stock'],
-        ['Remove item',    'Removes the line from the cart'],
-        ['Clear cart',     'Requires confirmation before emptying'],
+        ['+/− buttons',        'Increment or decrement quantity (minimum 0.01)'],
+        ['Direct input',       'Type quantity directly; validated against available stock'],
+        ['Discount ₱',         'Optional per-item discount amount, entered directly on the cart line'],
+        ['"flat total" checkbox', 'Unchecked (default): discount is per piece (× quantity). Checked: discount is a flat total for the whole line'],
+        ['Remove item',        'Removes the line from the cart'],
+        ['Clear cart',         'Requires confirmation before emptying'],
     ],
     [2.0, 4.5]
 )
+doc.add_paragraph()
+add_para('A discount can never exceed the line\'s own raw value (unit price × quantity) — it is clamped so a line\'s discounted price cannot go negative. The Cart Summary and Payment modal both show a **Discount** line, in red, whenever any item has a discount applied — distinct from the flat, sale-wide **Delivery Fee**.')
 
 # 1.4 Customer Selection
 set_heading('1.4 Customer Selection', 2)
@@ -240,6 +244,16 @@ doc.add_paragraph()
 # 1.5 Payment Processing
 set_heading('1.5 Payment Processing', 2)
 add_para('Click **Charge** to open the payment modal.')
+doc.add_paragraph()
+add_para('**Delivery Fee:** An optional flat ₱ amount added to the whole sale (e.g. for delivery orders), entered directly in the payment modal. It is separate from item-level discounts and is always added after them.')
+doc.add_paragraph()
+add_para('**Payment modal breakdown:**')
+add_code_block(
+    'Items Total        (raw subtotal — unit price x quantity, before discounts)\n'
+    '- Discount         (sum of all per-item discounts, only shown if > 0)\n'
+    '+ Delivery Fee      (only shown if > 0)\n'
+    '= Grand Total       (what the customer actually pays)'
+)
 doc.add_paragraph()
 add_para('**Payment methods:**')
 add_table(
@@ -440,7 +454,8 @@ add_table(
         ['customer_id',            'FK → Customer', 'Nullable (walk-in)'],
         ['cash_register_session_id','FK',           'Nullable'],
         ['date',                   'date',          'Auto-set to current date'],
-        ['total',                  'decimal(10,2)', 'Sum of all sale items'],
+        ['total',                  'decimal(10,2)', 'Sum of all sale items, net of discounts, plus delivery_fee'],
+        ['delivery_fee',           'decimal(10,2)', 'Optional flat fee added on top of the discounted items total; default 0'],
         ['payment_method',         'string',        'cash / bank_transfer / check / credit_card / gcash / maya'],
         ['payment_term_days',      'integer',       'Nullable; set if terms applied'],
         ['due_date',               'date',          'Auto-calculated from customer or POS terms'],
@@ -461,6 +476,20 @@ add_table(
     [2.0, 4.0]
 )
 add_note('Inventory is decremented automatically when a SaleItem is saved (model hook). Manual items are excluded.')
+doc.add_paragraph()
+
+add_para('**Sale Items — per-line discount fields**')
+add_table(
+    ['Field', 'Type', 'Notes'],
+    [
+        ['unit_price',        'decimal(10,2)', "Product's unit price at time of sale"],
+        ['discount_amount',   'decimal(10,2)', '₱ amount entered by the cashier on this line; default 0'],
+        ['discount_is_flat',  'boolean',       'false (default): discount_amount is per piece (× quantity). true: discount_amount is a flat total for the whole line'],
+        ['price',             'decimal(10,2)', 'Final, post-discount line total: unit_price × quantity − effective discount, clamped at 0'],
+    ],
+    [2.0, 1.5, 2.8]
+)
+add_note("The sale's total is the sum of every line's post-discount price, plus delivery_fee.")
 doc.add_paragraph()
 
 add_para('**Admin Panel — Sales List**')
@@ -502,7 +531,7 @@ add_table(
     [
         ['supplier_id',     'FK → Supplier', 'Required'],
         ['date',            'date',          'Purchase date'],
-        ['total',           'decimal(10,2)', 'Auto-calculated from received items only'],
+        ['total',           'decimal(10,2)', 'Auto-calculated as price x quantity ordered, summed across all lines (what is owed to the supplier)'],
         ['due_date',        'date',          'Auto-calculated from supplier payment terms'],
         ['payment_status',  'string',        'unpaid / partial / paid'],
         ['amount_paid',     'decimal(10,2)', ''],
@@ -526,7 +555,7 @@ add_para('**Partial Receipt Workflow:**')
 for b in [
     'Set quantity = total ordered.',
     'Set quantity_received = what physically arrived.',
-    'Only quantity_received drives inventory and the purchase total.',
+    'quantity_received drives inventory and the receipt status below; the purchase total (amount owed) is always based on the full ordered quantity, regardless of how much has arrived.',
 ]:
     add_bullet(b)
 doc.add_paragraph()
@@ -568,6 +597,8 @@ add_table(
     [1.8, 1.4, 3.1]
 )
 add_note('No inventory is affected when a quotation is created or approved. Inventory only changes when the quotation is converted to a sale.')
+doc.add_paragraph()
+add_para('Quotation Items carry the same per-line discount fields as Sale Items — discount_amount and discount_is_flat (see Section 2.5). When an approved quotation is converted to a sale, each item\'s discount carries over into the resulting SaleItem unchanged.')
 doc.add_paragraph()
 
 doc.add_page_break()

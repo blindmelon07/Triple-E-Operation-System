@@ -46,7 +46,7 @@ class VehicleFactory extends Factory
             'acquisition_date' => fake()->dateTimeBetween('-5 years', '-6 months'),
             'acquisition_cost' => fake()->randomFloat(2, 500000, 3000000),
             'status' => fake()->randomElement(['active', 'active', 'active', 'maintenance', 'inactive']),
-            'assigned_driver' => fake()->optional()->name(),
+            'assigned_driver_id' => null,
             'notes' => fake()->optional()->sentence(),
         ];
     }

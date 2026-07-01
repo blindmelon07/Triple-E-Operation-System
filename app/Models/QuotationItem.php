@@ -18,6 +18,8 @@ class QuotationItem extends Model
         'unit',
         'quantity',
         'unit_price',
+        'discount_amount',
+        'discount_is_flat',
         'price',
     ];
 
@@ -27,6 +29,8 @@ class QuotationItem extends Model
             'is_manual' => 'boolean',
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
+            'discount_is_flat' => 'boolean',
             'price' => 'decimal:2',
         ];
     }
