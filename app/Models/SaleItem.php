@@ -48,7 +48,8 @@ class SaleItem extends Model
             if (!$item->is_manual && $item->product) {
                 $inventory = $item->product->inventory;
                 if ($inventory) {
-                    $inventory->decrement('quantity', $item->quantity ?? 1);
+                    $baseQuantity = ($item->quantity ?? 1) * $item->product->conversionFactorFor($item->unit);
+                    $inventory->decrement('quantity', $baseQuantity);
                 }
             }
         });

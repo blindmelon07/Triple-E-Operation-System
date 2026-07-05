@@ -17,6 +17,7 @@ enum ProductUnit: string
     case Bundle = 'bundle';
     case Box = 'box';
     case Tube = 'tube';
+    case Roll = 'roll';
 
     public function label(): string
     {
@@ -34,6 +35,7 @@ enum ProductUnit: string
             self::Bundle => 'Bundle',
             self::Box => 'Box',
             self::Tube => 'Tube',
+            self::Roll => 'Roll',
         };
     }
 
@@ -45,7 +47,7 @@ enum ProductUnit: string
             self::Kilo, self::Gram => 'weight',
             self::Foot, self::Meter => 'length',
             self::CubicMeter => 'volume',
-            self::Bag, self::Knot, self::Bundle, self::Box, self::Tube => 'package',
+            self::Bag, self::Knot, self::Bundle, self::Box, self::Tube, self::Roll => 'package',
         };
     }
 }

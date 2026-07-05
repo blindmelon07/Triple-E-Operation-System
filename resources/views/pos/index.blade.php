@@ -840,13 +840,18 @@
                                 </template>
 
                                 <!-- No conversion options for package units -->
-                                <template x-if="pendingProduct?.unit === 'bag' || pendingProduct?.unit === 'box' || pendingProduct?.unit === 'bundle' || pendingProduct?.unit === 'tube' || pendingProduct?.unit === 'knot'">
+                                <template x-if="pendingProduct?.unit === 'bag' || pendingProduct?.unit === 'box' || pendingProduct?.unit === 'bundle' || pendingProduct?.unit === 'tube' || pendingProduct?.unit === 'knot' || pendingProduct?.unit === 'roll'">
                                     <option :value="pendingProduct?.unit" selected x-text="pendingProduct?.unit.charAt(0).toUpperCase() + pendingProduct?.unit.slice(1)"></option>
                                 </template>
 
                                 <!-- Cubic meter has no conversion -->
                                 <template x-if="pendingProduct?.unit === 'cubic_meter'">
                                     <option value="cubic_meter" selected>Cubic Meters</option>
+                                </template>
+
+                                <!-- Additional sellable units configured for this product, each with its own price -->
+                                <template x-for="u in (pendingProduct?.units || []).filter(u => u.unit !== pendingProduct?.unit)" :key="u.unit">
+                                    <option :value="u.unit" x-text="u.label + ' (₱' + parseFloat(u.price).toFixed(2) + ' per ' + u.label + ')'"></option>
                                 </template>
                             </select>
                         </div>
@@ -855,7 +860,15 @@
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                         <div class="flex justify-between text-sm mb-2">
                             <span class="text-gray-600 dark:text-gray-400">Unit Price</span>
-                            <span class="font-semibold dark:text-white" x-text="'₱' + parseFloat(pendingProduct?.price).toFixed(2) + ' per ' + (pendingProduct?.unit === 'cubic_meter' ? 'cu.m' : pendingProduct?.unit)"></span>
+                            <span
+                                class="font-semibold dark:text-white"
+                                x-text="(() => {
+                                    const altUnit = (pendingProduct?.units || []).find(u => u.unit === weightUnit && u.unit !== pendingProduct?.unit);
+                                    const price = altUnit ? altUnit.price : pendingProduct?.price;
+                                    const label = altUnit ? altUnit.label : (pendingProduct?.unit === 'cubic_meter' ? 'cu.m' : pendingProduct?.unit);
+                                    return '₱' + parseFloat(price).toFixed(2) + ' per ' + label;
+                                })()"
+                            ></span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600 dark:text-gray-400">Total Price</span>
@@ -2265,14 +2278,21 @@
                     }
                 },
 
-                getAvailableStock(productId) {
+                getAvailableStock(productId, excludeIndex = null) {
                     const product = this.products.find(p => p.id === productId);
                     if (!product) return 0;
-                    
+
                     const originalStock = product.inventory?.quantity || 0;
-                    const cartItem = this.cart.find(item => item.id === productId);
-                    const quantityInCart = cartItem ? cartItem.quantity : 0;
-                    
+                    // A product can have multiple cart lines when sold under different
+                    // units (e.g. one line in Meter, another in Roll) - sum all of them,
+                    // each converted to the base unit, to know the true remaining stock.
+                    const quantityInCart = this.cart.reduce((sum, item, index) => {
+                        if (item.id !== productId || index === excludeIndex) {
+                            return sum;
+                        }
+                        return sum + item.quantity * (item.unit_factor || 1);
+                    }, 0);
+
                     return originalStock - quantityInCart;
                 },
 
@@ -2298,8 +2318,10 @@
                 },
 
                 addToCart(product) {
-                    // For weight-based products, show weight selector
-                    if (product.unit !== 'piece') {
+                    // For weight-based products, or products with additional sellable
+                    // units configured (e.g. sold per Meter and per Roll), show the
+                    // quantity/unit selector.
+                    if (product.unit !== 'piece' || (product.units || []).length > 1) {
                         this.pendingProduct = product;
                         this.weightValue = 1;
                         this.weightUnit = product.unit;
@@ -2311,7 +2333,7 @@
                     // For piece-based products, add directly
                     const existingItem = this.cart.find(item => item.id === product.id);
                     const availableStock = this.getAvailableStock(product.id);
-                    
+
                     if (existingItem) {
                         if (availableStock > 0) {
                             existingItem.quantity += 1;
@@ -2328,6 +2350,7 @@
                                 discount: 0,
                                 discountIsFlat: false,
                                 unit: product.unit,
+                                unit_factor: 1,
                                 quantity: 1,
                                 maxStock: product.inventory?.quantity || 0
                             });
@@ -2409,6 +2432,14 @@
                         return;
                     }
 
+                    // Alt units (e.g. Roll) have their own configured price - it's not
+                    // derived from the base unit's price.
+                    const altUnit = (this.pendingProduct.units || []).find(u => u.unit === this.weightUnit && u.unit !== this.pendingProduct.unit);
+                    if (altUnit) {
+                        this.calculatedWeightPrice = parseFloat(altUnit.price) * this.weightValue;
+                        return;
+                    }
+
                     const basePrice = parseFloat(this.pendingProduct.price);
                     let quantity = this.weightValue;
 
@@ -2433,6 +2464,44 @@
                     }
 
                     const availableStock = this.getAvailableStock(this.pendingProduct.id);
+
+                    // Alt units (e.g. Roll) keep their own native quantity/unit/price in
+                    // the cart - only the stock check is scaled to the base unit.
+                    const altUnit = (this.pendingProduct.units || []).find(u => u.unit === this.weightUnit && u.unit !== this.pendingProduct.unit);
+                    if (altUnit) {
+                        const factor = parseFloat(altUnit.factor) || 1;
+
+                        if (this.weightValue * factor > availableStock) {
+                            alert('Not enough stock available');
+                            return;
+                        }
+
+                        const existingAltItem = this.cart.find(item => item.id === this.pendingProduct.id && item.unit === altUnit.unit);
+
+                        if (existingAltItem) {
+                            existingAltItem.quantity += this.weightValue;
+                        } else {
+                            this.cart.push({
+                                id: this.pendingProduct.id,
+                                name: this.pendingProduct.name,
+                                price: parseFloat(altUnit.price),
+                                unit_price: parseFloat(altUnit.price),
+                                discount: 0,
+                                discountIsFlat: false,
+                                unit: altUnit.unit,
+                                unit_factor: factor,
+                                quantity: this.weightValue,
+                                maxStock: this.pendingProduct.inventory?.quantity || 0
+                            });
+                        }
+
+                        this.showWeightModal = false;
+                        this.pendingProduct = null;
+                        this.weightValue = 0;
+                        this.calculatedWeightPrice = 0;
+                        return;
+                    }
+
                     let quantity = this.weightValue;
 
                     // Convert to base unit if needed
@@ -2451,8 +2520,8 @@
                         return;
                     }
 
-                    const existingItem = this.cart.find(item => item.id === this.pendingProduct.id);
-                    
+                    const existingItem = this.cart.find(item => item.id === this.pendingProduct.id && item.unit === this.pendingProduct.unit);
+
                     if (existingItem) {
                         existingItem.quantity += quantity;
                     } else {
@@ -2464,6 +2533,7 @@
                             discount: 0,
                             discountIsFlat: false,
                             unit: this.pendingProduct.unit,
+                            unit_factor: 1,
                             quantity: quantity,
                             maxStock: this.pendingProduct.inventory?.quantity || 0
                         });
@@ -2482,9 +2552,10 @@
                     if (newQuantity <= 0) {
                         this.removeFromCart(index);
                     } else {
-                        const availableStock = this.getAvailableStock(item.id) + item.quantity;
+                        const factor = item.unit_factor || 1;
+                        const availableStock = this.getAvailableStock(item.id, index) + item.quantity * factor;
 
-                        if (newQuantity <= availableStock) {
+                        if (newQuantity * factor <= availableStock) {
                             item.quantity = newQuantity;
                         } else {
                             alert('Not enough stock available');
@@ -2504,13 +2575,14 @@
                         newQuantity = Math.round(newQuantity);
                     }
 
-                    const availableStock = this.getAvailableStock(item.id) + item.quantity;
+                    const factor = item.unit_factor || 1;
+                    const availableStock = this.getAvailableStock(item.id, index) + item.quantity * factor;
 
-                    if (newQuantity <= availableStock) {
+                    if (newQuantity * factor <= availableStock) {
                         item.quantity = newQuantity;
                     } else {
-                        item.quantity = availableStock;
-                        alert('Not enough stock. Set to maximum available: ' + availableStock);
+                        item.quantity = availableStock / factor;
+                        alert('Not enough stock. Set to maximum available: ' + (availableStock / factor));
                     }
                 },
 

@@ -35,15 +35,25 @@ class POSController extends Controller
 
     public function index(Request $request): \Illuminate\Contracts\View\View
     {
-        $products = Product::with(['category', 'inventory'])
+        $products = Product::with(['category', 'inventory', 'unitPrices'])
             ->get()
             ->map(function ($product) {
+                $units = collect([
+                    ['unit' => $product->unit->value, 'label' => $product->unit->label(), 'price' => $product->price, 'factor' => 1],
+                ])->concat($product->unitPrices->map(fn ($unitPrice) => [
+                    'unit' => $unitPrice->unit->value,
+                    'label' => $unitPrice->unit->label(),
+                    'price' => $unitPrice->price,
+                    'factor' => $unitPrice->conversion_factor,
+                ]));
+
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
                     'category_id' => $product->category_id,
                     'price' => $product->price,
                     'unit' => $product->unit->value,
+                    'units' => $units->values(),
                     'category' => $product->category,
                     'inventory' => $product->inventory,
                 ];
@@ -437,8 +447,9 @@ class POSController extends Controller
 
                 if (!$isManual) {
                     $product = Product::findOrFail($item['id']);
+                    $baseQuantity = $item['quantity'] * $product->conversionFactorFor($item['unit']);
 
-                    if ($product->inventory && $product->inventory->quantity < $item['quantity']) {
+                    if ($product->inventory && $product->inventory->quantity < $baseQuantity) {
                         throw new \Exception("Not enough stock for product: {$product->name}");
                     }
                 }

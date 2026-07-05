@@ -52,6 +52,28 @@ class Product extends Model
         return $this->hasOne(Inventory::class);
     }
 
+    public function unitPrices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductUnitPrice::class);
+    }
+
+    /**
+     * How many base units (this product's own `unit`) does 1 of the given
+     * unit represent? Used to translate an alt-unit sale/void quantity into
+     * the quantity actually added/removed from inventory, which is always
+     * tracked in the product's base unit.
+     */
+    public function conversionFactorFor(string $unit): float
+    {
+        if ($unit === $this->unit->value) {
+            return 1.0;
+        }
+
+        $factor = $this->unitPrices->firstWhere('unit', $unit)?->conversion_factor;
+
+        return $factor !== null ? (float) $factor : 1.0;
+    }
+
     public function saleItems(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(SaleItem::class);

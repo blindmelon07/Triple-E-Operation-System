@@ -86,7 +86,7 @@ class VoidRequestController extends Controller
                 return response()->json(['success' => false, 'message' => 'Sale is already voided.'], 422);
             }
 
-            $sale->load('sale_items');
+            $sale->load('sale_items.product');
 
             // Restore inventory
             foreach ($sale->sale_items as $item) {
@@ -94,15 +94,17 @@ class VoidRequestController extends Controller
                     continue;
                 }
 
+                $baseQuantity = $item->quantity * $item->product->conversionFactorFor($item->unit);
+
                 $inventory = Inventory::where('product_id', $item->product_id)->first();
                 if ($inventory) {
-                    $inventory->increment('quantity', $item->quantity);
+                    $inventory->increment('quantity', $baseQuantity);
                 }
 
                 InventoryMovement::create([
                     'product_id'     => $item->product_id,
                     'type'           => 'in',
-                    'quantity'       => $item->quantity,
+                    'quantity'       => $baseQuantity,
                     'reason'         => 'Void',
                     'reference_id'   => $sale->id,
                     'reference_type' => Sale::class,
