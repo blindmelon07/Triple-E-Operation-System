@@ -5,6 +5,7 @@ namespace App\Enums;
 enum ProductUnit: string
 {
     case Piece = 'piece';
+    case Gallon = 'gallon';
     case Liter = 'liter';
     case MilliLiter = 'milliliter';
     case Kilo = 'kilo';
@@ -23,6 +24,7 @@ enum ProductUnit: string
     {
         return match ($this) {
             self::Piece => 'Piece',
+            self::Gallon => 'Gallon',
             self::Liter => 'Liter',
             self::MilliLiter => 'Milliliter',
             self::Kilo => 'Kilo',
@@ -43,7 +45,7 @@ enum ProductUnit: string
     {
         return match ($this) {
             self::Piece => 'unit',
-            self::Liter, self::MilliLiter => 'liquid',
+            self::Gallon, self::Liter, self::MilliLiter => 'liquid',
             self::Kilo, self::Gram => 'weight',
             self::Foot, self::Meter => 'length',
             self::CubicMeter => 'volume',
