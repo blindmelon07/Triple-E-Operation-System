@@ -42,8 +42,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/csrf-token', fn () => response()->json(['token' => csrf_token()]))->name('pos.csrf-token');
 
     // Aging Report exports
-    Route::get('/reports/aging/export-excel', fn () => (new ReportExportService)->exportAgingExcel())->name('aging-report.export-excel');
-    Route::get('/reports/aging/export-pdf', fn () => (new ReportExportService)->exportAgingPdf())->name('aging-report.export-pdf');
+    Route::get('/reports/aging/export-excel', fn (\Illuminate\Http\Request $request) => (new ReportExportService)->exportAgingExcel(
+        $request->integer('customer_id') ?: null,
+        $request->integer('supplier_id') ?: null,
+    ))->name('aging-report.export-excel');
+    Route::get('/reports/aging/export-pdf', fn (\Illuminate\Http\Request $request) => (new ReportExportService)->exportAgingPdf(
+        $request->integer('customer_id') ?: null,
+        $request->integer('supplier_id') ?: null,
+    ))->name('aging-report.export-pdf');
 });
 
 Route::middleware(['auth'])->post('/tos/pos/complete-sale', [POSController::class, 'completeSale'])->name('filament.admin.pages.pos.complete-sale');

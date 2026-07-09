@@ -276,16 +276,39 @@ class AgingReport extends Page implements HasForms, HasTable
                 ->label('Export PDF')
                 ->icon(Heroicon::OutlinedDocumentArrowDown)
                 ->color('gray')
-                ->url(route('aging-report.export-pdf'))
+                ->url(fn (): string => route('aging-report.export-pdf', $this->getExportFilterParams()))
                 ->openUrlInNewTab(),
 
             Action::make('export_excel')
                 ->label('Export Excel')
                 ->icon(Heroicon::OutlinedTableCells)
                 ->color('success')
-                ->url(route('aging-report.export-excel'))
+                ->url(fn (): string => route('aging-report.export-excel', $this->getExportFilterParams()))
                 ->openUrlInNewTab(),
         ];
+    }
+
+    /**
+     * Carry the currently active customer/supplier table filter over to the export links,
+     * so exporting while filtered on the table only exports that customer/supplier.
+     *
+     * @return array<string, int>
+     */
+    protected function getExportFilterParams(): array
+    {
+        $params = [];
+
+        if ($this->activeTab === 'receivables') {
+            if ($customerId = $this->tableFilters['customer_id']['value'] ?? null) {
+                $params['customer_id'] = $customerId;
+            }
+        } else {
+            if ($supplierId = $this->tableFilters['supplier_id']['value'] ?? null) {
+                $params['supplier_id'] = $supplierId;
+            }
+        }
+
+        return $params;
     }
 
     public function setActiveTab(string $tab): void

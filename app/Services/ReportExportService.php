@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -102,16 +104,18 @@ class ReportExportService
     /**
      * Export Aging Report as PDF.
      */
-    public function exportAgingPdf(): \Illuminate\Http\Response
+    public function exportAgingPdf(?int $customerId = null, ?int $supplierId = null): \Illuminate\Http\Response
     {
         $receivables = Sale::where('payment_status', '!=', 'paid')
             ->whereNotNull('due_date')
+            ->when($customerId, fn ($query) => $query->where('customer_id', $customerId))
             ->with('customer')
             ->orderBy('due_date')
             ->get();
 
         $payables = Purchase::where('payment_status', '!=', 'paid')
             ->whereNotNull('due_date')
+            ->when($supplierId, fn ($query) => $query->where('supplier_id', $supplierId))
             ->with('supplier')
             ->orderBy('due_date')
             ->get();
@@ -142,6 +146,8 @@ class ReportExportService
             'payables'    => $payables,
             'stats'       => $stats,
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'customerFilterName' => $customerId ? Customer::find($customerId)?->name : null,
+            'supplierFilterName' => $supplierId ? Supplier::find($supplierId)?->name : null,
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -152,7 +158,7 @@ class ReportExportService
     /**
      * Export Aging Report as Excel (CSV).
      */
-    public function exportAgingExcel(): StreamedResponse
+    public function exportAgingExcel(?int $customerId = null, ?int $supplierId = null): StreamedResponse
     {
         $filename = 'aging-report-'.now()->format('Y-m-d').'.csv';
 
@@ -161,17 +167,24 @@ class ReportExportService
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        $callback = function () {
+        $callback = function () use ($customerId, $supplierId) {
             $file = fopen('php://output', 'w');
 
             // Title
             fputcsv($file, ['Accounts Receivable & Payable Aging Report']);
             fputcsv($file, ['Generated:', now()->format('F d, Y h:i A')]);
+            if ($customerId && ($customerName = Customer::find($customerId)?->name)) {
+                fputcsv($file, ['Filtered by Customer:', $customerName]);
+            }
+            if ($supplierId && ($supplierName = Supplier::find($supplierId)?->name)) {
+                fputcsv($file, ['Filtered by Supplier:', $supplierName]);
+            }
             fputcsv($file, []);
 
             // ── RECEIVABLES ──────────────────────────────────────────────
             $receivables = Sale::where('payment_status', '!=', 'paid')
                 ->whereNotNull('due_date')
+                ->when($customerId, fn ($query) => $query->where('customer_id', $customerId))
                 ->with('customer')
                 ->orderBy('due_date')
                 ->get();
@@ -208,6 +221,7 @@ class ReportExportService
             // ── PAYABLES ─────────────────────────────────────────────────
             $payables = Purchase::where('payment_status', '!=', 'paid')
                 ->whereNotNull('due_date')
+                ->when($supplierId, fn ($query) => $query->where('supplier_id', $supplierId))
                 ->with('supplier')
                 ->orderBy('due_date')
                 ->get();

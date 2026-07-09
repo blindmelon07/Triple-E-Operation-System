@@ -133,6 +133,12 @@
     <div class="header">
         <h1>Accounts Receivable &amp; Payable Aging Report</h1>
         <p>Generated: {{ $generatedAt }}</p>
+        @if($customerFilterName)
+            <p>Filtered by Customer: <strong>{{ $customerFilterName }}</strong></p>
+        @endif
+        @if($supplierFilterName)
+            <p>Filtered by Supplier: <strong>{{ $supplierFilterName }}</strong></p>
+        @endif
     </div>
 
     {{-- ── SUMMARY CARDS ──────────────────────────────────────── --}}
