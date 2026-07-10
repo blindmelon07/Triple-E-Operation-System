@@ -231,6 +231,51 @@
         @endif
     </table>
 
+    {{-- Other payments collected today: settlements against prior invoices, or down payments on new credit sales --}}
+    @if($settlements->count())
+    <div class="section-title">Other Payments Collected ({{ $settlements->count() }} records)</div>
+    <table class="sales-table">
+        <thead>
+            <tr>
+                <th style="width:4%">#</th>
+                <th style="width:8%">Time</th>
+                <th style="width:26%">Customer</th>
+                <th style="width:14%">Invoice #</th>
+                <th style="width:18%">Payment</th>
+                <th style="width:16%">Reference</th>
+                <th style="width:14%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($settlements as $index => $settlement)
+                <tr>
+                    <td>{{ $index + 1 }}</td>
+                    <td>{{ $settlement->created_at?->setTimezone('Asia/Manila')->format('h:i A') }}</td>
+                    <td>{{ $settlement->sale?->customer?->name ?? 'N/A' }}</td>
+                    <td>INV-{{ str_pad((string) $settlement->sale_id, 6, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ match($settlement->payment_method) {
+                        'cash'   => 'Cash',
+                        'card'   => 'Card',
+                        'gcash'  => 'GCash',
+                        'paymaya'=> 'PayMaya',
+                        'bank'   => 'Bank Transfer',
+                        'check'  => 'Check',
+                        default  => ucfirst($settlement->payment_method)
+                    } }}</td>
+                    <td>{{ $settlement->reference_number ?? '—' }}</td>
+                    <td>₱{{ number_format($settlement->amount, 2) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="6">TOTAL SETTLEMENTS</td>
+                <td>₱{{ number_format($settlements->sum('amount'), 2) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    @endif
+
     @if($session->notes)
         <div class="section-title">Notes</div>
         <p style="font-size:9px; color:#475569; padding: 4px 6px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:3px; margin-bottom:12px;">

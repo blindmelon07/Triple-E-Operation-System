@@ -14,6 +14,7 @@ use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalePayment;
 use App\Models\User;
 use App\Models\VoidRequest;
 use App\Notifications\VoidRequestNotification;
@@ -103,11 +104,12 @@ class POSController extends Controller
         }
 
         $isManager = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+        $canSettleInvoices = auth()->user()->hasPermissionTo('RecordPaymentSale');
 
         return view('pos.index', compact(
             'products', 'customers', 'categories', 'registerSession',
             'quotationCart', 'quotationId', 'quotationCustomerId',
-            'isManager'
+            'isManager', 'canSettleInvoices'
         ));
     }
 
@@ -215,7 +217,15 @@ class POSController extends Controller
             ->orderBy('date')
             ->get();
 
-        $pdf = Pdf::loadView('pos.register-sales-report', compact('session', 'sales'))
+        // Payments collected against pre-existing (often much older) invoices via the POS
+        // "Settle Invoice" flow aren't new Sale records tied to this session — they're logged
+        // separately so the itemized list reconciles with $session->total_sales above.
+        $settlements = SalePayment::with('sale.customer')
+            ->where('cash_register_session_id', $session->id)
+            ->orderBy('created_at')
+            ->get();
+
+        $pdf = Pdf::loadView('pos.register-sales-report', compact('session', 'sales', 'settlements'))
             ->setPaper('a4', 'portrait');
 
         $filename = 'register-report-' . ($session->closed_at?->format('Y-m-d') ?? now()->format('Y-m-d')) . '-session-' . $session->id . '.pdf';
@@ -235,6 +245,14 @@ class POSController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        // Payments collected today against pre-existing overdue invoices via the POS
+        // "Settle Invoice" flow — these are not new Sale records in this session, but the
+        // cash still needs to show up in today's reconciliation.
+        $settlements = SalePayment::with('sale.customer')
+            ->where('cash_register_session_id', $session->id)
+            ->orderBy('created_at')
+            ->get();
+
         $sessionDate = $session->opened_at->toDateString();
 
         $expenses = Expense::with('category')
@@ -245,22 +263,26 @@ class POSController extends Controller
 
         $totalSales       = (float) $sales->sum('total');
         $totalUnpaidSales = (float) $sales->where('payment_status', 'unpaid')->sum('total');
-        $totalPaidSales   = $totalSales - $totalUnpaidSales;
+        $totalSettlements = (float) $settlements->sum('amount');
+        $cashSettlements  = (float) $settlements->where('payment_method', 'cash')->sum('amount');
+        $nonCashSettlements = $totalSettlements - $cashSettlements;
+        $totalPaidSales   = $totalSales - $totalUnpaidSales + $totalSettlements;
         $nonCashPaidSales = (float) $sales->where('payment_status', '!=', 'unpaid')
-                                ->whereNotIn('payment_method', ['cash'])->sum('total');
+                                ->whereNotIn('payment_method', ['cash'])->sum('total')
+                            + $nonCashSettlements;
         $cashPaidSales    = $totalPaidSales - $nonCashPaidSales;
         $totalExpenses    = (float) $expenses->sum('amount');
         $pettyCash        = (float) $session->opening_amount;
 
-        $incomeTotal     = $pettyCash + $totalSales;
+        $incomeTotal     = $pettyCash + $totalSales + $totalSettlements;
         $totalDeductions = $totalUnpaidSales + $nonCashPaidSales;
         $theoreticalCash = $incomeTotal - $totalDeductions - $totalExpenses;
         $actualCashOnHand = (float) ($session->closing_amount ?? 0);
         $discrepancy     = $actualCashOnHand - $theoreticalCash;
 
         $pdf = Pdf::loadView('pos.daily-transaction-report', compact(
-            'session', 'sales', 'expenses',
-            'totalSales', 'totalPaidSales', 'totalUnpaidSales',
+            'session', 'sales', 'expenses', 'settlements',
+            'totalSales', 'totalPaidSales', 'totalUnpaidSales', 'totalSettlements',
             'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
             'pettyCash', 'incomeTotal', 'totalDeductions',
             'theoreticalCash', 'actualCashOnHand', 'discrepancy'
@@ -298,23 +320,35 @@ class POSController extends Controller
             ->orderBy('expense_date')
             ->get();
 
+        // Payments collected against pre-existing overdue invoices via the POS "Settle
+        // Invoice" flow — not new Sale records tied to these sessions, but the cash still
+        // needs to count toward each session's (and the period's) reconciliation.
+        $allSettlements = SalePayment::with('sale.customer')
+            ->whereIn('cash_register_session_id', $sessionIds)
+            ->orderBy('created_at')
+            ->get();
+
         // Build one report block per session
         $dayReports = [];
         foreach ($sessions as $session) {
-            $sales    = $allSales->where('cash_register_session_id', $session->id)->values();
-            $sessDate = $session->opened_at->toDateString();
+            $sales       = $allSales->where('cash_register_session_id', $session->id)->values();
+            $settlements = $allSettlements->where('cash_register_session_id', $session->id)->values();
+            $sessDate    = $session->opened_at->toDateString();
             $expenses = $allExpenses->filter(
                 fn ($e) => optional($e->expense_date)->toDateString() === $sessDate
             )->values();
 
             $ts   = (float) $sales->sum('total');
             $tus  = (float) $sales->where('payment_status', 'unpaid')->sum('total');
-            $tps  = $ts - $tus;
+            $tset = (float) $settlements->sum('amount');
+            $ncset = (float) $settlements->where('payment_method', '!=', 'cash')->sum('amount');
+            $tps  = $ts - $tus + $tset;
             $nc   = (float) $sales->where('payment_status', '!=', 'unpaid')
-                            ->whereNotIn('payment_method', ['cash'])->sum('total');
+                            ->whereNotIn('payment_method', ['cash'])->sum('total')
+                        + $ncset;
             $te   = (float) $expenses->sum('amount');
             $pc   = (float) $session->opening_amount;
-            $it   = $pc + $ts;
+            $it   = $pc + $ts + $tset;
             $td   = $tus + $nc;
             $tca  = $it - $td - $te;
             $aca  = (float) ($session->closing_amount ?? 0);
@@ -322,9 +356,11 @@ class POSController extends Controller
             $dayReports[] = [
                 'session'          => $session,
                 'sales'            => $sales,
+                'settlements'      => $settlements,
                 'expenses'         => $expenses,
                 'totalSales'       => $ts,
                 'totalUnpaidSales' => $tus,
+                'totalSettlements' => $tset,
                 'totalPaidSales'   => $tps,
                 'nonCashPaidSales' => $nc,
                 'cashPaidSales'    => $tps - $nc,
@@ -341,13 +377,16 @@ class POSController extends Controller
         // Period totals for summary page
         $totalSales       = (float) $allSales->sum('total');
         $totalUnpaidSales = (float) $allSales->where('payment_status', 'unpaid')->sum('total');
-        $totalPaidSales   = $totalSales - $totalUnpaidSales;
+        $totalSettlements = (float) $allSettlements->sum('amount');
+        $nonCashSettlements = (float) $allSettlements->where('payment_method', '!=', 'cash')->sum('amount');
+        $totalPaidSales   = $totalSales - $totalUnpaidSales + $totalSettlements;
         $nonCashPaidSales = (float) $allSales->where('payment_status', '!=', 'unpaid')
-                                ->whereNotIn('payment_method', ['cash'])->sum('total');
+                                ->whereNotIn('payment_method', ['cash'])->sum('total')
+                            + $nonCashSettlements;
         $cashPaidSales    = $totalPaidSales - $nonCashPaidSales;
         $totalExpenses    = (float) $allExpenses->sum('amount');
         $pettyCash        = (float) $sessions->sum('opening_amount');
-        $incomeTotal      = $pettyCash + $totalSales;
+        $incomeTotal      = $pettyCash + $totalSales + $totalSettlements;
         $totalDeductions  = $totalUnpaidSales + $nonCashPaidSales;
         $theoreticalCash  = $incomeTotal - $totalDeductions - $totalExpenses;
         $actualCashOnHand = (float) $sessions->sum('closing_amount');
@@ -359,7 +398,7 @@ class POSController extends Controller
 
         $pdf = Pdf::loadView('pos.period-transaction-report', compact(
             'sessions', 'dayReports', 'periodLabel', 'dateFrom', 'dateTo',
-            'totalSales', 'totalPaidSales', 'totalUnpaidSales',
+            'totalSales', 'totalPaidSales', 'totalUnpaidSales', 'totalSettlements',
             'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
             'pettyCash', 'incomeTotal', 'totalDeductions',
             'theoreticalCash', 'actualCashOnHand', 'discrepancy'
@@ -411,6 +450,8 @@ class POSController extends Controller
             'payment_method' => 'required|string',
             'reference_number' => 'nullable|string|max:100',
             'payment_term_days' => 'nullable|integer|in:5,10,15,30,60',
+            'down_payment' => 'nullable|numeric|min:0',
+            'down_payment_method' => 'nullable|string|in:cash,gcash,paymaya,card',
             'cash_received' => 'nullable|numeric',
             'change' => 'nullable|numeric',
         ]);
@@ -418,10 +459,19 @@ class POSController extends Controller
         try {
             DB::beginTransaction();
 
-            // Sales with payment terms are unpaid until collected; all others are paid immediately.
+            // Sales with payment terms are owed until collected, but a credit sale can still
+            // take a partial down payment up front — the rest remains the invoice balance.
             $hasCreditTerms = !empty($validated['payment_term_days']);
-            $paymentStatus = $hasCreditTerms ? 'unpaid' : 'paid';
-            $amountPaid    = $hasCreditTerms ? 0 : $validated['total'];
+            $downPayment    = $hasCreditTerms ? min((float) ($validated['down_payment'] ?? 0), (float) $validated['total']) : 0;
+            $downPaymentMethod = $validated['down_payment_method'] ?? 'cash';
+
+            $paymentStatus = match (true) {
+                ! $hasCreditTerms => 'paid',
+                $downPayment >= (float) $validated['total'] => 'paid',
+                $downPayment > 0 => 'partial',
+                default => 'unpaid',
+            };
+            $amountPaid = $hasCreditTerms ? $downPayment : $validated['total'];
 
             // Create the sale
             $sale = Sale::create([
@@ -435,7 +485,7 @@ class POSController extends Controller
                 'payment_term_days' => $validated['payment_term_days'] ?? null,
                 'payment_status' => $paymentStatus,
                 'amount_paid' => $amountPaid,
-                'paid_date' => $hasCreditTerms ? null : now()->toDateString(),
+                'paid_date' => (! $hasCreditTerms || $downPayment > 0) ? now()->toDateString() : null,
             ]);
 
             // Create sale items
@@ -468,13 +518,33 @@ class POSController extends Controller
                 ]);
             }
 
-            // Only count paid sales toward register session totals.
-            // Credit/term sales (unpaid) are excluded until collected.
-            if (!$hasCreditTerms && !empty($validated['cash_register_session_id'])) {
+            // Only count cash actually collected today toward register session totals:
+            // the full total for an immediate sale, or just the down payment (if any) for
+            // a credit sale — the remaining balance isn't collected yet.
+            $collectedNow = $hasCreditTerms ? $downPayment : (float) $validated['total'];
+            $collectedMethod = $hasCreditTerms ? $downPaymentMethod : $validated['payment_method'];
+
+            if ($collectedNow > 0 && !empty($validated['cash_register_session_id'])) {
                 $session = CashRegisterSession::find($validated['cash_register_session_id']);
                 if ($session && $session->status === CashRegisterStatus::Open) {
-                    $isCash = in_array($validated['payment_method'], ['cash']);
-                    $session->addSale((float) $validated['total'], $isCash);
+                    $isCash = $collectedMethod === 'cash';
+                    $session->addSale($collectedNow, $isCash);
+
+                    // Only log a ledger row when the sale is still partially unpaid — if the
+                    // down payment covers the total, the Sale itself is already "paid" and
+                    // gets counted via the normal sales list; logging a SalePayment too would
+                    // double-count the same cash in the reports.
+                    if ($hasCreditTerms && $paymentStatus === 'partial') {
+                        SalePayment::create([
+                            'sale_id' => $sale->id,
+                            'amount' => $downPayment,
+                            'payment_method' => $downPaymentMethod,
+                            'reference_number' => $validated['reference_number'] ?? null,
+                            'cash_register_session_id' => $session->id,
+                            'recorded_by_id' => auth()->id(),
+                            'balance_after' => (float) $validated['total'] - $downPayment,
+                        ]);
+                    }
                 }
             }
 
@@ -500,6 +570,7 @@ class POSController extends Controller
                     'payment_method' => $validated['payment_method'],
                     'items_count'    => count($validated['items']),
                     'customer_id'    => $validated['customer_id'] ?? null,
+                    'down_payment'   => $hasCreditTerms ? $downPayment : null,
                 ],
                 'ip_address'      => $request->ip(),
                 'user_agent'      => $request->userAgent(),

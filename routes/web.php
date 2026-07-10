@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\InvoiceSettlementController;
 use App\Http\Controllers\POSController;
 use App\Services\ReportExportService;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/pos/void-requests/{voidRequest}/approve', [\App\Http\Controllers\VoidRequestController::class, 'approve'])->name('pos.void-requests.approve');
     Route::post('/pos/void-requests/{voidRequest}/reject', [\App\Http\Controllers\VoidRequestController::class, 'reject'])->name('pos.void-requests.reject');
     Route::post('/pos/void-requests/{voidRequest}/cancel', [\App\Http\Controllers\VoidRequestController::class, 'cancel'])->name('pos.void-requests.cancel');
+
+    // Settle Outstanding Invoice
+    Route::get('/pos/customers/{customer}/outstanding-invoices', [InvoiceSettlementController::class, 'outstandingInvoices'])->name('pos.outstanding-invoices');
+    Route::post('/pos/settle-invoices', [InvoiceSettlementController::class, 'settle'])->name('pos.settle-invoices');
+    Route::get('/pos/print-payment-receipt/{payment}', [InvoiceSettlementController::class, 'printPaymentReceipt'])->name('pos.print-payment-receipt');
 
     // Cash Register
     Route::post('/pos/register/open', [POSController::class, 'openRegister'])->name('pos.register.open');

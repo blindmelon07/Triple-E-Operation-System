@@ -141,6 +141,20 @@
                             <span class="hidden lg:inline">Reprint</span>
                         </button>
 
+                        @if($canSettleInvoices)
+                        <!-- Settle Outstanding Invoice Button -->
+                        <button
+                            @click="openSettleModal()"
+                            class="hidden sm:flex px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition touch-btn items-center gap-2"
+                            title="Settle Outstanding Invoice"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" />
+                            </svg>
+                            <span class="hidden lg:inline">Settle Invoice</span>
+                        </button>
+                        @endif
+
                         <!-- Mobile Cart Toggle Button -->
                         <button
                             @click="showMobileCart = !showMobileCart"
@@ -721,9 +735,43 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
                             Due date: <span class="font-medium" x-text="new Date(Date.now() + paymentTermDays * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })"></span>
                         </p>
+
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Down Payment (Optional)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
+                                <input
+                                    type="number"
+                                    x-model.number="downPayment"
+                                    @input="downPayment = Math.max(0, Math.min(downPayment || 0, grandTotal))"
+                                    step="0.01"
+                                    min="0"
+                                    :max="grandTotal"
+                                    placeholder="0.00"
+                                    class="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                >
+                            </div>
+                            <div class="mt-2 flex justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">Balance Due</span>
+                                <span class="font-bold text-gray-900 dark:text-white" x-text="'₱' + Math.max(0, grandTotal - downPayment).toFixed(2)"></span>
+                            </div>
+
+                            <div x-show="downPayment > 0" x-cloak class="mt-3">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Down Payment Method</label>
+                                <select
+                                    x-model="downPaymentMethod"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                >
+                                    <option value="cash">Cash</option>
+                                    <option value="gcash">GCash</option>
+                                    <option value="paymaya">PayMaya</option>
+                                    <option value="card">Card</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <div x-show="['card','gcash','paymaya'].includes(paymentMethod)" x-cloak>
+                    <div x-show="['card','gcash','paymaya'].includes(paymentMethod) || (paymentMethod === 'charge' && downPayment > 0 && ['card','gcash','paymaya'].includes(downPaymentMethod))" x-cloak>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reference Number</label>
                         <input
                             type="text"
@@ -1761,6 +1809,240 @@
         </div>
     </div>
 
+    <!-- Settle Outstanding Invoice Modal -->
+    <div
+        x-show="showSettleModal"
+        x-cloak
+        @keydown.escape.window="showSettleModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showSettleModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Settle Outstanding Invoice</h3>
+                    </div>
+                    <button
+                        @click="showSettleModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Customer Picker -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer</label>
+                    <select
+                        x-model="settleCustomerId"
+                        @change="fetchOutstandingInvoices()"
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-base"
+                    >
+                        <option value="">Select a customer...</option>
+                        <template x-for="customer in customers" :key="customer.id">
+                            <option :value="customer.id" x-text="customer.name"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Invoice List -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div x-show="isLoadingOutstanding" class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading outstanding invoices...</p>
+                </div>
+
+                <div x-show="!isLoadingOutstanding && settleCustomerId && settleOutstandingInvoices.length === 0" class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">This customer has no outstanding invoices.</p>
+                </div>
+
+                <div x-show="!settleCustomerId" class="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
+                    Select a customer to view their outstanding invoices.
+                </div>
+
+                <div class="space-y-3">
+                    <template x-for="invoice in settleOutstandingInvoices" :key="invoice.id">
+                        <div
+                            class="rounded-lg p-4 border transition cursor-pointer"
+                            :class="selectedSettleInvoices[invoice.id]
+                                ? 'bg-teal-50 dark:bg-teal-900/20 border-teal-500'
+                                : 'bg-gray-50 dark:bg-gray-700 border-transparent hover:border-teal-300'"
+                            @click="toggleSettleInvoice(invoice)"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-start gap-3 flex-1">
+                                    <input
+                                        type="checkbox"
+                                        :checked="!!selectedSettleInvoices[invoice.id]"
+                                        @click.stop="toggleSettleInvoice(invoice)"
+                                        class="mt-1 w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                                    >
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                                            <span class="font-semibold text-gray-900 dark:text-white" x-text="invoice.invoice_number"></span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="agingBadgeClass(invoice.aging_bucket)" x-text="invoice.aging_bucket"></span>
+                                        </div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                            Due: <span x-text="invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'"></span>
+                                        </div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                            Balance: <span class="font-semibold text-gray-900 dark:text-white" x-text="'₱' + invoice.balance.toFixed(2)"></span>
+                                            <span x-show="invoice.payment_status === 'partial'" class="text-xs text-amber-600 dark:text-amber-400">(partially paid)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <template x-if="selectedSettleInvoices[invoice.id]">
+                                    <div class="w-32" @click.stop>
+                                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount to pay</label>
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">₱</span>
+                                            <input
+                                                type="number"
+                                                x-model.number="selectedSettleInvoices[invoice.id].amount"
+                                                step="0.01"
+                                                min="0.01"
+                                                :max="invoice.balance"
+                                                class="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-white"
+                                            >
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                <div x-show="settleError" class="text-sm text-red-600 dark:text-red-400" x-text="settleError"></div>
+
+                <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total to Collect</span>
+                    <span class="text-lg font-bold text-teal-600 dark:text-teal-400" x-text="'₱' + settleTotal.toFixed(2)"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label>
+                        <select
+                            x-model="settlePaymentMethod"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
+                        >
+                            <option value="cash">Cash</option>
+                            <option value="gcash">GCash</option>
+                            <option value="paymaya">PayMaya</option>
+                            <option value="card">Card</option>
+                            <option value="bank">Bank Transfer</option>
+                            <option value="check">Check</option>
+                        </select>
+                    </div>
+                    <div x-show="['card','gcash','paymaya','bank','check'].includes(settlePaymentMethod)" x-cloak>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reference Number</label>
+                        <input
+                            type="text"
+                            x-model="settleReferenceNumber"
+                            placeholder="Reference / transaction number"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        @click="showSettleModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="submitSettlement()"
+                        :disabled="Object.keys(selectedSettleInvoices).length === 0 || isSettling"
+                        class="flex-1 px-4 py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg x-show="isSettling" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        <span x-text="isSettling ? 'Processing...' : 'Confirm Settlement'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settlement Complete Modal -->
+    <div
+        x-show="showSettleResultsModal"
+        x-cloak
+        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8 text-center">
+            <div class="mb-4 flex justify-center">
+                <div class="p-4 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <svg class="w-10 h-10 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Settlement Complete</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4" x-text="settleResults.length + ' invoice(s) settled successfully.'"></p>
+
+            <div class="space-y-2 mb-6 text-left">
+                <template x-for="(result, index) in settleResults" :key="result.sale_id">
+                    <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 text-sm">
+                        <div>
+                            <span class="font-medium text-gray-900 dark:text-white" x-text="'Invoice #' + String(result.sale_id).padStart(6, '0')"></span>
+                            <span class="text-gray-500 dark:text-gray-400" x-text="' — ₱' + result.amount.toFixed(2)"></span>
+                        </div>
+                        <button
+                            @click="window.open(result.print_url, '_blank'); if (!printedReceiptIndices.includes(index)) printedReceiptIndices.push(index)"
+                            class="px-2 py-1 text-xs rounded-lg font-semibold transition"
+                            :class="printedReceiptIndices.includes(index) ? 'bg-gray-200 dark:bg-gray-600 text-gray-500' : 'bg-teal-600 hover:bg-teal-700 text-white'"
+                            x-text="printedReceiptIndices.includes(index) ? 'Printed' : 'Print'"
+                        ></button>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <button
+                    @click="printNextSettleReceipt()"
+                    x-show="printedReceiptIndices.length < settleResults.length"
+                    class="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition font-semibold"
+                >
+                    <span x-text="'Print Next Receipt (' + (printedReceiptIndices.length + 1) + ' of ' + settleResults.length + ')'"></span>
+                </button>
+                <button
+                    @click="settleResults.forEach(r => window.open(r.print_url, '_blank')); printedReceiptIndices = settleResults.map((r, i) => i)"
+                    x-show="settleResults.length > 1 && printedReceiptIndices.length < settleResults.length"
+                    class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm font-medium"
+                >
+                    Print All
+                </button>
+                <button
+                    @click="showSettleResultsModal = false; settleResults = []; printedReceiptIndices = []"
+                    class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition text-sm font-medium"
+                >
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Manager: Void Approval Panel -->
     @if($isManager)
     <div
@@ -2107,6 +2389,8 @@
                 paymentMethod: 'cash',
                 referenceNumber: '',
                 paymentTermDays: 5,
+                downPayment: 0,
+                downPaymentMethod: 'cash',
                 deliveryFee: 0,
                 cashReceived: 0,
                 change: 0,
@@ -2141,6 +2425,20 @@
                 isOpeningRegister: false,
                 isClosingRegister: false,
                 registerError: '',
+
+                // Settle Outstanding Invoice
+                showSettleModal: false,
+                settleCustomerId: '',
+                isLoadingOutstanding: false,
+                settleOutstandingInvoices: [],
+                selectedSettleInvoices: {},
+                settlePaymentMethod: 'cash',
+                settleReferenceNumber: '',
+                isSettling: false,
+                settleError: '',
+                settleResults: [],
+                showSettleResultsModal: false,
+                printedReceiptIndices: [],
 
                 init() {
                     this.filteredProducts = this.products;
@@ -2623,6 +2921,8 @@
 
                 processPayment() {
                     this.deliveryFee = 0;
+                    this.downPayment = 0;
+                    this.downPaymentMethod = 'cash';
                     this.showPaymentModal = true;
                     this.cashReceived = this.grandTotal;
                     this.calculateChange();
@@ -2640,6 +2940,7 @@
                             document.querySelector('meta[name="csrf-token"]').setAttribute('content', d.token);
                         };
 
+                        const isCharge = this.paymentMethod === 'charge';
                         const payload = {
                             customer_id: this.selectedCustomer || null,
                             cash_register_session_id: this.registerSessionId || null,
@@ -2648,8 +2949,10 @@
                             total: this.grandTotal,
                             delivery_fee: this.deliveryFee,
                             payment_method: this.paymentMethod,
-                            reference_number: ['card','gcash','paymaya'].includes(this.paymentMethod) ? this.referenceNumber : null,
-                            payment_term_days: this.paymentMethod === 'charge' ? this.paymentTermDays : null,
+                            reference_number: (['card','gcash','paymaya'].includes(this.paymentMethod) || (isCharge && this.downPayment > 0 && ['card','gcash','paymaya'].includes(this.downPaymentMethod))) ? this.referenceNumber : null,
+                            payment_term_days: isCharge ? this.paymentTermDays : null,
+                            down_payment: isCharge ? this.downPayment : 0,
+                            down_payment_method: isCharge && this.downPayment > 0 ? this.downPaymentMethod : null,
                             cash_received: this.cashReceived,
                             change: this.change
                         };
@@ -2681,12 +2984,19 @@
                         const data = await response.json();
 
                         if (data.success) {
-                            // Update register session totals locally
+                            // Update register session totals locally — must mirror what the
+                            // backend actually counts: the full total for immediate sales, but
+                            // only the down payment (if any) for a "Charge" (credit) sale, since
+                            // that's the only cash actually collected at checkout.
                             if (this.registerSessionId) {
-                                this.registerTotalSales += this.grandTotal;
-                                this.registerTotalTransactions += 1;
-                                if (this.paymentMethod === 'cash') {
-                                    this.registerTotalCashSales += this.grandTotal;
+                                const collectedNow = isCharge ? this.downPayment : this.grandTotal;
+                                const collectedMethod = isCharge ? this.downPaymentMethod : this.paymentMethod;
+                                if (collectedNow > 0) {
+                                    this.registerTotalSales += collectedNow;
+                                    this.registerTotalTransactions += 1;
+                                    if (collectedMethod === 'cash') {
+                                        this.registerTotalCashSales += collectedNow;
+                                    }
                                 }
                             }
 
@@ -2700,6 +3010,8 @@
                             this.paymentMethod = 'cash';
                             this.referenceNumber = '';
                             this.paymentTermDays = 5;
+                            this.downPayment = 0;
+                            this.downPaymentMethod = 'cash';
                             this.deliveryFee = 0;
                             this.cashReceived = 0;
                             this.change = 0;
@@ -2710,6 +3022,139 @@
                         alert('Error processing sale: ' + error.message);
                     } finally {
                         this.isProcessing = false;
+                    }
+                },
+
+                agingBadgeClass(bucket) {
+                    return {
+                        'Current': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                        '1-30 Days': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+                        '31-60 Days': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+                        '61-90 Days': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                        'Over 90 Days': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                    }[bucket] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                },
+
+                get settleTotal() {
+                    return Object.values(this.selectedSettleInvoices).reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+                },
+
+                openSettleModal() {
+                    if (!this.registerOpen) {
+                        alert('Please open your register before settling invoices.');
+                        return;
+                    }
+                    this.settleCustomerId = this.selectedCustomer || '';
+                    this.settleOutstandingInvoices = [];
+                    this.selectedSettleInvoices = {};
+                    this.settlePaymentMethod = 'cash';
+                    this.settleReferenceNumber = '';
+                    this.settleError = '';
+                    this.showSettleModal = true;
+                    if (this.settleCustomerId) {
+                        this.fetchOutstandingInvoices();
+                    }
+                },
+
+                async fetchOutstandingInvoices() {
+                    this.selectedSettleInvoices = {};
+                    if (!this.settleCustomerId) {
+                        this.settleOutstandingInvoices = [];
+                        return;
+                    }
+                    this.isLoadingOutstanding = true;
+                    try {
+                        const res = await fetch(`/pos/customers/${this.settleCustomerId}/outstanding-invoices`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.settleOutstandingInvoices = data.invoices;
+                        } else {
+                            this.settleError = data.message || 'Failed to load outstanding invoices.';
+                        }
+                    } catch (error) {
+                        this.settleError = 'Error loading invoices: ' + error.message;
+                    } finally {
+                        this.isLoadingOutstanding = false;
+                    }
+                },
+
+                toggleSettleInvoice(invoice) {
+                    if (this.selectedSettleInvoices[invoice.id]) {
+                        delete this.selectedSettleInvoices[invoice.id];
+                    } else {
+                        this.selectedSettleInvoices[invoice.id] = { amount: invoice.balance };
+                    }
+                },
+
+                async submitSettlement() {
+                    const payments = Object.entries(this.selectedSettleInvoices).map(([saleId, v]) => ({
+                        sale_id: parseInt(saleId),
+                        amount: parseFloat(v.amount)
+                    }));
+
+                    if (payments.length === 0) {
+                        this.settleError = 'Select at least one invoice to settle.';
+                        return;
+                    }
+                    if (payments.some(p => !p.amount || p.amount <= 0)) {
+                        this.settleError = 'Enter a valid amount for each selected invoice.';
+                        return;
+                    }
+
+                    this.isSettling = true;
+                    this.settleError = '';
+
+                    try {
+                        const response = await fetch('/pos/settle-invoices', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                customer_id: this.settleCustomerId,
+                                cash_register_session_id: this.registerSessionId,
+                                payment_method: this.settlePaymentMethod,
+                                reference_number: this.settlePaymentMethod !== 'cash' ? this.settleReferenceNumber : null,
+                                payments: payments
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            const collected = this.settleTotal;
+                            this.registerTotalSales += collected;
+                            this.registerTotalTransactions += payments.length;
+                            if (this.settlePaymentMethod === 'cash') {
+                                this.registerTotalCashSales += collected;
+                            }
+
+                            this.settleResults = data.results;
+                            this.printedReceiptIndices = [];
+                            this.showSettleModal = false;
+                            this.showSettleResultsModal = true;
+                        } else {
+                            this.settleError = data.message || 'Failed to settle invoices.';
+                        }
+                    } catch (error) {
+                        this.settleError = 'Error settling invoices: ' + error.message;
+                    } finally {
+                        this.isSettling = false;
+                    }
+                },
+
+                printNextSettleReceipt() {
+                    const idx = this.printedReceiptIndices.length;
+                    if (idx < this.settleResults.length) {
+                        window.open(this.settleResults[idx].print_url, '_blank');
+                        this.printedReceiptIndices.push(idx);
                     }
                 },
 

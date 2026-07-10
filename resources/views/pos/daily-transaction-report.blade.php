@@ -208,6 +208,30 @@
                 @endif
             </table>
         </div>
+
+        @if($settlements->count())
+        <div style="margin-top:8px;">
+            <div class="col-header" style="text-align:left;">Other Payments Collected (Invoice Settlements / Down Payments)</div>
+            @foreach($settlements as $settlement)
+                <table class="exp-row">
+                    <tr>
+                        <td class="e-desc">
+                            {{ $settlement->sale?->customer?->name ?? 'N/A' }}
+                            <span style="color:#555;">— INV-{{ str_pad((string) $settlement->sale_id, 6, '0', STR_PAD_LEFT) }}</span>
+                        </td>
+                        <td class="e-amt">{{ number_format($settlement->amount,2) }}</td>
+                    </tr>
+                </table>
+            @endforeach
+            <div class="div-line"></div>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr>
+                    <td style="font-weight:700;font-size:8px;">TOTAL SETTLEMENTS:</td>
+                    <td style="text-align:right;font-weight:700;font-size:8px;">{{ number_format($totalSettlements,2) }}</td>
+                </tr>
+            </table>
+        </div>
+        @endif
     </td>
 
     {{-- ===== COL 2: WALK-IN SALES (23%) ===== --}}
@@ -327,7 +351,7 @@
             <tr><td class="sl">H.W SALES:</td><td class="sv">{{ number_format($totalSales,2) }}</td></tr>
             <tr><td class="sl">ROOFING SALES:</td><td class="sv">&nbsp;</td></tr>
             <tr><td class="sl">PREVIOUS:</td><td class="sv">&nbsp;</td></tr>
-            <tr><td class="sl">OTHER PAYMENT:</td><td class="sv">&nbsp;</td></tr>
+            <tr><td class="sl">OTHER PAYMENT:</td><td class="sv">{!! $totalSettlements > 0 ? number_format($totalSettlements,2) : '&nbsp;' !!}</td></tr>
             <tr class="total-row">
                 <td class="sl">TOTAL</td>
                 <td class="sv">{{ number_format($incomeTotal,2) }}</td>

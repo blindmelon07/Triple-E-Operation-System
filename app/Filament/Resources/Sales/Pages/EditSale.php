@@ -33,6 +33,7 @@ class EditSale extends EditRecord
                         ->label('Amount to Pay')
                         ->numeric()
                         ->prefix('₱')
+                        ->helperText('For cash payments collected at the POS register, use "Settle Invoice" in the POS screen instead so it counts toward the cashier\'s totals.')
                         ->required(),
                     Select::make('payment_method')
                         ->label('Payment Method')

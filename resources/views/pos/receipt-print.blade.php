@@ -581,6 +581,18 @@
             </div>
             @endif
 
+            @if($sale->payment_method === 'charge' && $sale->payment_term_days)
+            <div style="margin-bottom: 4px; padding: 3px 4px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; font-size: 6px;">
+                <strong style="color: #92400e;">Payment Terms: Charge — {{ $sale->payment_term_days }} Days</strong>
+                <br>
+                @if($sale->amount_paid > 0)
+                    <span style="color: #78350f;">Down Payment: ₱{{ number_format($sale->amount_paid, 2) }} | Balance Due: ₱{{ number_format($sale->balance, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+                @else
+                    <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+                @endif
+            </div>
+            @endif
+
             <div class="received-note">
                 @if($type === 'delivery')
                     Received the above articles in good order and condition for delivery
@@ -749,6 +761,18 @@
                 <strong style="color: #92400e;">Payment Terms: Cash on Delivery — {{ $sale->payment_term_days }} Days</strong>
                 <br>
                 <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+            </div>
+            @endif
+
+            @if($sale->payment_method === 'charge' && $sale->payment_term_days)
+            <div style="margin-bottom: 4px; padding: 3px 4px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; font-size: 6px;">
+                <strong style="color: #92400e;">Payment Terms: Charge — {{ $sale->payment_term_days }} Days</strong>
+                <br>
+                @if($sale->amount_paid > 0)
+                    <span style="color: #78350f;">Down Payment: ₱{{ number_format($sale->amount_paid, 2) }} | Balance Due: ₱{{ number_format($sale->balance, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+                @else
+                    <span style="color: #78350f;">Amount Due: ₱{{ number_format($sale->total, 2) }} | Due Date: {{ $sale->due_date?->format('F d, Y') ?? 'N/A' }}</span>
+                @endif
             </div>
             @endif
 

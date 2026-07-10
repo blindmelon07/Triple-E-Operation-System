@@ -481,7 +481,7 @@
             <tr><td class="sl">H.W SALES:</td><td class="sv">{{ number_format($totalSales,2) }}</td></tr>
             <tr><td class="sl">ROOFING SALES:</td><td class="sv">&nbsp;</td></tr>
             <tr><td class="sl">PREVIOUS:</td><td class="sv">&nbsp;</td></tr>
-            <tr><td class="sl">OTHER PAYMENT:</td><td class="sv">&nbsp;</td></tr>
+            <tr><td class="sl">OTHER PAYMENT:</td><td class="sv">{!! $totalSettlements > 0 ? number_format($totalSettlements,2) : '&nbsp;' !!}</td></tr>
             <tr class="total-row"><td class="sl">TOTAL</td><td class="sv">{{ number_format($incomeTotal,2) }}</td></tr>
 
             <tr class="spacer"><td colspan="2"></td></tr>
