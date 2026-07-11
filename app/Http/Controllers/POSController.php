@@ -213,6 +213,7 @@ class POSController extends Controller
         $sales = Sale::with(['customer', 'sale_items'])
             ->withCount('sale_items')
             ->where('cash_register_session_id', $session->id)
+            ->where('is_voided', false)
             ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
             ->orderBy('date')
             ->get();
@@ -222,6 +223,7 @@ class POSController extends Controller
         // separately so the itemized list reconciles with $session->total_sales above.
         $settlements = SalePayment::with('sale.customer')
             ->where('cash_register_session_id', $session->id)
+            ->whereHas('sale', fn($q) => $q->where('is_voided', false))
             ->orderBy('created_at')
             ->get();
 
@@ -240,6 +242,7 @@ class POSController extends Controller
         $sales = Sale::with(['customer', 'sale_items.product'])
             ->withCount('sale_items')
             ->where('cash_register_session_id', $session->id)
+            ->where('is_voided', false)
             ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
             ->orderByRaw('customer_id IS NULL ASC')
             ->orderBy('created_at')
@@ -250,6 +253,7 @@ class POSController extends Controller
         // cash still needs to show up in today's reconciliation.
         $settlements = SalePayment::with('sale.customer')
             ->where('cash_register_session_id', $session->id)
+            ->whereHas('sale', fn($q) => $q->where('is_voided', false))
             ->orderBy('created_at')
             ->get();
 
@@ -309,6 +313,7 @@ class POSController extends Controller
 
         $allSales = Sale::with(['customer', 'sale_items.product'])
             ->whereIn('cash_register_session_id', $sessionIds)
+            ->where('is_voided', false)
             ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
             ->orderBy('created_at')
             ->get();
@@ -325,6 +330,7 @@ class POSController extends Controller
         // needs to count toward each session's (and the period's) reconciliation.
         $allSettlements = SalePayment::with('sale.customer')
             ->whereIn('cash_register_session_id', $sessionIds)
+            ->whereHas('sale', fn($q) => $q->where('is_voided', false))
             ->orderBy('created_at')
             ->get();
 

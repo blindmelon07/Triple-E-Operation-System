@@ -7,6 +7,7 @@ use App\Models\CashRegisterSession;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Sale;
+use App\Models\SalePayment;
 use App\Models\VoidRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -112,20 +113,39 @@ class VoidRequestController extends Controller
                 ]);
             }
 
-            // Reverse register session totals for paid non-credit sales
-            $wasCreditSale = ! empty($sale->payment_term_days);
-            if (! $wasCreditSale && $sale->payment_status === 'paid' && $sale->cash_register_session_id) {
-                $session = CashRegisterSession::find($sale->cash_register_session_id);
-                if ($session) {
-                    $isCash = $sale->payment_method === 'cash';
-                    $session->reverseSale((float) $sale->total, $isCash);
+            // Reverse every register session this sale's money ever touched. Payments
+            // collected after creation (or a partial down payment logged at creation)
+            // are recorded in sale_payments, each stamped with the session it was
+            // added to — reverse those individually rather than assuming one session.
+            $loggedPayments = SalePayment::where('sale_id', $sale->id)->get();
+            foreach ($loggedPayments as $payment) {
+                if ($payment->cash_register_session_id) {
+                    $paymentSession = CashRegisterSession::find($payment->cash_register_session_id);
+                    if ($paymentSession) {
+                        $paymentSession->reverseSale((float) $payment->amount, $payment->payment_method === 'cash');
+                    }
+                }
+            }
+
+            // Money collected at sale creation is only logged as a sale_payments row
+            // when it was a partial down payment on a credit sale. A non-credit sale
+            // paid in full, or a credit sale whose down payment covered the total, adds
+            // straight to its creation session with no ledger row — recover that amount
+            // as whatever's left of amount_paid after accounting for logged payments.
+            $unloggedInitial = round((float) $sale->amount_paid - (float) $loggedPayments->sum('amount'), 2);
+            if ($unloggedInitial > 0.01 && $sale->cash_register_session_id) {
+                $creationSession = CashRegisterSession::find($sale->cash_register_session_id);
+                if ($creationSession) {
+                    $creationSession->reverseSale($unloggedInitial, $sale->payment_method === 'cash');
                 }
             }
 
             $sale->update([
-                'is_voided'   => true,
-                'voided_at'   => now(),
-                'void_reason' => $voidRequest->void_reason,
+                'is_voided'      => true,
+                'voided_at'      => now(),
+                'void_reason'    => $voidRequest->void_reason,
+                'amount_paid'    => 0,
+                'payment_status' => 'unpaid',
             ]);
 
             $voidRequest->update([
@@ -144,8 +164,9 @@ class VoidRequestController extends Controller
                 'auditable_id'    => $voidRequest->id,
                 'auditable_label' => "Void Request #{$voidRequest->id} for Sale #{$sale->id}",
                 'new_values'      => [
-                    'void_reason' => $voidRequest->void_reason,
-                    'total'       => $sale->total,
+                    'void_reason'      => $voidRequest->void_reason,
+                    'total'            => $sale->total,
+                    'payments_reversed' => (float) $loggedPayments->sum('amount') + max(0, $unloggedInitial),
                 ],
                 'ip_address'      => $request->ip(),
                 'user_agent'      => $request->userAgent(),

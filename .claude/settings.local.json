@@ -10,7 +10,28 @@
       "Bash(pandoc:*)",
       "Bash(python -c:*)",
       "Bash(pip install:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(mysql --version)",
+      "Bash(php --version)",
+      "Bash(ls /c/xampp2/mysql/bin/ 2>/dev/null | grep -i mysql; echo \"---\"; ls /c/xampp/mysql/bin/ 2>/dev/null | grep -i mysql)",
+      "Read(//c/xampp/mysql/bin//**)",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe -h 127.0.0.1 -P 3306 -u root -ppassword -e \"SELECT id, name, email, phone, address, created_at FROM tostos2.customers WHERE name LIKE '%espera%' OR name LIKE '%Espera%';\")",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe -h 127.0.0.1 -P 3306 -u root -ppassword -e \"DESCRIBE tostos2.sales;\")",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe -h 127.0.0.1 -P 3306 -u root -ppassword -e \"DESCRIBE tostos2.void_requests;\")",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe -h 127.0.0.1 -P 3306 -u root -ppassword -e ' *)",
+      "Bash(export MYSQL_PWD=password)",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root tostos2 -e \"SHOW COLUMNS FROM sales;\")",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root tostos2 -e \"SHOW COLUMNS FROM sale_items;\")",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root tostos2 -e \"SHOW COLUMNS FROM sale_payments;\")",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root tostos2 -e \"SHOW COLUMNS FROM void_requests;\")",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe -h 127.0.0.1 -P 3306 -u root tostos2 -e ' *)",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root tostos2 -e \"SHOW COLUMNS FROM cash_register_sessions;\")",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe -uroot -ppassword tostos2 -e ' *)",
+      "Bash(\"/c/xampp2/php/php.exe\" -l \"app/Http/Controllers/VoidRequestController.php\")",
+      "Bash(\"/c/xampp2/php/php.exe\" -l \"app/Http/Controllers/POSController.php\")",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"DESCRIBE audit_logs;\")",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"SHOW TABLES LIKE '%credit%'; SHOW TABLES LIKE '%wallet%'; SHOW TABLES LIKE '%deposit%'; SHOW TABLES LIKE '%refund%';\")",
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"DESCRIBE customers;\")"
     ]
   }
 }
