@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\SalePayment;
 use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportExportService
@@ -258,6 +261,108 @@ class ReportExportService
         };
 
         return Response::stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export a single customer's Statement of Account as PDF — a chronological
+     * ledger of invoices (debits) and payments (credits) with a running balance,
+     * optionally scoped to a date range with a carried-forward opening balance.
+     */
+    public function exportCustomerStatementPdf(Customer $customer, ?string $dateFrom = null, ?string $dateTo = null): \Illuminate\Http\Response
+    {
+        $sales = Sale::where('customer_id', $customer->id)
+            ->where('is_voided', false)
+            ->orderBy('date')
+            ->orderBy('created_at')
+            ->get();
+
+        $paymentsBySale = SalePayment::whereIn('sale_id', $sales->pluck('id'))
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('sale_id');
+
+        // Build one chronological ledger: each invoice is a debit on its sale date,
+        // each payment (whether logged as a down payment/settlement, or collected
+        // in full at creation with no separate ledger row) is a credit on the date
+        // it was actually collected.
+        $entries = collect();
+
+        foreach ($sales as $sale) {
+            $invoiceNumber = 'INV-'.str_pad((string) $sale->id, 6, '0', STR_PAD_LEFT);
+
+            $entries->push([
+                'date'   => $sale->date,
+                'label'  => "Invoice {$invoiceNumber}",
+                'detail' => $sale->payment_term_days ? "Net {$sale->payment_term_days} terms" : 'Due on receipt',
+                'debit'  => (float) $sale->total,
+                'credit' => 0.0,
+            ]);
+
+            $loggedForSale = $paymentsBySale->get($sale->id, collect());
+
+            // Money collected at sale creation only gets a sale_payments row when it
+            // was a partial down payment on a credit sale; a fully-paid sale (credit
+            // or not) has no such row, so recover it from what's left of amount_paid.
+            $unlogged = round((float) $sale->amount_paid - (float) $loggedForSale->sum('amount'), 2);
+            if ($unlogged > 0.01) {
+                $entries->push([
+                    'date'   => $sale->date,
+                    'label'  => "Payment — {$invoiceNumber}",
+                    'detail' => ucfirst($sale->payment_method ?? 'cash'),
+                    'debit'  => 0.0,
+                    'credit' => $unlogged,
+                ]);
+            }
+
+            foreach ($loggedForSale as $payment) {
+                $entries->push([
+                    'date'   => $payment->created_at,
+                    'label'  => "Payment — {$invoiceNumber}",
+                    'detail' => ucfirst($payment->payment_method).($payment->reference_number ? " Ref# {$payment->reference_number}" : ''),
+                    'debit'  => 0.0,
+                    'credit' => (float) $payment->amount,
+                ]);
+            }
+        }
+
+        $entries = $entries->sortBy('date')->values();
+
+        $from = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
+        $to = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
+
+        $openingBalance = $from
+            ? (float) $entries->filter(fn ($e) => $e['date'] < $from)->sum(fn ($e) => $e['debit'] - $e['credit'])
+            : 0.0;
+
+        $periodEntries = $entries->filter(function ($e) use ($from, $to) {
+            return (! $from || $e['date'] >= $from) && (! $to || $e['date'] <= $to);
+        })->values();
+
+        $running = $openingBalance;
+        $periodEntries = $periodEntries->map(function ($e) use (&$running) {
+            $running += $e['debit'] - $e['credit'];
+            $e['running_balance'] = $running;
+
+            return $e;
+        });
+
+        $pdf = Pdf::loadView('exports.customer-statement-pdf', [
+            'customer'       => $customer,
+            'entries'        => $periodEntries,
+            'openingBalance' => $openingBalance,
+            'closingBalance' => $running,
+            'totalInvoiced'  => (float) $periodEntries->sum('debit'),
+            'totalPaid'      => (float) $periodEntries->sum('credit'),
+            'dateFrom'       => $from,
+            'dateTo'         => $to,
+            'generatedAt'    => now()->format('F d, Y h:i A'),
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        $filename = 'statement-of-account-'.Str::slug($customer->name).'-'.now()->format('Y-m-d').'.pdf';
+
+        return $pdf->download($filename);
     }
 
     /**

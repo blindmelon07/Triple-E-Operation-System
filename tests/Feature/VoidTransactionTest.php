@@ -49,9 +49,13 @@ function openSession(User $user, float $opening = 1000.0): CashRegisterSession
 
 function makePaidSale(CashRegisterSession $session, float $total = 500.0, string $method = 'cash'): Sale
 {
+    // The `paid()` factory state resolves `amount_paid` from the attributes accumulated
+    // *before* this create() call's overrides are merged in, so it captures definition()'s
+    // random `total` rather than the one passed here — pass amount_paid explicitly too.
     return Sale::factory()->paid()->create([
         'cash_register_session_id' => $session->id,
         'total'                    => $total,
+        'amount_paid'              => $total,
         'payment_method'           => $method,
         'payment_term_days'        => null,
     ]);

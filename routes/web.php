@@ -56,6 +56,17 @@ Route::middleware(['auth'])->group(function () {
         $request->integer('customer_id') ?: null,
         $request->integer('supplier_id') ?: null,
     ))->name('aging-report.export-pdf');
+
+    // Customer Statement of Account
+    Route::get('/reports/customers/{customer}/statement', function (\App\Models\Customer $customer, \Illuminate\Http\Request $request) {
+        abort_unless(auth()->user()->can('view', $customer), 403);
+
+        return (new ReportExportService)->exportCustomerStatementPdf(
+            $customer,
+            $request->query('date_from'),
+            $request->query('date_to'),
+        );
+    })->name('customer-statement.export-pdf');
 });
 
 Route::middleware(['auth'])->post('/tos/pos/complete-sale', [POSController::class, 'completeSale'])->name('filament.admin.pages.pos.complete-sale');

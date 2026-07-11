@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -42,6 +44,12 @@ class CustomersTable
                 //
             ])
             ->recordActions([
+                Action::make('generate_soa')
+                    ->label('Statement of Account')
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->color('gray')
+                    ->url(fn ($record): string => route('customer-statement.export-pdf', $record))
+                    ->openUrlInNewTab(),
                 EditAction::make(),
             ])
             ->toolbarActions([

@@ -31,7 +31,16 @@
       "Bash(\"/c/xampp2/php/php.exe\" -l \"app/Http/Controllers/POSController.php\")",
       "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"DESCRIBE audit_logs;\")",
       "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"SHOW TABLES LIKE '%credit%'; SHOW TABLES LIKE '%wallet%'; SHOW TABLES LIKE '%deposit%'; SHOW TABLES LIKE '%refund%';\")",
-      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"DESCRIBE customers;\")"
+      "Bash(\"/c/xampp2/mysql/bin/mysql.exe\" -uroot -ppassword tostos2 -e \"DESCRIBE customers;\")",
+      "Bash(\"/c/xampp2/php/php.exe\" -l \"app/Services/ReportExportService.php\")",
+      "Bash(\"/c/xampp2/php/php.exe\" -l \"app/Filament/Resources/Customers/Tables/CustomersTable.php\")",
+      "Bash(\"/c/xampp2/php/php.exe\" -l \"routes/web.php\")",
+      "Bash(/c/xampp2/php/php.exe artisan tinker '--execute= *)",
+      "Bash(cp \"C:/Users/bry/AppData/Local/Temp/soa-test.pdf\" \"C:/Users/bry/AppData/Local/Temp/claude/c--xampp2-htdocs-TOS/d21cd880-9600-46c3-b1c0-8146e02ed4dd/scratchpad/soa-test.pdf\" && ls -la \"C:/Users/bry/AppData/Local/Temp/claude/c--xampp2-htdocs-TOS/d21cd880-9600-46c3-b1c0-8146e02ed4dd/scratchpad/soa-test.pdf\")",
+      "Bash(\"/c/xampp2/php/php.exe\" artisan *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\bry\\AppData\\Local\\Temp"
     ]
   }
 }
