@@ -110,6 +110,7 @@ class ReportExportService
     public function exportAgingPdf(?int $customerId = null, ?int $supplierId = null): \Illuminate\Http\Response
     {
         $receivables = Sale::where('payment_status', '!=', 'paid')
+            ->where('is_voided', false)
             ->whereNotNull('due_date')
             ->when($customerId, fn ($query) => $query->where('customer_id', $customerId))
             ->with('customer')
@@ -186,6 +187,7 @@ class ReportExportService
 
             // ── RECEIVABLES ──────────────────────────────────────────────
             $receivables = Sale::where('payment_status', '!=', 'paid')
+                ->where('is_voided', false)
                 ->whereNotNull('due_date')
                 ->when($customerId, fn ($query) => $query->where('customer_id', $customerId))
                 ->with('customer')

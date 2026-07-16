@@ -44,6 +44,7 @@ class AgingReport extends Page implements HasForms, HasTable
     {
         // Customer Receivables (Sales)
         $receivables = Sale::where('payment_status', '!=', 'paid')
+            ->where('is_voided', false)
             ->whereNotNull('due_date')
             ->with('customer')
             ->get();
@@ -105,6 +106,7 @@ class AgingReport extends Page implements HasForms, HasTable
             ->query(
                 Sale::query()
                     ->where('payment_status', '!=', 'paid')
+                    ->where('is_voided', false)
                     ->whereNotNull('due_date')
                     ->with('customer')
             )
