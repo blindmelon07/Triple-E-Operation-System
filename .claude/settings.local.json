@@ -37,7 +37,10 @@
       "Bash(\"/c/xampp2/php/php.exe\" -l \"routes/web.php\")",
       "Bash(/c/xampp2/php/php.exe artisan tinker '--execute= *)",
       "Bash(cp \"C:/Users/bry/AppData/Local/Temp/soa-test.pdf\" \"C:/Users/bry/AppData/Local/Temp/claude/c--xampp2-htdocs-TOS/d21cd880-9600-46c3-b1c0-8146e02ed4dd/scratchpad/soa-test.pdf\" && ls -la \"C:/Users/bry/AppData/Local/Temp/claude/c--xampp2-htdocs-TOS/d21cd880-9600-46c3-b1c0-8146e02ed4dd/scratchpad/soa-test.pdf\")",
-      "Bash(\"/c/xampp2/php/php.exe\" artisan *)"
+      "Bash(\"/c/xampp2/php/php.exe\" artisan *)",
+      "Bash(powershell -Command \"Get-ChildItem -Path 'C:\\\\xampp2\\\\htdocs\\\\TOS' -Depth 1 -Directory | Select-Object Name\")",
+      "Bash(/c/xampp2/mysql/bin/mysql.exe *)",
+      "Bash(git commit -m ' *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\bry\\AppData\\Local\\Temp"
