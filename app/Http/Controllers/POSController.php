@@ -457,7 +457,7 @@ class POSController extends Controller
             'reference_number' => 'nullable|string|max:100',
             'payment_term_days' => 'nullable|integer|in:5,10,15,30,60',
             'down_payment' => 'nullable|numeric|min:0',
-            'down_payment_method' => 'nullable|string|in:cash,bank,gcash,check',
+            'down_payment_method' => 'nullable|string|in:cash,bank,gcash,paymaya,card,check',
             'cash_received' => 'nullable|numeric',
             'change' => 'nullable|numeric',
         ]);

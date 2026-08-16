@@ -763,15 +763,17 @@
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                 >
                                     <option value="cash">Cash</option>
-                                    <option value="bank">Bank Transfer</option>
                                     <option value="gcash">GCash</option>
+                                    <option value="paymaya">PayMaya</option>
+                                    <option value="card">Card</option>
+                                    <option value="bank">Bank Transfer</option>
                                     <option value="check">Check</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    <div x-show="['card','gcash','paymaya'].includes(paymentMethod) || (paymentMethod === 'charge' && downPayment > 0 && ['bank','gcash','check'].includes(downPaymentMethod))" x-cloak>
+                    <div x-show="['card','gcash','paymaya'].includes(paymentMethod) || (paymentMethod === 'charge' && downPayment > 0 && ['card','gcash','paymaya','bank','check'].includes(downPaymentMethod))" x-cloak>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reference Number</label>
                         <input
                             type="text"
@@ -2949,7 +2951,7 @@
                             total: this.grandTotal,
                             delivery_fee: this.deliveryFee,
                             payment_method: this.paymentMethod,
-                            reference_number: (['card','gcash','paymaya'].includes(this.paymentMethod) || (isCharge && this.downPayment > 0 && ['bank','gcash','check'].includes(this.downPaymentMethod))) ? this.referenceNumber : null,
+                            reference_number: (['card','gcash','paymaya'].includes(this.paymentMethod) || (isCharge && this.downPayment > 0 && ['card','gcash','paymaya','bank','check'].includes(this.downPaymentMethod))) ? this.referenceNumber : null,
                             payment_term_days: isCharge ? this.paymentTermDays : null,
                             down_payment: isCharge ? this.downPayment : 0,
                             down_payment_method: isCharge && this.downPayment > 0 ? this.downPaymentMethod : null,
