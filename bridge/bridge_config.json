@@ -1,0 +1,9 @@
+{
+  "device_ip": "192.168.1.201",
+  "device_port": 4370,
+  "device_password": 0,
+  "force_udp": false,
+  "api_url": "http://localhost:8000/api/zkteco/attendance",
+  "api_token": "Y3Mey1BAty3GumYJKwC0ZFNBH4rp9dkZEWsUWx664fQ87NVh",
+  "request_timeout_seconds": 15
+}

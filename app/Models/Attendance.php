@@ -68,6 +68,6 @@ class Attendance extends Model
             return null;
         }
 
-        return round($out->diffInMinutes($in) / 60, 2);
+        return round($in->diffInMinutes($out, true) / 60, 2);
     }
 }

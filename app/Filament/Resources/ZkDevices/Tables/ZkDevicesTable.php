@@ -1,41 +1,43 @@
 <?php
 
-namespace App\Filament\Resources\Users\Tables;
+namespace App\Filament\Resources\ZkDevices\Tables;
 
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
-class UsersTable
+class ZkDevicesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
             ->columns([
+                TextColumn::make('serial_number')
+                    ->label('SN')
+                    ->searchable()
+                    ->copyable(),
                 TextColumn::make('name')
                     ->searchable(),
-                TextColumn::make('email')
-                    ->label('Email address')
-                    ->searchable(),
-                TextColumn::make('biometric_pin')
-                    ->label('Biometric PIN')
+                TextColumn::make('location')
                     ->searchable()
-                    ->placeholder('Not set')
                     ->toggleable(),
-                TextColumn::make('email_verified_at')
+                IconColumn::make('is_active')
+                    ->label('Active')
+                    ->boolean(),
+                TextColumn::make('last_seen_at')
+                    ->label('Last Seen')
                     ->dateTime()
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
+                    ->since()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
+                    ->placeholder('Never'),
+                TextColumn::make('last_seen_ip')
+                    ->label('Last IP')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

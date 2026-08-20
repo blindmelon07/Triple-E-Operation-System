@@ -27,6 +27,7 @@ use App\Filament\Resources\Sales\SaleResource;
 use App\Filament\Resources\Suppliers\SupplierResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Vehicles\VehicleResource;
+use App\Filament\Resources\ZkDevices\ZkDeviceResource;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -271,6 +272,18 @@ class Home extends Page
                 'color'       => '#14b8a6',
                 'bg'          => '#f0fdfa',
                 'border'      => '#99f6e4',
+            ];
+        }
+
+        if ($isAdmin || $user->can('ViewAny:ZkDevice')) {
+            $cards[] = [
+                'title'       => 'Biometric Devices',
+                'description' => 'Register and monitor ZKTeco attendance terminals',
+                'icon'        => 'heroicon-o-finger-print',
+                'url'         => ZkDeviceResource::getUrl(),
+                'color'       => '#0ea5e9',
+                'bg'          => '#f0f9ff',
+                'border'      => '#bae6fd',
             ];
         }
 
