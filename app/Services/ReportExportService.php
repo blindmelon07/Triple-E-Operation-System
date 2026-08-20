@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\Payroll;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SalePayment;
@@ -396,6 +397,26 @@ class ReportExportService
     }
 
     /**
+     * Export a Payroll (with its items) as a printable PDF.
+     */
+    public function exportPayrollPdf(Payroll $payroll): \Illuminate\Http\Response
+    {
+        $payroll->load(['payrollItems.employee', 'generatedBy', 'approvedBy']);
+
+        $pdf = Pdf::loadView('exports.payroll-pdf', [
+            'payroll' => $payroll,
+            'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => $this->logoDataUri(),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        $filename = 'payroll-'.$payroll->payroll_number.'.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
      * Export Financial Dashboard as Excel (CSV).
      *
      * @param  array<string, mixed>  $dashboardData
@@ -471,5 +492,21 @@ class ReportExportService
         };
 
         return Response::stream($callback, 200, $headers);
+    }
+
+    /**
+     * Base64-encode the company logo for embedding in a PDF. DomPDF's
+     * default chroot/remote settings can refuse an asset() URL or a plain
+     * public_path(), so a data URI sidesteps both — it always renders.
+     */
+    private function logoDataUri(): ?string
+    {
+        $path = public_path('images/logo.png');
+
+        if (! file_exists($path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode(file_get_contents($path));
     }
 }

@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Attendances\Schemas;
 
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
-use App\Models\User;
+use App\Models\Employee;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -30,12 +30,9 @@ class AttendanceForm
                             ->default(now())
                             ->maxDate(now()),
 
-                        Select::make('user_id')
+                        Select::make('employee_id')
                             ->label('Employee')
-                            ->options(
-                                User::whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'))
-                                    ->pluck('name', 'id')
-                            )
+                            ->options(Employee::where('is_active', true)->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->required(),

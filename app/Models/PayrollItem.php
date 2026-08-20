@@ -13,7 +13,7 @@ class PayrollItem extends Model
 
     protected $fillable = [
         'payroll_id',
-        'user_id',
+        'employee_id',
         'daily_rate',
         'days_worked',
         'days_absent',
@@ -68,10 +68,10 @@ class PayrollItem extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Employee, $this>
      */
-    public function user(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Employee::class);
     }
 }

@@ -30,7 +30,7 @@ class LeaveRequestsTable
                     ->copyable()
                     ->weight('bold'),
 
-                TextColumn::make('user.name')
+                TextColumn::make('employee.name')
                     ->label('Employee')
                     ->searchable()
                     ->sortable(),
@@ -78,9 +78,9 @@ class LeaveRequestsTable
                     )
                     ->default('pending'),
 
-                SelectFilter::make('user_id')
+                SelectFilter::make('employee_id')
                     ->label('Employee')
-                    ->relationship('user', 'name')
+                    ->relationship('employee', 'name')
                     ->searchable()
                     ->preload(),
 

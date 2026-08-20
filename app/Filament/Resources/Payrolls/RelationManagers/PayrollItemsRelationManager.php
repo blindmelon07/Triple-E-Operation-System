@@ -63,75 +63,108 @@ class PayrollItemsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')
+                TextColumn::make('employee.name')
                     ->label('Employee')
+                    ->weight('bold')
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('daily_rate')
-                    ->label('Daily Rate')
-                    ->money('PHP'),
-
                 TextColumn::make('days_worked')
                     ->label('Days Worked')
+                    ->alignEnd()
                     ->sortable(),
 
                 TextColumn::make('days_absent')
                     ->label('Absent')
+                    ->alignEnd()
+                    ->color(fn ($state) => $state > 0 ? 'danger' : null)
                     ->sortable(),
-
-                TextColumn::make('overtime_hours')
-                    ->label('OT Hrs')
-                    ->sortable(),
-
-                TextColumn::make('overtime_pay')
-                    ->label('OT Pay')
-                    ->money('PHP'),
-
-                TextColumn::make('bonus')
-                    ->label('Bonus')
-                    ->money('PHP'),
-
-                TextColumn::make('allowance')
-                    ->label('Allowance')
-                    ->money('PHP'),
 
                 TextColumn::make('gross_pay')
                     ->label('Gross')
                     ->money('PHP')
+                    ->alignEnd()
                     ->sortable()
                     ->summarize(Sum::make()->money('PHP')->label('Total')),
 
-                TextColumn::make('late_deduction')
-                    ->label('Late Ded.')
-                    ->money('PHP'),
-
-                TextColumn::make('sss_deduction')
-                    ->label('SSS')
-                    ->money('PHP'),
-
-                TextColumn::make('philhealth_deduction')
-                    ->label('PhilHealth')
-                    ->money('PHP'),
-
-                TextColumn::make('pagibig_deduction')
-                    ->label('Pag-IBIG')
-                    ->money('PHP'),
-
-                TextColumn::make('other_deduction')
-                    ->label('Other Ded.')
-                    ->money('PHP'),
-
                 TextColumn::make('total_deductions')
-                    ->label('Total Ded.')
+                    ->label('Deductions')
                     ->money('PHP')
+                    ->alignEnd()
+                    ->color('danger')
                     ->summarize(Sum::make()->money('PHP')->label('Total')),
 
                 TextColumn::make('net_pay')
                     ->label('Net Pay')
                     ->money('PHP')
+                    ->alignEnd()
+                    ->weight('bold')
+                    ->color('success')
                     ->sortable()
                     ->summarize(Sum::make()->money('PHP')->label('Total')),
+
+                // Everything below is the breakdown behind Gross/Deductions —
+                // hidden by default so the table stays scannable; toggle
+                // them on (column-toggle button, top right) when you need
+                // to audit a specific figure.
+                TextColumn::make('daily_rate')
+                    ->label('Daily Rate')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('overtime_hours')
+                    ->label('OT Hrs')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('overtime_pay')
+                    ->label('OT Pay')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('bonus')
+                    ->label('Bonus')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('allowance')
+                    ->label('Allowance')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('late_deduction')
+                    ->label('Late Ded.')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('sss_deduction')
+                    ->label('SSS')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('philhealth_deduction')
+                    ->label('PhilHealth')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('pagibig_deduction')
+                    ->label('Pag-IBIG')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('other_deduction')
+                    ->label('Other Ded.')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->recordActions([
                 EditAction::make()
@@ -159,6 +192,6 @@ class PayrollItemsRelationManager extends RelationManager
                         $this->getOwnerRecord()->recalculateTotals();
                     }),
             ])
-            ->defaultSort('user.name');
+            ->defaultSort('employee.name');
     }
 }

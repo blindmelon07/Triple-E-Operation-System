@@ -19,6 +19,13 @@ class ViewPayroll extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('export_pdf')
+                ->label('Export to PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->url(fn () => route('payroll.export-pdf', ['payroll' => $this->record]))
+                ->openUrlInNewTab(),
+
             Action::make('approve')
                 ->label('Approve Payroll')
                 ->icon('heroicon-o-check-circle')

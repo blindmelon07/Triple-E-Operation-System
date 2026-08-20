@@ -3,15 +3,16 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Services\ZkAttendanceService;
 use App\Traits\Auditable;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles, Auditable;
@@ -19,18 +20,6 @@ class User extends Authenticatable
     protected static function getAuditExcludedFields(): array
     {
         return ['password', 'remember_token', 'email_verified_at'];
-    }
-
-    protected static function booted(): void
-    {
-        // A biometric_pin set/changed after punches from that PIN already
-        // arrived (device enrolled + punching before payroll got around to
-        // mapping the user) shouldn't leave that history stranded.
-        static::updated(function (User $user) {
-            if ($user->wasChanged('biometric_pin') && $user->biometric_pin) {
-                app(ZkAttendanceService::class)->reconcileUnmappedPunches($user);
-            }
-        });
     }
 
     /**
@@ -41,7 +30,6 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'biometric_pin',
         'password',
         'role_id',
     ];
@@ -70,34 +58,28 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<Attendance, $this>
+     * The HR/attendance master record linked to this login, if any. Not
+     * every User has one, and not every Employee has a User (see
+     * App\Models\Employee).
+     *
+     * @return HasOne<Employee, $this>
      */
-    public function attendances(): HasMany
+    public function employee(): HasOne
     {
-        return $this->hasMany(Attendance::class);
+        return $this->hasOne(Employee::class);
     }
 
     /**
-     * @return HasMany<LeaveRequest, $this>
+     * Any authenticated user may enter the panel — access to individual
+     * resources/pages within it is still gated per-permission by Filament
+     * Shield's policies. Without this, Filament's Authenticate middleware
+     * falls back to `config('app.env') === 'local'`, which would lock every
+     * user out of the panel entirely as soon as APP_ENV is anything else
+     * (production, testing, staging) — invisible on a local dev box, fatal
+     * everywhere else.
      */
-    public function leaveRequests(): HasMany
+    public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasMany(LeaveRequest::class);
-    }
-
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne<EmployeeCompensation, $this>
-     */
-    public function employeeCompensation(): \Illuminate\Database\Eloquent\Relations\HasOne
-    {
-        return $this->hasOne(EmployeeCompensation::class);
-    }
-
-    /**
-     * @return HasMany<PayrollItem, $this>
-     */
-    public function payrollItems(): HasMany
-    {
-        return $this->hasMany(PayrollItem::class);
+        return true;
     }
 }

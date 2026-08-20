@@ -79,7 +79,11 @@ class Payroll extends Model
     {
         $prefix = 'PAY';
         $date = now()->format('Ymd');
-        $lastPayroll = static::whereDate('created_at', today())->latest()->first();
+        // Order by id, not just created_at — two payrolls generated within
+        // the same second (timestamp resolution, or a slow DB clock) would
+        // otherwise tie and `latest()` could hand back the wrong row,
+        // producing a duplicate payroll_number.
+        $lastPayroll = static::whereDate('created_at', today())->latest('id')->first();
         $sequence = $lastPayroll ? ((int) substr($lastPayroll->payroll_number ?? '0000', -4)) + 1 : 1;
 
         return sprintf('%s-%s-%04d', $prefix, $date, $sequence);

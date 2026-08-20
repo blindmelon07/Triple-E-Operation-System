@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\EmployeeCompensations\Schemas;
 
 use App\Enums\PayPeriodType;
-use App\Models\User;
+use App\Models\Employee;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -19,12 +19,9 @@ class EmployeeCompensationForm
             ->components([
                 Section::make('Employee & Rate')
                     ->schema([
-                        Select::make('user_id')
+                        Select::make('employee_id')
                             ->label('Employee')
-                            ->options(
-                                User::whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'))
-                                    ->pluck('name', 'id')
-                            )
+                            ->options(Employee::where('is_active', true)->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->required()

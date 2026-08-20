@@ -23,10 +23,6 @@ class UserForm
                     ->relationship('roles', 'name')
                     ->multiple()
                     ->required(),
-                TextInput::make('biometric_pin')
-                    ->label('Biometric PIN')
-                    ->helperText('Enrollment number assigned to this employee on the ZKTeco device.')
-                    ->unique(ignoreRecord: true),
                 DateTimePicker::make('email_verified_at'),
                 TextInput::make('password')
                     ->password()

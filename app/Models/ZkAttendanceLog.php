@@ -13,7 +13,7 @@ class ZkAttendanceLog extends Model
     protected $fillable = [
         'zk_device_id',
         'pin',
-        'user_id',
+        'employee_id',
         'attendance_id',
         'punched_at',
         'status',
@@ -38,11 +38,11 @@ class ZkAttendanceLog extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Employee, $this>
      */
-    public function user(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Employee::class);
     }
 
     /**

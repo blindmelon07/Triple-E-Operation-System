@@ -39,7 +39,7 @@ class CreatePayroll extends CreateRecord
 
         // Get all employees with matching pay period type
         $compensations = EmployeeCompensation::where('pay_period', $payroll->pay_period_type)
-            ->with('user')
+            ->with('employee')
             ->get();
 
         if ($compensations->isEmpty()) {
@@ -57,7 +57,7 @@ class CreatePayroll extends CreateRecord
         $totalNet = 0;
 
         foreach ($compensations as $comp) {
-            $userId = $comp->user_id;
+            $employeeId = $comp->employee_id;
             $daysOff = $comp->days_off ?? [];
 
             // Calculate working days in the period (excluding employee's days off)
@@ -72,7 +72,7 @@ class CreatePayroll extends CreateRecord
             }
 
             // Query attendance records in the period (exclude days off)
-            $attendances = Attendance::where('user_id', $userId)
+            $attendances = Attendance::where('employee_id', $employeeId)
                 ->whereBetween('date', [$periodStart, $periodEnd])
                 ->get()
                 ->filter(function ($attendance) use ($daysOff) {
@@ -88,7 +88,7 @@ class CreatePayroll extends CreateRecord
             $daysWorked += $halfDays * 0.5;
 
             // Count approved paid leaves as worked days
-            $paidLeaveDays = LeaveRequest::where('user_id', $userId)
+            $paidLeaveDays = LeaveRequest::where('employee_id', $employeeId)
                 ->where('status', 'approved')
                 ->whereHas('leaveType', fn ($q) => $q->where('is_paid', true))
                 ->where(function ($q) use ($periodStart, $periodEnd) {
@@ -112,7 +112,12 @@ class CreatePayroll extends CreateRecord
                     $timeIn = Carbon::parse($record->time_in);
                     $threshold = Carbon::parse('09:00:00');
                     if ($timeIn->greaterThan($threshold)) {
-                        $lateMinutes += $timeIn->diffInMinutes($threshold);
+                        // Carbon 3 defaults diffInMinutes() to a signed
+                        // result (Carbon 2 was always absolute) — without
+                        // the explicit `true` here this comes back negative
+                        // whenever $timeIn is after $threshold, turning the
+                        // late deduction into a bonus.
+                        $lateMinutes += $timeIn->diffInMinutes($threshold, true);
                     }
                 }
             }
@@ -173,7 +178,7 @@ class CreatePayroll extends CreateRecord
 
             PayrollItem::create([
                 'payroll_id' => $payroll->id,
-                'user_id' => $userId,
+                'employee_id' => $employeeId,
                 'daily_rate' => $comp->daily_rate,
                 'days_worked' => $daysWorked,
                 'days_absent' => $daysAbsent,

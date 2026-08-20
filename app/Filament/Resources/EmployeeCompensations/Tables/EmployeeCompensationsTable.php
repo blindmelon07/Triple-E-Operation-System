@@ -16,7 +16,7 @@ class EmployeeCompensationsTable
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')
+                TextColumn::make('employee.name')
                     ->label('Employee')
                     ->searchable()
                     ->sortable(),

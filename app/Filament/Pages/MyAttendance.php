@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
+use App\Models\Employee;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -36,15 +37,45 @@ class MyAttendance extends Page implements HasForms, HasTable
 
     protected string $view = 'filament.pages.my-attendance';
 
+    /**
+     * The Employee record linked to the logged-in User, if any. Self-service
+     * clock-in inherently requires login, so an employee who never logs in
+     * simply doesn't use this page — but a User account with no linked
+     * Employee (e.g. an admin created before being mapped to one) also
+     * can't use it, which callers must guard for.
+     */
+    protected function resolveEmployee(): ?Employee
+    {
+        return Auth::user()?->employee;
+    }
+
     public function getTodayAttendance(): ?Attendance
     {
-        return Attendance::where('user_id', Auth::id())
+        $employee = $this->resolveEmployee();
+
+        if (! $employee) {
+            return null;
+        }
+
+        return Attendance::where('employee_id', $employee->id)
             ->whereDate('date', today())
             ->first();
     }
 
     public function clockIn(): void
     {
+        $employee = $this->resolveEmployee();
+
+        if (! $employee) {
+            Notification::make()
+                ->title('No Employee Record')
+                ->body('Your account isn\'t linked to an employee record. Ask HR to link it before clocking in.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         $existing = $this->getTodayAttendance();
 
         if ($existing && $existing->time_in) {
@@ -70,7 +101,7 @@ class MyAttendance extends Page implements HasForms, HasTable
             ]);
         } else {
             Attendance::create([
-                'user_id' => Auth::id(),
+                'employee_id' => $employee->id,
                 'date' => today(),
                 'time_in' => $now->format('H:i:s'),
                 'status' => $status,
@@ -86,6 +117,18 @@ class MyAttendance extends Page implements HasForms, HasTable
 
     public function clockOut(): void
     {
+        $employee = $this->resolveEmployee();
+
+        if (! $employee) {
+            Notification::make()
+                ->title('No Employee Record')
+                ->body('Your account isn\'t linked to an employee record. Ask HR to link it before clocking out.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         $existing = $this->getTodayAttendance();
 
         if (! $existing || ! $existing->time_in) {
@@ -134,10 +177,12 @@ class MyAttendance extends Page implements HasForms, HasTable
 
     public function table(Table $table): Table
     {
+        $employee = $this->resolveEmployee();
+
         return $table
             ->query(
                 Attendance::query()
-                    ->where('user_id', Auth::id())
+                    ->where('employee_id', $employee?->id ?? 0)
             )
             ->columns([
                 TextColumn::make('date')

@@ -15,7 +15,7 @@ class EmployeeCompensation extends Model
     protected $table = 'employee_compensations';
 
     protected $fillable = [
-        'user_id',
+        'employee_id',
         'daily_rate',
         'pay_period',
         'days_off',
@@ -48,11 +48,11 @@ class EmployeeCompensation extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Employee, $this>
      */
-    public function user(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Employee::class);
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Deliveries\DeliveryResource;
 use App\Filament\Resources\Drivers\DriverResource;
 use App\Filament\Resources\EmployeeCompensations\EmployeeCompensationResource;
+use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\ExpenseCategories\ExpenseCategoryResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\GovernmentContributions\GovernmentContributionResource;
@@ -260,6 +261,18 @@ class Home extends Page
                 'color'       => '#ec4899',
                 'bg'          => '#fdf2f8',
                 'border'      => '#fbcfe8',
+            ];
+        }
+
+        if ($isAdmin || $user->can('ViewAny:Employee')) {
+            $cards[] = [
+                'title'       => 'Employees',
+                'description' => 'Manage employee records, biometric PINs, and login links',
+                'icon'        => 'heroicon-o-identification',
+                'url'         => EmployeeResource::getUrl(),
+                'color'       => '#6366f1',
+                'bg'          => '#eef2ff',
+                'border'      => '#c7d2fe',
             ];
         }
 

@@ -57,6 +57,10 @@ Route::middleware(['auth'])->group(function () {
         $request->integer('supplier_id') ?: null,
     ))->name('aging-report.export-pdf');
 
+    // Payroll
+    Route::get('/reports/payrolls/{payroll}/export-pdf', fn (\App\Models\Payroll $payroll) => (new ReportExportService)->exportPayrollPdf($payroll))
+        ->name('payroll.export-pdf');
+
     // Customer Statement of Account
     Route::get('/reports/customers/{customer}/statement', function (\App\Models\Customer $customer, \Illuminate\Http\Request $request) {
         abort_unless(auth()->user()->can('view', $customer), 403);

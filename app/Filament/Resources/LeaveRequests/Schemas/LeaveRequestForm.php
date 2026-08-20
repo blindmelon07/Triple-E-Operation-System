@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\LeaveRequests\Schemas;
 
+use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
-use App\Models\User;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -30,12 +30,9 @@ class LeaveRequestForm
                             ->disabled()
                             ->dehydrated(),
 
-                        Select::make('user_id')
+                        Select::make('employee_id')
                             ->label('Employee')
-                            ->options(
-                                User::whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'))
-                                    ->pluck('name', 'id')
-                            )
+                            ->options(Employee::where('is_active', true)->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->required(),
@@ -92,7 +89,7 @@ class LeaveRequestForm
 
                         Placeholder::make('requested_by_display')
                             ->label('Requested By')
-                            ->content(fn ($record) => $record?->user?->name ?? '-'),
+                            ->content(fn ($record) => $record?->employee?->name ?? '-'),
 
                         Placeholder::make('approved_by_display')
                             ->label('Approved By')

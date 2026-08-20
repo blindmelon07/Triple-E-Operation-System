@@ -13,8 +13,12 @@ class CreateAttendance extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // If an admin is recording for another user, set recorded_by
-        if ((int) $data['user_id'] !== Auth::id()) {
+        // If the acting admin is recording for someone other than their own
+        // linked employee (or has no linked employee at all), stamp
+        // recorded_by so it's clear this wasn't a self-service clock-in.
+        $actingEmployeeId = Auth::user()?->employee?->id;
+
+        if ($actingEmployeeId === null || (int) $data['employee_id'] !== $actingEmployeeId) {
             $data['recorded_by'] = Auth::id();
         }
 

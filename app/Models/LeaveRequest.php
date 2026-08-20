@@ -14,7 +14,7 @@ class LeaveRequest extends Model
 
     protected $fillable = [
         'request_number',
-        'user_id',
+        'employee_id',
         'leave_type_id',
         'start_date',
         'end_date',
@@ -43,11 +43,11 @@ class LeaveRequest extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Employee, $this>
      */
-    public function user(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Employee::class);
     }
 
     /**
@@ -73,7 +73,10 @@ class LeaveRequest extends Model
     {
         $prefix = 'LR';
         $date = now()->format('Ymd');
-        $lastRequest = static::whereDate('created_at', today())->latest()->first();
+        // Order by id, not just created_at — two requests generated within
+        // the same second would otherwise tie and `latest()` could hand
+        // back the wrong row, producing a duplicate request_number.
+        $lastRequest = static::whereDate('created_at', today())->latest('id')->first();
         $sequence = $lastRequest ? ((int) substr($lastRequest->request_number ?? '0000', -4)) + 1 : 1;
 
         return sprintf('%s-%s-%04d', $prefix, $date, $sequence);

@@ -14,7 +14,7 @@ class Attendance extends Model
     use HasFactory, Auditable;
 
     protected $fillable = [
-        'user_id',
+        'employee_id',
         'date',
         'time_in',
         'time_out',
@@ -37,11 +37,11 @@ class Attendance extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Employee, $this>
      */
-    public function user(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Employee::class);
     }
 
     /**

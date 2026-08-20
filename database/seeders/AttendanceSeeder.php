@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Attendance;
-use App\Models\User;
+use App\Models\Employee;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
@@ -17,14 +17,14 @@ class AttendanceSeeder extends Seeder
      */
     public function run(): void
     {
-        // Find cashier users
-        $cashiers = User::whereHas('roles', fn ($q) => $q->where('name', 'like', '%cashier%'))->get();
+        // Find employees linked to a cashier User account
+        $cashiers = Employee::whereHas('user.roles', fn ($q) => $q->where('name', 'like', '%cashier%'))->get();
 
         if ($cashiers->isEmpty()) {
-            $this->command->warn('No cashier users found. Listing all users:');
-            User::with('roles')->get()->each(function ($user) {
-                $roles = $user->roles->pluck('name')->join(', ');
-                $this->command->info("  ID: {$user->id} | {$user->name} | Roles: {$roles}");
+            $this->command->warn('No cashier employees found. Listing all employees:');
+            Employee::with('user.roles')->get()->each(function ($employee) {
+                $roles = $employee->user?->roles->pluck('name')->join(', ') ?? '(no login)';
+                $this->command->info("  ID: {$employee->id} | {$employee->name} | Roles: {$roles}");
             });
 
             return;
@@ -32,7 +32,7 @@ class AttendanceSeeder extends Seeder
 
         foreach ($cashiers as $cashier) {
             // Delete existing January 2026 records first
-            Attendance::where('user_id', $cashier->id)
+            Attendance::where('employee_id', $cashier->id)
                 ->whereYear('date', 2026)
                 ->whereMonth('date', 1)
                 ->delete();
@@ -43,7 +43,7 @@ class AttendanceSeeder extends Seeder
         }
     }
 
-    private function generateMonthAttendance(int $userId, int $year, int $month): void
+    private function generateMonthAttendance(int $employeeId, int $year, int $month): void
     {
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth();
@@ -81,7 +81,7 @@ class AttendanceSeeder extends Seeder
             } else {
                 // 5% - Absent
                 Attendance::create([
-                    'user_id' => $userId,
+                    'employee_id' => $employeeId,
                     'date' => $currentDate->format('Y-m-d'),
                     'time_in' => null,
                     'time_out' => null,
@@ -94,7 +94,7 @@ class AttendanceSeeder extends Seeder
             }
 
             Attendance::create([
-                'user_id' => $userId,
+                'employee_id' => $employeeId,
                 'date' => $currentDate->format('Y-m-d'),
                 'time_in' => $timeIn->format('H:i:s'),
                 'time_out' => $timeOut->format('H:i:s'),

@@ -19,11 +19,6 @@ class UsersTable
                 TextColumn::make('email')
                     ->label('Email address')
                     ->searchable(),
-                TextColumn::make('biometric_pin')
-                    ->label('Biometric PIN')
-                    ->searchable()
-                    ->placeholder('Not set')
-                    ->toggleable(),
                 TextColumn::make('email_verified_at')
                     ->dateTime()
                     ->sortable(),

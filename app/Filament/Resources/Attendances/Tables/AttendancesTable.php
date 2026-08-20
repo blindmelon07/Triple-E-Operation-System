@@ -24,7 +24,7 @@ class AttendancesTable
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('user.name')
+                TextColumn::make('employee.name')
                     ->label('Employee')
                     ->searchable()
                     ->sortable(),
@@ -74,9 +74,9 @@ class AttendancesTable
                             ->mapWithKeys(fn ($s) => [$s->value => $s->getLabel()])
                     ),
 
-                SelectFilter::make('user_id')
+                SelectFilter::make('employee_id')
                     ->label('Employee')
-                    ->relationship('user', 'name')
+                    ->relationship('employee', 'name')
                     ->searchable()
                     ->preload(),
 

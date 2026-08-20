@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\AttendanceLogMode;
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
-use App\Models\User;
+use App\Models\Employee;
 use App\Models\ZkAttendanceLog;
 use App\Models\ZkDevice;
 use Carbon\Carbon;
@@ -65,7 +66,7 @@ class ZkAttendanceService
         $status = isset($columns[2]) && is_numeric($columns[2]) ? (int) $columns[2] : null;
         $verify = isset($columns[3]) && is_numeric($columns[3]) ? (int) $columns[3] : null;
 
-        $user = User::where('biometric_pin', $pin)->first();
+        $employee = Employee::where('biometric_pin', $pin)->first();
 
         $log = ZkAttendanceLog::firstOrCreate(
             [
@@ -74,15 +75,15 @@ class ZkAttendanceService
                 'punched_at' => $punchedAt,
             ],
             [
-                'user_id' => $user?->id,
+                'employee_id' => $employee?->id,
                 'status' => $status,
                 'verify_type' => $verify,
                 'raw_line' => $line,
             ]
         );
 
-        if ($user) {
-            $attendance = $this->foldIntoAttendance($user, $punchedAt);
+        if ($employee) {
+            $attendance = $this->foldIntoAttendance($employee, $punchedAt);
             if ($attendance && $log->attendance_id !== $attendance->id) {
                 $log->update(['attendance_id' => $attendance->id]);
             }
@@ -94,69 +95,73 @@ class ZkAttendanceService
     }
 
     /**
-     * Link any previously-unmapped punches (logged with user_id=null because
-     * no User had this PIN at the time) to $user, then re-fold every day
-     * those punches touch into Attendance. Call this after a User's
-     * biometric_pin is set/changed, so history recorded before the mapping
-     * existed isn't permanently lost.
+     * Link any previously-unmapped punches (logged with employee_id=null
+     * because no Employee had this PIN at the time) to $employee, then
+     * re-fold every day those punches touch into Attendance. Call this
+     * after an Employee's biometric_pin is set/changed, so history recorded
+     * before the mapping existed isn't permanently lost.
      */
-    public function reconcileUnmappedPunches(User $user): void
+    public function reconcileUnmappedPunches(Employee $employee): void
     {
-        if (! $user->biometric_pin) {
+        if (! $employee->biometric_pin) {
             return;
         }
 
-        $orphaned = ZkAttendanceLog::whereNull('user_id')
-            ->where('pin', $user->biometric_pin)
+        $orphaned = ZkAttendanceLog::whereNull('employee_id')
+            ->where('pin', $employee->biometric_pin)
             ->get();
 
         if ($orphaned->isEmpty()) {
             return;
         }
 
-        ZkAttendanceLog::whereNull('user_id')
-            ->where('pin', $user->biometric_pin)
-            ->update(['user_id' => $user->id]);
+        ZkAttendanceLog::whereNull('employee_id')
+            ->where('pin', $employee->biometric_pin)
+            ->update(['employee_id' => $employee->id]);
 
         $dates = $orphaned->pluck('punched_at')->map(fn (Carbon $t) => $t->toDateString())->unique();
 
         foreach ($dates as $date) {
-            $attendance = $this->foldIntoAttendance($user, Carbon::parse($date.' 12:00:00'));
+            $attendance = $this->foldIntoAttendance($employee, Carbon::parse($date.' 12:00:00'));
 
             if ($attendance) {
-                ZkAttendanceLog::where('user_id', $user->id)
+                ZkAttendanceLog::where('employee_id', $employee->id)
                     ->whereDate('punched_at', $date)
                     ->update(['attendance_id' => $attendance->id]);
             }
         }
 
         Log::info('ZKTeco: reconciled unmapped punches after biometric_pin set', [
-            'user_id' => $user->id,
-            'pin' => $user->biometric_pin,
+            'employee_id' => $employee->id,
+            'pin' => $employee->biometric_pin,
             'punch_count' => $orphaned->count(),
             'days_affected' => $dates->count(),
         ]);
     }
 
     /**
-     * Recompute the day's Attendance row for a user from all of that day's
-     * raw logs: earliest check-in punch becomes time_in, latest check-out
-     * punch becomes time_out, and any break-out/break-in pairs in between
-     * are excluded from total_hours instead of being counted as worked time.
+     * Recompute the day's Attendance row for an employee from all of that
+     * day's raw logs. How time_in/time_out/total_hours are derived depends
+     * on the employee's AttendanceLogMode:
+     *  - Two:  first punch of the day = time_in, last = time_out. No break
+     *          is subtracted (the employee isn't expected to punch for one).
+     *  - Four: earliest check-in punch = time_in, latest check-out punch =
+     *          time_out, and any break-out/break-in pair in between is
+     *          excluded from total_hours instead of counted as worked time.
      *
      * Never touches an Attendance row an admin created/edited by hand (i.e.
      * one that doesn't carry our own BIOMETRIC_REMARK marker) — a stray or
      * retransmitted punch must not clobber a manual correction like on_leave.
      */
-    protected function foldIntoAttendance(User $user, Carbon $punchedAt): ?Attendance
+    protected function foldIntoAttendance(Employee $employee, Carbon $punchedAt): ?Attendance
     {
         $date = $punchedAt->toDateString();
 
-        $existing = Attendance::where('user_id', $user->id)->where('date', $date)->first();
+        $existing = Attendance::where('employee_id', $employee->id)->where('date', $date)->first();
 
         if ($existing && $existing->remarks !== self::BIOMETRIC_REMARK) {
             Log::info('ZKTeco: not overwriting manually-managed Attendance record', [
-                'user_id' => $user->id,
+                'employee_id' => $employee->id,
                 'date' => $date,
                 'attendance_id' => $existing->id,
             ]);
@@ -164,7 +169,7 @@ class ZkAttendanceService
             return $existing;
         }
 
-        $dayLogs = ZkAttendanceLog::where('user_id', $user->id)
+        $dayLogs = ZkAttendanceLog::where('employee_id', $employee->id)
             ->whereDate('punched_at', $date)
             ->orderBy('punched_at')
             ->get();
@@ -173,20 +178,32 @@ class ZkAttendanceService
             return null;
         }
 
-        $checkIn = $dayLogs->firstWhere('status', self::STATUS_CHECK_IN);
-        $checkOut = $dayLogs->where('status', self::STATUS_CHECK_OUT)->last();
+        $logMode = $employee->attendance_log_mode ?? AttendanceLogMode::Two;
 
-        $timeIn = ($checkIn ?? $dayLogs->first())->punched_at;
-        $timeOut = $dayLogs->count() > 1
-            ? ($checkOut ?? $dayLogs->last())->punched_at
-            : null;
+        if ($logMode === AttendanceLogMode::Four) {
+            $checkIn = $dayLogs->firstWhere('status', self::STATUS_CHECK_IN);
+            $checkOut = $dayLogs->where('status', self::STATUS_CHECK_OUT)->last();
 
-        $totalHours = $timeOut
-            ? $this->calculateWorkedHours($timeIn, $timeOut, $dayLogs)
-            : null;
+            $timeIn = ($checkIn ?? $dayLogs->first())->punched_at;
+            $timeOut = $dayLogs->count() > 1
+                ? ($checkOut ?? $dayLogs->last())->punched_at
+                : null;
+
+            $totalHours = $timeOut
+                ? $this->calculateWorkedHours($timeIn, $timeOut, $dayLogs)
+                : null;
+        } else {
+            // Two logs/day: plain first-punch/last-punch, no break deduction.
+            $timeIn = $dayLogs->first()->punched_at;
+            $timeOut = $dayLogs->count() > 1 ? $dayLogs->last()->punched_at : null;
+
+            $totalHours = $timeOut
+                ? Attendance::calculateTotalHours($timeIn->format('H:i:s'), $timeOut->format('H:i:s'))
+                : null;
+        }
 
         return Attendance::updateOrCreate(
-            ['user_id' => $user->id, 'date' => $date],
+            ['employee_id' => $employee->id, 'date' => $date],
             [
                 'time_in' => $timeIn->format('H:i:s'),
                 'time_out' => $timeOut?->format('H:i:s'),
