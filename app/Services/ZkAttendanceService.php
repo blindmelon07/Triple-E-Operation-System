@@ -94,6 +94,51 @@ class ZkAttendanceService
     }
 
     /**
+     * Link any previously-unmapped punches (logged with user_id=null because
+     * no User had this PIN at the time) to $user, then re-fold every day
+     * those punches touch into Attendance. Call this after a User's
+     * biometric_pin is set/changed, so history recorded before the mapping
+     * existed isn't permanently lost.
+     */
+    public function reconcileUnmappedPunches(User $user): void
+    {
+        if (! $user->biometric_pin) {
+            return;
+        }
+
+        $orphaned = ZkAttendanceLog::whereNull('user_id')
+            ->where('pin', $user->biometric_pin)
+            ->get();
+
+        if ($orphaned->isEmpty()) {
+            return;
+        }
+
+        ZkAttendanceLog::whereNull('user_id')
+            ->where('pin', $user->biometric_pin)
+            ->update(['user_id' => $user->id]);
+
+        $dates = $orphaned->pluck('punched_at')->map(fn (Carbon $t) => $t->toDateString())->unique();
+
+        foreach ($dates as $date) {
+            $attendance = $this->foldIntoAttendance($user, Carbon::parse($date.' 12:00:00'));
+
+            if ($attendance) {
+                ZkAttendanceLog::where('user_id', $user->id)
+                    ->whereDate('punched_at', $date)
+                    ->update(['attendance_id' => $attendance->id]);
+            }
+        }
+
+        Log::info('ZKTeco: reconciled unmapped punches after biometric_pin set', [
+            'user_id' => $user->id,
+            'pin' => $user->biometric_pin,
+            'punch_count' => $orphaned->count(),
+            'days_affected' => $dates->count(),
+        ]);
+    }
+
+    /**
      * Recompute the day's Attendance row for a user from all of that day's
      * raw logs: earliest check-in punch becomes time_in, latest check-out
      * punch becomes time_out, and any break-out/break-in pairs in between

@@ -50,6 +50,14 @@ class ZkBridgeController extends Controller
             return response()->json(['message' => '"lines" must be an array of ATTLOG-formatted strings.'], 422);
         }
 
+        // A device's full log is pulled once per sync and this route isn't
+        // paginated by the bridge script, but no legitimate batch should
+        // ever approach this size — cap it so a bad/malicious payload can't
+        // tie up a worker or flood zk_attendance_logs in one request.
+        if (count($lines) > 2000) {
+            return response()->json(['message' => 'Too many lines in one request (max 2000).'], 422);
+        }
+
         $processed = 0;
         $skipped = 0;
 

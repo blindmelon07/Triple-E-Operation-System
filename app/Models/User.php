@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\ZkAttendanceService;
 use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,18 @@ class User extends Authenticatable
     protected static function getAuditExcludedFields(): array
     {
         return ['password', 'remember_token', 'email_verified_at'];
+    }
+
+    protected static function booted(): void
+    {
+        // A biometric_pin set/changed after punches from that PIN already
+        // arrived (device enrolled + punching before payroll got around to
+        // mapping the user) shouldn't leave that history stranded.
+        static::updated(function (User $user) {
+            if ($user->wasChanged('biometric_pin') && $user->biometric_pin) {
+                app(ZkAttendanceService::class)->reconcileUnmappedPunches($user);
+            }
+        });
     }
 
     /**

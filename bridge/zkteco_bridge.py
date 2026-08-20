@@ -150,28 +150,46 @@ def main() -> None:
         return
 
     new_records.sort(key=lambda r: r.timestamp)
-    lines = [to_attlog_line(r) for r in new_records]
 
-    log.info("Sending %d new punch(es) to %s ...", len(lines), config["api_url"])
+    # The server caps a single request at 2000 lines (see ZkBridgeController).
+    # A device that's never synced before (or was offline a long time) can
+    # easily hold more than that, so send it in batches -- and save the
+    # watermark after each successful batch, so a failure partway through
+    # doesn't force re-sending punches that already made it in.
+    BATCH_SIZE = 1000
+    batches = [new_records[i:i + BATCH_SIZE] for i in range(0, len(new_records), BATCH_SIZE)]
 
-    try:
-        response = requests.post(
-            config["api_url"],
-            json={"lines": lines},
-            headers={"Authorization": f"Bearer {config['api_token']}"},
-            timeout=config.get("request_timeout_seconds", 15),
+    for batch_num, batch in enumerate(batches, start=1):
+        lines = [to_attlog_line(r) for r in batch]
+
+        log.info(
+            "Sending batch %d/%d (%d punch(es)) to %s ...",
+            batch_num, len(batches), len(lines), config["api_url"],
         )
-        response.raise_for_status()
-    except requests.RequestException:
-        log.exception("Failed to reach the TOS app. Will retry on next scheduled run without losing data.")
-        sys.exit(1)
 
-    result = response.json()
-    log.info("Server accepted: %s", result)
+        try:
+            response = requests.post(
+                config["api_url"],
+                json={"lines": lines},
+                headers={"Authorization": f"Bearer {config['api_token']}"},
+                timeout=config.get("request_timeout_seconds", 15),
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            log.exception(
+                "Failed to reach the TOS app on batch %d/%d. Will retry from here on next "
+                "scheduled run without losing data already sent.",
+                batch_num, len(batches),
+            )
+            sys.exit(1)
 
-    # Only advance the watermark after a confirmed successful upload.
-    state["last_synced_timestamp"] = new_records[-1].timestamp.isoformat()
-    save_state(state)
+        result = response.json()
+        log.info("Server accepted: %s", result)
+
+        # Only advance the watermark after a confirmed successful upload.
+        state["last_synced_timestamp"] = batch[-1].timestamp.isoformat()
+        save_state(state)
+
     log.info("Sync complete. Watermark advanced to %s.", state["last_synced_timestamp"])
 
 

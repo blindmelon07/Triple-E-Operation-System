@@ -17,10 +17,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/iclock/cdata', [ZkTecoController::class, 'handshake']);
-Route::post('/iclock/cdata', [ZkTecoController::class, 'store']);
-Route::get('/iclock/getrequest', [ZkTecoController::class, 'getRequest']);
-Route::post('/iclock/devicecmd', [ZkTecoController::class, 'deviceCmd']);
+// Unauthenticated by necessity (see above), so throttled by IP instead:
+// legitimate devices poll every 30s at most, well under this ceiling.
+Route::middleware('throttle:120,1')->group(function () {
+    Route::get('/iclock/cdata', [ZkTecoController::class, 'handshake']);
+    Route::post('/iclock/cdata', [ZkTecoController::class, 'store']);
+    Route::get('/iclock/getrequest', [ZkTecoController::class, 'getRequest']);
+    Route::post('/iclock/devicecmd', [ZkTecoController::class, 'deviceCmd']);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -33,4 +37,4 @@ Route::post('/iclock/devicecmd', [ZkTecoController::class, 'deviceCmd']);
 | the SN whitelist the direct-push /iclock routes rely on.
 |
 */
-Route::post('/api/zkteco/attendance', [ZkBridgeController::class, 'store']);
+Route::middleware('throttle:30,1')->post('/api/zkteco/attendance', [ZkBridgeController::class, 'store']);
