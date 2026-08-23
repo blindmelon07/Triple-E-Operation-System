@@ -36,6 +36,8 @@ class PurchaseItem extends Model
                         'quantity' => $received,
                     ]);
                 }
+
+                $item->logInventoryMovement('in', $received, 'Purchase received');
             }
 
             $item->recalculatePurchaseTotal();
@@ -65,6 +67,12 @@ class PurchaseItem extends Model
                             'quantity' => $difference,
                         ]);
                     }
+
+                    $item->logInventoryMovement(
+                        $difference > 0 ? 'in' : 'out',
+                        abs($difference),
+                        'Purchase receipt adjusted'
+                    );
                 }
             }
 
@@ -78,10 +86,29 @@ class PurchaseItem extends Model
                 if ($inventory) {
                     $inventory->decrement('quantity', $received);
                 }
+
+                $item->logInventoryMovement('out', $received, 'Purchase item deleted');
             }
 
             $item->recalculatePurchaseTotal();
         });
+    }
+
+    /**
+     * Log a stock movement caused by this purchase item so it shows up
+     * in the Inventory In/Out report.
+     */
+    protected function logInventoryMovement(string $type, float $quantity, string $reason): void
+    {
+        InventoryMovement::create([
+            'product_id' => $this->product_id,
+            'type' => $type,
+            'quantity' => $quantity,
+            'reason' => $reason,
+            'reference_id' => $this->purchase_id,
+            'reference_type' => Purchase::class,
+            'notes' => 'Recorded via Purchase #'.$this->purchase_id,
+        ]);
     }
 
     /**

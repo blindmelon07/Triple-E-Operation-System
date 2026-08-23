@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ExpenseReportGroup;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,7 @@ class ExpenseCategory extends Model
         'name',
         'description',
         'is_active',
+        'report_group',
     ];
 
     /**
@@ -24,6 +26,7 @@ class ExpenseCategory extends Model
     {
         return [
             'is_active' => 'boolean',
+            'report_group' => ExpenseReportGroup::class,
         ];
     }
 

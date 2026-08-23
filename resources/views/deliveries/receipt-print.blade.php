@@ -212,7 +212,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($delivery->sale?->sale_items ?? [] as $item)
+                @forelse(($delivery->sale?->sale_items ?? collect())->where('is_voided', false) as $item)
                 <tr>
                     <td class="qty">{{ number_format($item->quantity) }}</td>
                     <td class="desc product-name">{{ $item->product?->name ?? 'Unknown Product' }}</td>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CashRegisterStatus;
+use App\Enums\ExpenseReportGroup;
 use App\Enums\QuotationStatus;
 use App\Models\AuditLog;
 use App\Models\CashRegisterSession;
@@ -211,7 +212,7 @@ class POSController extends Controller
         $session->load('user');
 
         $sales = Sale::with(['customer', 'sale_items'])
-            ->withCount('sale_items')
+            ->withCount(['sale_items' => fn ($q) => $q->active()])
             ->where('cash_register_session_id', $session->id)
             ->where('is_voided', false)
             ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
@@ -240,7 +241,7 @@ class POSController extends Controller
         $session->load('user');
 
         $sales = Sale::with(['customer', 'sale_items.product'])
-            ->withCount('sale_items')
+            ->withCount(['sale_items' => fn ($q) => $q->active()])
             ->where('cash_register_session_id', $session->id)
             ->where('is_voided', false)
             ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
@@ -284,8 +285,10 @@ class POSController extends Controller
         $actualCashOnHand = (float) ($session->closing_amount ?? 0);
         $discrepancy     = $actualCashOnHand - $theoreticalCash;
 
+        $expenseGroups = $this->groupExpensesByReportGroup($expenses);
+
         $pdf = Pdf::loadView('pos.daily-transaction-report', compact(
-            'session', 'sales', 'expenses', 'settlements',
+            'session', 'sales', 'expenses', 'expenseGroups', 'settlements',
             'totalSales', 'totalPaidSales', 'totalUnpaidSales', 'totalSettlements',
             'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
             'pettyCash', 'incomeTotal', 'totalDeductions',
@@ -364,6 +367,7 @@ class POSController extends Controller
                 'sales'            => $sales,
                 'settlements'      => $settlements,
                 'expenses'         => $expenses,
+                'expenseGroups'    => $this->groupExpensesByReportGroup($expenses),
                 'totalSales'       => $ts,
                 'totalUnpaidSales' => $tus,
                 'totalSettlements' => $tset,
@@ -402,10 +406,12 @@ class POSController extends Controller
             ? \Carbon\Carbon::parse($dateFrom)->format('F d, Y')
             : \Carbon\Carbon::parse($dateFrom)->format('F d') . ' – ' . \Carbon\Carbon::parse($dateTo)->format('F d, Y');
 
+        $expenseGroups = $this->groupExpensesByReportGroup($allExpenses);
+
         $pdf = Pdf::loadView('pos.period-transaction-report', compact(
             'sessions', 'dayReports', 'periodLabel', 'dateFrom', 'dateTo',
             'totalSales', 'totalPaidSales', 'totalUnpaidSales', 'totalSettlements',
-            'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
+            'nonCashPaidSales', 'cashPaidSales', 'totalExpenses', 'expenseGroups',
             'pettyCash', 'incomeTotal', 'totalDeductions',
             'theoreticalCash', 'actualCashOnHand', 'discrepancy'
         ))->setPaper('a4', 'landscape');
@@ -413,6 +419,34 @@ class POSController extends Controller
         $filename = 'period-report-' . $dateFrom . '-to-' . $dateTo . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    /**
+     * Group a collection of Expense records by their category's report group
+     * (Supplier Payment, Maintenance, Logistics, Utilities, Payroll, Others)
+     * for display on the Daily/Period Transaction Reports. Groups with no
+     * expenses are still returned (empty) so the report layout stays stable.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Expense>  $expenses
+     * @return array<string, array{label: string, items: \Illuminate\Support\Collection, total: float}>
+     */
+    private function groupExpensesByReportGroup($expenses): array
+    {
+        $groups = [];
+
+        foreach (ExpenseReportGroup::reportOrder() as $group) {
+            $items = $expenses->filter(
+                fn ($e) => ($e->category?->report_group ?? ExpenseReportGroup::Other) === $group
+            )->values();
+
+            $groups[$group->value] = [
+                'label' => $group->label(),
+                'items' => $items,
+                'total' => (float) $items->sum('amount'),
+            ];
+        }
+
+        return $groups;
     }
 
     public function registerStatus(): \Illuminate\Http\JsonResponse
@@ -747,8 +781,8 @@ class POSController extends Controller
     public function getRecentSales(): \Illuminate\Http\JsonResponse
     {
         try {
-            $sales = Sale::with(['customer', 'sale_items'])
-                ->withCount('sale_items')
+            $sales = Sale::with(['customer', 'sale_items.product'])
+                ->withCount(['sale_items' => fn ($q) => $q->active()])
                 ->orderBy('created_at', 'desc')
                 ->limit(50)
                 ->get();
@@ -811,6 +845,66 @@ class POSController extends Controller
             'success'         => true,
             'void_request_id' => $voidRequest->id,
             'message'         => 'Void request submitted. Waiting for manager approval.',
+        ]);
+    }
+
+    public function requestItemVoid(Request $request, SaleItem $saleItem): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'void_reason' => 'required|string|max:255',
+        ]);
+
+        $session = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'No open register session.'], 422);
+        }
+
+        $sale = $saleItem->sale;
+
+        if (! $sale || $sale->cash_register_session_id !== $session->id) {
+            return response()->json(['success' => false, 'message' => 'This item does not belong to a sale in the current register session.'], 422);
+        }
+
+        if ($sale->is_voided) {
+            return response()->json(['success' => false, 'message' => 'This sale has already been voided.'], 422);
+        }
+
+        if ($saleItem->is_voided) {
+            return response()->json(['success' => false, 'message' => 'This item has already been voided.'], 422);
+        }
+
+        $activeItemCount = SaleItem::where('sale_id', $sale->id)->active()->count();
+        if ($activeItemCount <= 1) {
+            return response()->json(['success' => false, 'message' => 'This is the only remaining item — void the whole sale instead.'], 422);
+        }
+
+        $existing = VoidRequest::where('sale_item_id', $saleItem->id)->where('status', 'pending')->first();
+        if ($existing) {
+            return response()->json(['success' => true, 'void_request_id' => $existing->id, 'message' => 'Void request already pending.']);
+        }
+
+        $voidRequest = VoidRequest::create([
+            'sale_id'                  => $sale->id,
+            'sale_item_id'             => $saleItem->id,
+            'requested_by_id'          => auth()->id(),
+            'cash_register_session_id' => $session->id,
+            'void_reason'              => $validated['void_reason'],
+            'status'                   => 'pending',
+        ]);
+
+        $existingRoles = Role::whereIn('name', ['admin', 'super_admin'])->pluck('name')->toArray();
+        if (!empty($existingRoles)) {
+            User::role($existingRoles)->get()
+                ->each(fn ($manager) => $manager->notify(new VoidRequestNotification($voidRequest)));
+        }
+
+        return response()->json([
+            'success'         => true,
+            'void_request_id' => $voidRequest->id,
+            'message'         => 'Item void request submitted. Waiting for manager approval.',
         ]);
     }
 }

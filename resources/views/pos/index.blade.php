@@ -1613,6 +1613,34 @@
                                         <span class="font-medium">Void reason:</span>
                                         <span x-text="sale.void_reason"></span>
                                     </div>
+
+                                    <!-- Per-item list with individual void, only for sales in the current open session -->
+                                    <div
+                                        x-show="!sale.is_voided && registerSessionId && sale.cash_register_session_id == registerSessionId && (sale.sale_items || []).length"
+                                        class="mt-2 space-y-0.5"
+                                    >
+                                        <template x-for="item in (sale.sale_items || [])" :key="item.id">
+                                            <div
+                                                x-show="!item.is_voided"
+                                                class="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400 pl-2 border-l-2 border-gray-200 dark:border-gray-600"
+                                            >
+                                                <span
+                                                    class="truncate"
+                                                    x-text="(item.is_manual ? item.product_description : (item.product ? item.product.name : item.product_description)) + ' × ' + parseFloat(item.quantity)"
+                                                ></span>
+                                                <button
+                                                    x-show="sale.sale_items.filter(i => !i.is_voided).length > 1"
+                                                    @click.stop="openVoidItemModal(sale, item)"
+                                                    class="shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                                    title="Void this item"
+                                                >
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
                                 <div class="text-right flex flex-col items-end gap-2">
                                     <div class="text-lg font-bold"
@@ -1728,7 +1756,7 @@
                         x-model="voidReason"
                         placeholder="e.g. Wrong item, customer cancelled..."
                         class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-base"
-                        @keydown.enter="confirmVoid()"
+                        @keydown.enter="submitVoidRequest()"
                     >
                 </div>
             </div>
@@ -1741,6 +1769,65 @@
                 </button>
                 <button
                     @click="submitVoidRequest()"
+                    :disabled="!voidReason.trim() || isVoiding"
+                    class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                >
+                    <svg x-show="isVoiding" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span x-text="isVoiding ? 'Submitting...' : 'Request Void'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Void Item Modal (void a single line item from a completed sale) -->
+    <div
+        x-show="showVoidItemModal"
+        x-cloak
+        @keydown.escape.window="showVoidItemModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showVoidItemModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Void Item</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="itemToVoid ? itemToVoid.name + ' — ₱' + parseFloat(itemToVoid.price).toFixed(2) : ''"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    This will remove just this item from the sale, restore its stock, and refund/adjust the amount already collected for it. The rest of the sale is unaffected. This action cannot be undone.
+                </p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for void <span class="text-red-500">*</span></label>
+                    <input
+                        type="text"
+                        x-model="voidReason"
+                        placeholder="e.g. Wrong item, customer returned this one..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-base"
+                        @keydown.enter="submitItemVoidRequest()"
+                    >
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+                <button
+                    @click="showVoidItemModal = false; voidReason = ''; itemToVoid = null"
+                    class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                >
+                    Cancel
+                </button>
+                <button
+                    @click="submitItemVoidRequest()"
                     :disabled="!voidReason.trim() || isVoiding"
                     class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
                 >
@@ -2086,9 +2173,18 @@
                         <div class="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-700 rounded-xl p-4">
                             <div class="flex items-start justify-between mb-3">
                                 <div>
-                                    <p class="font-bold text-gray-900 dark:text-white" x-text="'Receipt #' + String(vr.sale_id).padStart(6, '0')"></p>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <p class="font-bold text-gray-900 dark:text-white" x-text="'Receipt #' + String(vr.sale_id).padStart(6, '0')"></p>
+                                        <span x-show="vr.is_item_void" class="text-xs px-2 py-0.5 bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-300 rounded font-semibold">ITEM VOID</span>
+                                    </div>
                                     <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Customer:</span> <span x-text="vr.customer_name"></span></p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Amount:</span> <span x-text="'₱' + parseFloat(vr.sale_total).toFixed(2)"></span></p>
+                                    <template x-if="vr.is_item_void">
+                                        <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Item:</span> <span x-text="vr.item_name + ' × ' + parseFloat(vr.item_quantity) + ' — ₱' + parseFloat(vr.item_price).toFixed(2)"></span></p>
+                                    </template>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        <span class="font-medium" x-text="vr.is_item_void ? 'Sale total:' : 'Amount:'"></span>
+                                        <span x-text="'₱' + parseFloat(vr.sale_total).toFixed(2)"></span>
+                                    </p>
                                     <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Requested by:</span> <span x-text="vr.requested_by"></span></p>
                                     <p class="text-sm text-orange-700 dark:text-orange-400 mt-1"><span class="font-medium">Reason:</span> <span x-text="vr.void_reason"></span></p>
                                 </div>
@@ -2349,6 +2445,9 @@
                 saleToVoid: null,
                 voidReason: '',
                 isVoiding: false,
+                showVoidItemModal: false,
+                itemToVoid: null,
+                voidPollTarget: 'sale', // 'sale' | 'item' — which flow the pending request belongs to
                 // Cashier waiting flow
                 showVoidWaitingModal: false,
                 showVoidRejectedModal: false,
@@ -3327,7 +3426,21 @@
                 openVoidModal(sale) {
                     this.saleToVoid = sale;
                     this.voidReason = '';
+                    this.voidPollTarget = 'sale';
                     this.showVoidModal = true;
+                },
+
+                openVoidItemModal(sale, item) {
+                    this.itemToVoid = {
+                        id: item.id,
+                        sale_id: sale.id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        name: item.is_manual ? item.product_description : (item.product ? item.product.name : item.product_description),
+                    };
+                    this.voidReason = '';
+                    this.voidPollTarget = 'item';
+                    this.showVoidItemModal = true;
                 },
 
                 async submitVoidRequest() {
@@ -3362,6 +3475,38 @@
                     }
                 },
 
+                async submitItemVoidRequest() {
+                    if (!this.itemToVoid || !this.voidReason.trim() || this.isVoiding) return;
+
+                    this.isVoiding = true;
+                    try {
+                        const response = await fetch(`/pos/void-request-item/${this.itemToVoid.id}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ void_reason: this.voidReason.trim() }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.currentVoidRequestId = data.void_request_id;
+                            this.showVoidItemModal = false;
+                            this.showVoidWaitingModal = true;
+                            this.startVoidPolling();
+                        } else {
+                            alert(data.message || 'Failed to submit void request.');
+                        }
+                    } catch (e) {
+                        alert('An error occurred. Please try again.');
+                    } finally {
+                        this.isVoiding = false;
+                    }
+                },
+
                 startVoidPolling() {
                     this.voidPollInterval = setInterval(async () => {
                         try {
@@ -3373,23 +3518,36 @@
                             if (data.status === 'approved') {
                                 this.stopVoidPolling();
                                 this.showVoidWaitingModal = false;
-                                // Mark sale as voided in the local list
-                                const idx = this.recentSales.findIndex(s => s.id === this.saleToVoid?.id);
-                                if (idx !== -1) {
-                                    this.recentSales[idx].is_voided = true;
-                                    this.recentSales[idx].void_reason = this.voidReason;
+
+                                if (this.voidPollTarget === 'item') {
+                                    // Simplest way to reflect the item removal, the sale's new
+                                    // total, and its updated payment status is to just refetch —
+                                    // replicating that math client-side would risk drifting from
+                                    // what the server actually computed.
+                                    this.fetchRecentSales();
+                                    this.itemToVoid = null;
+                                    alert('Item void approved! It has been removed from the sale.');
+                                } else {
+                                    // Mark sale as voided in the local list
+                                    const idx = this.recentSales.findIndex(s => s.id === this.saleToVoid?.id);
+                                    if (idx !== -1) {
+                                        this.recentSales[idx].is_voided = true;
+                                        this.recentSales[idx].void_reason = this.voidReason;
+                                    }
+                                    this.searchRecentSales();
+                                    this.saleToVoid = null;
+                                    alert('Void approved! The transaction has been voided.');
                                 }
-                                this.searchRecentSales();
-                                this.saleToVoid = null;
+
                                 this.voidReason = '';
                                 this.currentVoidRequestId = null;
-                                alert('Void approved! The transaction has been voided.');
                             } else if (data.status === 'rejected') {
                                 this.stopVoidPolling();
                                 this.showVoidWaitingModal = false;
                                 this.voidRejectionReason = data.rejection_reason || 'No reason provided.';
                                 this.showVoidRejectedModal = true;
                                 this.saleToVoid = null;
+                                this.itemToVoid = null;
                                 this.currentVoidRequestId = null;
                             }
                         } catch (e) {}
@@ -3415,6 +3573,7 @@
                     this.showVoidWaitingModal = false;
                     this.currentVoidRequestId = null;
                     this.saleToVoid = null;
+                    this.itemToVoid = null;
                     this.voidReason = '';
                 },
 

@@ -156,7 +156,7 @@
                 <div class="cust-ref">Ref: {{ $sale->reference_number }}</div>
             @endif
             <table class="item-tbl">
-                @foreach($sale->sale_items as $item)
+                @foreach($sale->sale_items->where('is_voided', false) as $item)
                     <tr>
                         <td class="qty">{{ rtrim(rtrim(number_format((float)$item->quantity,2),'0'),'.') }}</td>
                         <td class="unit">{{ $item->unit }}</td>
@@ -203,7 +203,7 @@
                 @endif
             </div>
             <table class="item-tbl">
-                @foreach($sale->sale_items as $item)
+                @foreach($sale->sale_items->where('is_voided', false) as $item)
                     <tr>
                         <td class="qty">{{ rtrim(rtrim(number_format((float)$item->quantity,2),'0'),'.') }}</td>
                         <td class="unit">{{ $item->unit }}</td>
@@ -242,19 +242,32 @@
     <td style="width:20%;">
         <div class="col-header">Expenses</div>
 
-        @forelse($dExpenses as $expense)
-            <table class="exp-row">
-                <tr>
-                    <td class="e-desc">
-                        {{ $expense->description ?: $expense->category?->name }}
-                        @if($expense->payee) – {{ $expense->payee }} @endif
-                    </td>
-                    <td class="e-amt">{{ number_format($expense->amount,2) }}</td>
-                </tr>
-            </table>
-        @empty
+        @php $dExpenseGroups = $day['expenseGroups']; $dHasAnyExpense = collect($dExpenseGroups)->sum(fn($g) => $g['items']->count()) > 0; @endphp
+
+        @if(!$dHasAnyExpense)
             <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
-        @endforelse
+        @else
+            @foreach($dExpenseGroups as $group)
+                @continue($group['items']->isEmpty())
+                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($group['label']) }}</div>
+                @foreach($group['items'] as $expense)
+                    <table class="exp-row">
+                        <tr>
+                            <td class="e-desc">
+                                {{ $expense->description ?: $expense->category?->name }}
+                                @if($expense->payee) – {{ $expense->payee }} @endif
+                            </td>
+                            <td class="e-amt">{{ number_format($expense->amount,2) }}</td>
+                        </tr>
+                    </table>
+                @endforeach
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="font-size:7.5px;text-align:right;" colspan="2">Subtotal: {{ number_format($group['total'],2) }}</td>
+                    </tr>
+                </table>
+            @endforeach
+        @endif
 
         <div class="div-line"></div>
         <table style="width:100%;border-collapse:collapse;">
@@ -429,22 +442,33 @@
     <td style="width:20%;">
         <div class="col-header">Expenses</div>
 
-        @php $allPeriodExpenses = collect($dayReports)->flatMap(fn($d) => $d['expenses']->all())->sortBy('expense_date'); @endphp
+        @php $pHasAnyExpense = collect($expenseGroups)->sum(fn($g) => $g['items']->count()) > 0; @endphp
 
-        @forelse($allPeriodExpenses as $expense)
-            <table class="exp-row">
-                <tr>
-                    <td style="width:55%;font-size:7.5px;">
-                        {{ $expense->description ?: $expense->category?->name }}
-                        @if($expense->payee) – {{ $expense->payee }} @endif
-                    </td>
-                    <td style="width:18%;font-size:7px;color:#555;">{{ $expense->expense_date?->format('M d') }}</td>
-                    <td style="width:27%;text-align:right;font-size:7.5px;">{{ number_format($expense->amount,2) }}</td>
-                </tr>
-            </table>
-        @empty
+        @if(!$pHasAnyExpense)
             <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
-        @endforelse
+        @else
+            @foreach($expenseGroups as $group)
+                @continue($group['items']->isEmpty())
+                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($group['label']) }}</div>
+                @foreach($group['items']->sortBy('expense_date') as $expense)
+                    <table class="exp-row">
+                        <tr>
+                            <td style="width:52%;font-size:7.5px;">
+                                {{ $expense->description ?: $expense->category?->name }}
+                                @if($expense->payee) – {{ $expense->payee }} @endif
+                            </td>
+                            <td style="width:20%;font-size:7px;color:#555;">{{ $expense->expense_date?->format('M d') }}</td>
+                            <td style="width:28%;text-align:right;font-size:7.5px;">{{ number_format($expense->amount,2) }}</td>
+                        </tr>
+                    </table>
+                @endforeach
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="font-size:7.5px;text-align:right;" colspan="3">Subtotal: {{ number_format($group['total'],2) }}</td>
+                    </tr>
+                </table>
+            @endforeach
+        @endif
 
         <div class="div-line"></div>
         <table style="width:100%;border-collapse:collapse;">

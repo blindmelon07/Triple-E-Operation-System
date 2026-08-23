@@ -538,7 +538,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($sale->sale_items as $index => $item)
+                    @foreach($sale->sale_items->where('is_voided', false)->values() as $index => $item)
                         <tr>
                             <td style="text-align: center;">{{ $index + 1 }}</td>
                             <td class="product-name">{{ $item->is_manual ? $item->product_description : ($item->product?->name ?? 'Unknown Product') }}</td>
@@ -721,7 +721,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($sale->sale_items as $index => $item)
+                    @foreach($sale->sale_items->where('is_voided', false)->values() as $index => $item)
                         <tr>
                             <td style="text-align: center;">{{ $index + 1 }}</td>
                             <td class="product-name">{{ $item->is_manual ? $item->product_description : ($item->product?->name ?? 'Unknown Product') }}</td>

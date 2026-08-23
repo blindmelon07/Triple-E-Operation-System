@@ -3,10 +3,26 @@
 namespace App\Filament\Resources\Products\Schemas;
 
 use App\Enums\ProductUnit;
+use App\Filament\Resources\Products\Pages\EditProduct;
 use Filament\Schemas\Schema;
 
 class ProductForm
 {
+    /**
+     * Roles allowed to directly overwrite stock from the product form.
+     * Everyone else should add stock via Purchases so it stays audited.
+     */
+    protected static array $stockEditRoles = ['super_admin', 'Ops Sup'];
+
+    protected static function canEditStockOnEditPage($livewire): bool
+    {
+        if (! $livewire instanceof EditProduct) {
+            return true;
+        }
+
+        return auth()->user()?->hasAnyRole(static::$stockEditRoles) ?? false;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -23,7 +39,12 @@ class ProductForm
                 \Filament\Forms\Components\TextInput::make('quantity')
                     ->label('Stock')
                     ->numeric()
-                    ->required(),
+                    ->required()
+                    ->disabled(fn ($livewire) => ! static::canEditStockOnEditPage($livewire))
+                    ->dehydrated()
+                    ->helperText(fn ($livewire) => static::canEditStockOnEditPage($livewire)
+                        ? null
+                        : 'Only admins can adjust stock here. Use Purchases to receive new stock.'),
                 \Filament\Forms\Components\Select::make('unit')
                     ->options(ProductUnit::class)
                     ->default(ProductUnit::Piece)

@@ -102,4 +102,18 @@ class CashRegisterSession extends Model
             $this->decrement('total_cash_sales', $amount);
         }
     }
+
+    /**
+     * Reverse part of a sale's collected amount without touching the
+     * transaction count — the sale itself still stands, it's just for
+     * less money (e.g. a single item was voided out of it).
+     */
+    public function reverseAmount(float $amount, bool $isCash): void
+    {
+        $this->decrement('total_sales', $amount);
+
+        if ($isCash) {
+            $this->decrement('total_cash_sales', $amount);
+        }
+    }
 }

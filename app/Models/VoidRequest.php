@@ -9,6 +9,7 @@ class VoidRequest extends Model
 {
     protected $fillable = [
         'sale_id',
+        'sale_item_id',
         'requested_by_id',
         'cash_register_session_id',
         'void_reason',
@@ -28,6 +29,19 @@ class VoidRequest extends Model
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function saleItem(): BelongsTo
+    {
+        return $this->belongsTo(SaleItem::class);
+    }
+
+    /**
+     * Whether this request is for a single line item rather than the whole sale.
+     */
+    public function isItemVoid(): bool
+    {
+        return $this->sale_item_id !== null;
     }
 
     public function requestedBy(): BelongsTo

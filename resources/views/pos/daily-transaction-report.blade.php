@@ -167,7 +167,7 @@
             @endif
 
             <table class="item-tbl">
-                @foreach($sale->sale_items as $item)
+                @foreach($sale->sale_items->where('is_voided', false) as $item)
                     <tr>
                         <td class="qty">{{ rtrim(rtrim(number_format((float)$item->quantity,2),'0'),'.') }}</td>
                         <td class="unit">{{ $item->unit }}</td>
@@ -247,7 +247,7 @@
             </div>
 
             <table class="item-tbl">
-                @foreach($sale->sale_items as $item)
+                @foreach($sale->sale_items->where('is_voided', false) as $item)
                     <tr>
                         <td class="qty">{{ rtrim(rtrim(number_format((float)$item->quantity,2),'0'),'.') }}</td>
                         <td class="unit">{{ $item->unit }}</td>
@@ -289,21 +289,34 @@
     <td style="width:20%;">
         <div class="col-header">Expenses</div>
 
-        @forelse($expenses as $expense)
-            <table class="exp-row">
-                <tr>
-                    <td class="e-desc">
-                        {{ $expense->description ?: $expense->category?->name }}
-                        @if($expense->payee)
-                            – {{ $expense->payee }}
-                        @endif
-                    </td>
-                    <td class="e-amt">{{ number_format($expense->amount,2) }}</td>
-                </tr>
-            </table>
-        @empty
+        @php $hasAnyExpense = collect($expenseGroups)->sum(fn($g) => $g['items']->count()) > 0; @endphp
+
+        @if(!$hasAnyExpense)
             <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
-        @endforelse
+        @else
+            @foreach($expenseGroups as $group)
+                @continue($group['items']->isEmpty())
+                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($group['label']) }}</div>
+                @foreach($group['items'] as $expense)
+                    <table class="exp-row">
+                        <tr>
+                            <td class="e-desc">
+                                {{ $expense->description ?: $expense->category?->name }}
+                                @if($expense->payee)
+                                    – {{ $expense->payee }}
+                                @endif
+                            </td>
+                            <td class="e-amt">{{ number_format($expense->amount,2) }}</td>
+                        </tr>
+                    </table>
+                @endforeach
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="font-size:7.5px;text-align:right;" colspan="2">Subtotal: {{ number_format($group['total'],2) }}</td>
+                    </tr>
+                </table>
+            @endforeach
+        @endif
 
         <div class="div-line"></div>
         <table style="width:100%;border-collapse:collapse;">

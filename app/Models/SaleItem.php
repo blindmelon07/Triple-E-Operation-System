@@ -18,6 +18,9 @@ class SaleItem extends Model
         'is_manual',
         'quantity',
         'price',
+        'is_voided',
+        'voided_at',
+        'void_reason',
     ];
 
     protected $casts = [
@@ -26,6 +29,8 @@ class SaleItem extends Model
         'discount_amount' => 'decimal:2',
         'discount_is_flat' => 'boolean',
         'price' => 'decimal:2',
+        'is_voided' => 'boolean',
+        'voided_at' => 'datetime',
     ];
 
     /** @use HasFactory<\Database\Factories\SaleItemFactory> */
@@ -39,6 +44,16 @@ class SaleItem extends Model
     public function sale(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    /**
+     * Items that still count toward the sale's total — excludes any line
+     * that was individually voided. Use this (not the bare relation) when
+     * displaying receipts/reports so totals stay consistent.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_voided', false);
     }
 
     protected static function booted(): void
