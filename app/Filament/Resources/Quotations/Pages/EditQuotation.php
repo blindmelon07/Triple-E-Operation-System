@@ -32,10 +32,14 @@ class EditQuotation extends EditRecord
 
     protected function afterSave(): void
     {
-        // Recalculate total after items are saved
+        // Recalculate total after items are saved. Relationship-backed repeaters
+        // (quotation_items) aren't present in mutateFormDataBeforeSave's $data,
+        // so total (and the down payment clamp, which depends on it) can only be
+        // computed correctly here, once the items actually exist in the database.
         $this->record->refresh();
         $total = $this->record->quotation_items()->sum('price');
-        $this->record->updateQuietly(['total' => $total]);
+        $downPayment = min((float) $this->record->down_payment, $total);
+        $this->record->updateQuietly(['total' => $total, 'down_payment' => $downPayment]);
 
         // Revert approved quotations back to pending for re-approval
         if ($this->record->status === QuotationStatus::Approved->value) {

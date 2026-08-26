@@ -1310,8 +1310,29 @@
                     </div>
 
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Down Payment (Optional)</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
+                            <input
+                                type="number"
+                                x-model.number="quotationDownPayment"
+                                @input="quotationDownPayment = Math.max(0, Math.min(quotationDownPayment || 0, total))"
+                                step="0.01"
+                                min="0"
+                                :max="total"
+                                placeholder="0.00"
+                                class="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                            >
+                        </div>
+                        <div x-show="quotationDownPayment > 0" x-cloak class="mt-2 flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Balance Due</span>
+                            <span class="font-bold text-gray-900 dark:text-white" x-text="'₱' + Math.max(0, total - quotationDownPayment).toFixed(2)"></span>
+                        </div>
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (Optional)</label>
-                        <textarea 
+                        <textarea
                             x-model="quotationNotes"
                             placeholder="Add any notes or terms for this quotation..."
                             rows="3"
@@ -2478,6 +2499,7 @@
                 quotationError: '',
                 quotationNotes: '',
                 quotationValidDays: 30,
+                quotationDownPayment: 0,
                 lastQuotationNumber: '',
                 lastQuotationPrintUrl: '',
                 lastSaleId: null,
@@ -2490,7 +2512,7 @@
                 paymentMethod: 'cash',
                 referenceNumber: '',
                 paymentTermDays: 5,
-                downPayment: 0,
+                downPayment: @json($quotationDownPayment ?: 0),
                 downPaymentMethod: 'cash',
                 deliveryFee: 0,
                 cashReceived: 0,
@@ -3280,6 +3302,7 @@
                                 customer_id: this.selectedCustomer || null,
                                 items: this.cart,
                                 total: this.total,
+                                down_payment: this.quotationDownPayment || 0,
                                 notes: this.quotationNotes,
                                 valid_days: parseInt(this.quotationValidDays)
                             })
@@ -3296,6 +3319,7 @@
                             this.selectedCustomer = '';
                             this.quotationNotes = '';
                             this.quotationValidDays = 30;
+                            this.quotationDownPayment = 0;
                         } else {
                             this.quotationError = data.message || 'Failed to create quotation';
                         }

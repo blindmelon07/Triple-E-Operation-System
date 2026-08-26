@@ -77,6 +77,7 @@ class POSController extends Controller
         $quotationCart = [];
         $quotationId = null;
         $quotationCustomerId = null;
+        $quotationDownPayment = 0;
 
         if ($request->has('quotation_id')) {
             $quotation = Quotation::with(['quotation_items.product', 'customer'])
@@ -85,6 +86,7 @@ class POSController extends Controller
             if ($quotation && $quotation->status === QuotationStatus::Approved->value) {
                 $quotationId = $quotation->id;
                 $quotationCustomerId = $quotation->customer_id;
+                $quotationDownPayment = (float) $quotation->down_payment;
 
                 foreach ($quotation->quotation_items as $item) {
                     $cartItem = [
@@ -109,7 +111,7 @@ class POSController extends Controller
 
         return view('pos.index', compact(
             'products', 'customers', 'categories', 'registerSession',
-            'quotationCart', 'quotationId', 'quotationCustomerId',
+            'quotationCart', 'quotationId', 'quotationCustomerId', 'quotationDownPayment',
             'isManager', 'canSettleInvoices'
         ));
     }
@@ -680,6 +682,7 @@ class POSController extends Controller
             'items.*.discountIsFlat' => 'nullable|boolean',
             'items.*.unit' => 'required|string',
             'total' => 'required|numeric|min:0',
+            'down_payment' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
             'valid_days' => 'nullable|integer|min:1|max:365',
         ]);
@@ -688,12 +691,14 @@ class POSController extends Controller
             DB::beginTransaction();
 
             $validDays = $validated['valid_days'] ?? 30;
+            $downPayment = min((float) ($validated['down_payment'] ?? 0), (float) $validated['total']);
 
             $quotation = Quotation::create([
                 'customer_id' => $validated['customer_id'],
                 'date' => now(),
                 'valid_until' => now()->addDays($validDays),
                 'total' => $validated['total'],
+                'down_payment' => $downPayment,
                 'notes' => $validated['notes'] ?? null,
                 'status' => 'pending',
             ]);

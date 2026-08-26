@@ -45,6 +45,11 @@ class QuotationsTable
                     ->money('Php')
                     ->sortable()
                     ->summarize(Sum::make()),
+                \Filament\Tables\Columns\TextColumn::make('down_payment')
+                    ->label('Down Payment')
+                    ->money('Php')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 \Filament\Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => QuotationStatus::tryFrom($state)?->getLabel() ?? $state)

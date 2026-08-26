@@ -22,6 +22,7 @@ class Quotation extends Model
         'date',
         'valid_until',
         'total',
+        'down_payment',
         'notes',
         'status',
         'created_by',
@@ -33,7 +34,13 @@ class Quotation extends Model
             'date' => 'date',
             'valid_until' => 'date',
             'total' => 'decimal:2',
+            'down_payment' => 'decimal:2',
         ];
+    }
+
+    public function getBalanceAttribute(): float
+    {
+        return (float) $this->total - (float) $this->down_payment;
     }
 
     protected static function booted(): void

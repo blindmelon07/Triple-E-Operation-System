@@ -557,6 +557,16 @@
                     <span class="label">Total</span>
                     <span class="value">₱{{ number_format($quotation->total, 2) }}</span>
                 </div>
+                @if($quotation->down_payment > 0)
+                    <div class="summary-row">
+                        <span class="label">Down Payment</span>
+                        <span class="value">₱{{ number_format($quotation->down_payment, 2) }}</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="label">Balance Due</span>
+                        <span class="value">₱{{ number_format($quotation->balance, 2) }}</span>
+                    </div>
+                @endif
             </div>
         </div>
 

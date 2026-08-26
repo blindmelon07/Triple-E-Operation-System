@@ -255,11 +255,24 @@ class QuotationForm
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                Textarea::make('notes')
-                                    ->label('Terms & Conditions / Notes')
-                                    ->rows(5)
-                                    ->placeholder('Enter any special terms, conditions, or additional information...')
-                                    ->helperText('This will appear on the quotation document')
+                                Grid::make(1)
+                                    ->schema([
+                                        Textarea::make('notes')
+                                            ->label('Terms & Conditions / Notes')
+                                            ->rows(5)
+                                            ->placeholder('Enter any special terms, conditions, or additional information...')
+                                            ->helperText('This will appear on the quotation document'),
+
+                                        TextInput::make('down_payment')
+                                            ->label('Down Payment (Optional)')
+                                            ->numeric()
+                                            ->prefix('₱')
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->default(0)
+                                            ->reactive()
+                                            ->helperText('Optional amount already paid by the customer for this quotation'),
+                                    ])
                                     ->columnSpan(1),
 
                                 Grid::make(1)
@@ -290,6 +303,15 @@ class QuotationForm
                                                     return '₱' . number_format($record->total, 2);
                                                 }
                                                 return '₱0.00';
+                                            })
+                                            ->extraAttributes(['class' => 'text-2xl font-bold']),
+
+                                        Placeholder::make('balance')
+                                            ->label('Balance Due')
+                                            ->content(function ($get, $record) {
+                                                $total = $record ? (float) $record->total : 0;
+                                                $downPayment = (float) ($get('down_payment') ?? 0);
+                                                return '₱' . number_format(max(0, $total - $downPayment), 2);
                                             })
                                             ->extraAttributes(['class' => 'text-2xl font-bold']),
                                     ])
