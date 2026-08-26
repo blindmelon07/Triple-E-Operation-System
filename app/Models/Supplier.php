@@ -33,6 +33,11 @@ class Supplier extends Model
         return $this->hasMany(Purchase::class);
     }
 
+    public function productPrices(): HasMany
+    {
+        return $this->hasMany(SupplierProductPrice::class);
+    }
+
     public function getPaymentTermLabelAttribute(): string
     {
         return match ($this->payment_term_days) {

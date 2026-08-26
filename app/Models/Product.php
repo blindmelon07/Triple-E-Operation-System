@@ -57,6 +57,11 @@ class Product extends Model
         return $this->hasMany(ProductUnitPrice::class);
     }
 
+    public function supplierPrices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupplierProductPrice::class);
+    }
+
     /**
      * How many base units (this product's own `unit`) does 1 of the given
      * unit represent? Used to translate an alt-unit sale/void quantity into

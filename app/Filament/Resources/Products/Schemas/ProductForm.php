@@ -73,6 +73,24 @@ class ProductForm
                     ->columns(3)
                     ->distinct()
                     ->defaultItems(0),
+                \Filament\Forms\Components\Repeater::make('supplierPrices')
+                    ->relationship()
+                    ->label('Supplier Base Prices')
+                    ->helperText('Record what each supplier charges for this product, so Purchase Orders can show a price comparison across suppliers.')
+                    ->schema([
+                        \Filament\Forms\Components\Select::make('supplier_id')
+                            ->label('Supplier')
+                            ->relationship('supplier', 'name')
+                            ->required(),
+                        \Filament\Forms\Components\TextInput::make('base_price')
+                            ->label('Base Price')
+                            ->numeric()
+                            ->prefix('₱')
+                            ->required(),
+                    ])
+                    ->columns(2)
+                    ->distinct()
+                    ->defaultItems(0),
             ]);
     }
 }

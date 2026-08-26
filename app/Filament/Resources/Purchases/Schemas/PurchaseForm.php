@@ -77,6 +77,37 @@ class PurchaseForm
                                     }
                                 }
                             }),
+                        \Filament\Forms\Components\Placeholder::make('supplier_price_comparison')
+                            ->label('Base Price by Supplier')
+                            ->content(function (callable $get) {
+                                $productId = $get('product_id');
+
+                                if (! $productId) {
+                                    return 'Select a product to compare supplier base prices.';
+                                }
+
+                                $prices = \App\Models\SupplierProductPrice::with('supplier')
+                                    ->where('product_id', $productId)
+                                    ->get()
+                                    ->sortBy('base_price');
+
+                                if ($prices->isEmpty()) {
+                                    return 'No supplier base prices recorded yet for this product.';
+                                }
+
+                                $currentSupplierId = $get('../../supplier_id');
+
+                                $lines = $prices->map(function ($row) use ($currentSupplierId) {
+                                    $line = e($row->supplier->name).': ₱'.number_format((float) $row->base_price, 2);
+
+                                    return $row->supplier_id == $currentSupplierId
+                                        ? "<strong>{$line} (selected supplier)</strong>"
+                                        : $line;
+                                })->implode('<br>');
+
+                                return new \Illuminate\Support\HtmlString($lines);
+                            })
+                            ->columnSpanFull(),
                         \Filament\Forms\Components\Select::make('unit')
                             ->options(\App\Enums\ProductUnit::class)
                             ->required(),
