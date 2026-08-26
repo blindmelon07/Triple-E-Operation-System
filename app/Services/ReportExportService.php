@@ -267,6 +267,28 @@ class ReportExportService
     }
 
     /**
+     * Export the Supplier Price Comparison as PDF — a matrix of every product
+     * (that has at least one recorded supplier base price) against every
+     * supplier who has quoted a price for anything, optionally scoped to a
+     * single category.
+     */
+    public function exportSupplierPriceComparisonPdf(?int $categoryId = null): \Illuminate\Http\Response
+    {
+        $export = new \App\Exports\SupplierPriceComparisonExport($categoryId);
+
+        $pdf = Pdf::loadView('exports.supplier-price-comparison-pdf', [
+            'rows' => $export->getData(),
+            'suppliers' => $export->getSuppliers(),
+            'categoryName' => $categoryId ? \App\Models\Category::find($categoryId)?->name : null,
+            'generatedAt' => now()->format('F d, Y h:i A'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->download('supplier-price-comparison-'.now()->format('Y-m-d').'.pdf');
+    }
+
+    /**
      * Export a single customer's Statement of Account as PDF — a chronological
      * ledger of invoices (debits) and payments (credits) with a running balance,
      * optionally scoped to a date range with a carried-forward opening balance.
