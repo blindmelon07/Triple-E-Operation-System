@@ -15,7 +15,9 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
@@ -41,6 +43,13 @@ class InventoryReport extends Page implements HasTable
                 ->label('Export to CSV')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->form([
+                    Select::make('type')
+                        ->label('Type')
+                        ->options([
+                            'in' => 'In',
+                            'out' => 'Out',
+                        ])
+                        ->placeholder('All (In & Out)'),
                     Select::make('period')
                         ->label('Period')
                         ->options([
@@ -69,6 +78,7 @@ class InventoryReport extends Page implements HasTable
                         period: $data['period'] !== 'custom' ? $data['period'] : null,
                         dateFrom: $data['date_from'] ?? null,
                         dateUntil: $data['date_until'] ?? null,
+                        type: $data['type'] ?? null,
                     );
 
                     return (new CsvExportService)->export(
@@ -111,21 +121,15 @@ class InventoryReport extends Page implements HasTable
                     ->label('Notes')
                     ->limit(50),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
             ->filters([
-                Filter::make('type')
-                    ->form([
-                        Select::make('type')
-                            ->options([
-                                'in' => 'In',
-                                'out' => 'Out',
-                            ]),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['type'],
-                            fn (Builder $query, $type): Builder => $query->where('type', $type),
-                        );
-                    }),
+                SelectFilter::make('type')
+                    ->label('Type')
+                    ->placeholder('All (In & Out)')
+                    ->options([
+                        'in' => 'In',
+                        'out' => 'Out',
+                    ]),
                 Filter::make('date_range')
                     ->form([
                         DatePicker::make('date_from')

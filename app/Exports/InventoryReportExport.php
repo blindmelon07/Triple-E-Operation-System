@@ -12,13 +12,19 @@ class InventoryReportExport
         protected ?string $period = null,
         protected ?string $dateFrom = null,
         protected ?string $dateUntil = null,
+        protected ?string $type = null,
     ) {}
 
     public function query(): Builder
     {
         $query = InventoryMovement::query()->with(['product']);
 
-        return $this->applyDateFilter($query, 'created_at');
+        $query = $this->applyDateFilter($query, 'created_at');
+
+        return $query->when(
+            $this->type,
+            fn (Builder $query, string $type): Builder => $query->where('type', $type),
+        );
     }
 
     protected function applyDateFilter(Builder $query, string $dateColumn): Builder
@@ -62,6 +68,10 @@ class InventoryReportExport
     public function getFilename(): string
     {
         $suffix = $this->period ?? 'custom';
+
+        if ($this->type) {
+            $suffix .= '-'.$this->type;
+        }
 
         return "inventory-report-{$suffix}-".now()->format('Y-m-d-His').'.csv';
     }
