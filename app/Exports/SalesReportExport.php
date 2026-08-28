@@ -42,7 +42,9 @@ class SalesReportExport
 
     public function getData(): Collection
     {
-        return $this->query()->get()->map(function (Sale $sale) {
+        $sales = $this->query()->get();
+
+        $rows = $sales->map(function (Sale $sale) {
             $items = $sale->sale_items->where('is_voided', false);
 
             return [
@@ -61,6 +63,17 @@ class SalesReportExport
                 'Total' => number_format($sale->total, 2),
             ];
         });
+
+        // Grand total row
+        $rows->push([
+            'Date' => 'GRAND TOTAL',
+            'Customer' => '',
+            'Items Count' => $sales->sum(fn (Sale $sale) => $sale->sale_items->where('is_voided', false)->count()),
+            'Items Sold' => '',
+            'Total' => number_format($sales->sum('total'), 2),
+        ]);
+
+        return $rows;
     }
 
     public function getHeaders(): array
