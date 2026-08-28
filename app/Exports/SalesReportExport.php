@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Sale;
+use App\Support\Utf8;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -49,17 +50,9 @@ class SalesReportExport
 
             return [
                 'Date' => $sale->date?->format('Y-m-d H:i'),
-                'Customer' => $sale->customer?->name ?? 'Walk-in',
+                'Customer' => static::cleanUtf8($sale->customer?->name) ?? 'Walk-in',
                 'Items Count' => $items->count(),
-                'Items Sold' => $items->map(function ($item) {
-                    $name = $item->is_manual
-                        ? $item->product_description
-                        : ($item->product?->name ?? $item->product_description);
-
-                    $qty = rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.');
-
-                    return "{$name} x{$qty}";
-                })->implode(', '),
+                'Items Sold' => static::formatItemsSold($items),
                 'Total' => number_format($sale->total, 2),
             ];
         });
@@ -86,5 +79,32 @@ class SalesReportExport
         $suffix = $this->period ?? 'custom';
 
         return "sales-report-{$suffix}-".now()->format('Y-m-d-His').'.csv';
+    }
+
+    /**
+     * Comma-separated "Product x Qty" list for a sale's active line items.
+     * Shared by the CSV export and the PDF view so they never drift apart.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\SaleItem>  $items
+     */
+    public static function formatItemsSold(Collection $items): string
+    {
+        return $items->map(function ($item) {
+            $name = $item->is_manual
+                ? $item->product_description
+                : ($item->product?->name ?? $item->product_description);
+
+            $qty = rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.');
+
+            return static::cleanUtf8("{$name} x{$qty}");
+        })->implode(', ');
+    }
+
+    /**
+     * @see \App\Support\Utf8::clean()
+     */
+    public static function cleanUtf8(?string $value): ?string
+    {
+        return Utf8::clean($value);
     }
 }

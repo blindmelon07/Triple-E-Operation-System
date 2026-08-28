@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\AuditLog;
+use App\Support\Utf8;
 use Illuminate\Database\Eloquent\Model;
 
 trait Auditable
@@ -40,6 +41,15 @@ trait Auditable
         $oldValues = collect($oldValues)->except($excludedFields)->toArray();
         $newValues = collect($newValues)->except($excludedFields)->toArray();
 
+        // A field can carry invalid UTF-8 bytes (old imports, pasted-in text)
+        // without Eloquent ever complaining — but the old_values/new_values
+        // columns below are JSON-cast, and json_encode() throws on invalid
+        // UTF-8. Sanitize first so a pre-existing bad byte in, say, a
+        // product name can't block every future create/update/delete of
+        // that record with a 500.
+        $oldValues = Utf8::cleanArray($oldValues);
+        $newValues = Utf8::cleanArray($newValues);
+
         $user = auth()->user();
 
         AuditLog::create([
@@ -61,16 +71,16 @@ trait Auditable
         $className = class_basename($model);
 
         if ($model->getAttribute('name')) {
-            return "{$className}: {$model->getAttribute('name')}";
+            return "{$className}: ".Utf8::clean($model->getAttribute('name'));
         }
         if ($model->getAttribute('reference_number')) {
-            return "{$className} {$model->getAttribute('reference_number')}";
+            return "{$className} ".Utf8::clean($model->getAttribute('reference_number'));
         }
         if ($model->getAttribute('quotation_number')) {
-            return "{$className} {$model->getAttribute('quotation_number')}";
+            return "{$className} ".Utf8::clean($model->getAttribute('quotation_number'));
         }
         if ($model->getAttribute('plate_number')) {
-            return "{$className} {$model->getAttribute('plate_number')}";
+            return "{$className} ".Utf8::clean($model->getAttribute('plate_number'));
         }
 
         return "{$className} #{$model->getKey()}";

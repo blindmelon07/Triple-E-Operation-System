@@ -115,7 +115,8 @@ class SalesReport extends Page implements HasTable
                     ->sortable(),
                 TextColumn::make('customer.name')
                     ->label('Customer')
-                    ->default('Walk-in'),
+                    ->default('Walk-in')
+                    ->formatStateUsing(fn (?string $state) => SalesReportExport::cleanUtf8($state)),
                 TextColumn::make('sale_items_count')
                     ->label('Items')
                     ->counts('sale_items'),

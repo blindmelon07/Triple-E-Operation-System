@@ -94,18 +94,12 @@
             @forelse($sales as $index => $sale)
                 @php
                     $items = $sale->sale_items->where('is_voided', false);
-                    $itemsSold = $items->map(function ($item) {
-                        $name = $item->is_manual
-                            ? $item->product_description
-                            : ($item->product?->name ?? $item->product_description);
-                        $qty = rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.');
-                        return "{$name} x{$qty}";
-                    })->implode(', ');
+                    $itemsSold = \App\Exports\SalesReportExport::formatItemsSold($items);
                 @endphp
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $sale->date?->format('Y-m-d') }}</td>
-                    <td>{{ $sale->customer?->name ?? 'Walk-in' }}</td>
+                    <td>{{ \App\Exports\SalesReportExport::cleanUtf8($sale->customer?->name) ?? 'Walk-in' }}</td>
                     <td class="num">{{ $items->count() }}</td>
                     <td class="items-cell">{{ $itemsSold ?: '—' }}</td>
                     <td class="num">₱{{ number_format($sale->total, 2) }}</td>

@@ -111,3 +111,36 @@ it('exports the sales report as a downloadable PDF', function () {
     expect($response->headers->get('Content-Disposition'))->toContain('attachment');
     expect($response->headers->get('Content-Disposition'))->toContain('sales-report');
 });
+
+it('sanitizes malformed UTF-8 in names so the export payload stays JSON-encodable', function () {
+    // A lone 0xE9 byte is valid Latin-1 ("é") but invalid UTF-8 — the kind of
+    // legacy/pasted-in byte that used to make json_encode() (and Livewire's
+    // response for the export action) blow up with "Malformed UTF-8 characters".
+    $badBytes = "Caf\xE9 Chairs";
+
+    $product = Product::factory()->create(['name' => $badBytes]);
+    $customer = \App\Models\Customer::factory()->create(['name' => $badBytes]);
+
+    $sale = Sale::factory()->create([
+        'customer_id' => $customer->id,
+        'date' => '2026-08-24',
+        'total' => 500,
+    ]);
+
+    SaleItem::factory()->for($sale)->create([
+        'product_id' => $product->id,
+        'is_manual' => false,
+        'quantity' => 1,
+        'unit' => 'pc',
+        'price' => 500,
+    ]);
+
+    $export = new SalesReportExport(dateFrom: '2026-08-24', dateUntil: '2026-08-24');
+    $row = $export->getData()->first();
+
+    expect(mb_check_encoding($row['Customer'], 'UTF-8'))->toBeTrue()
+        ->and(mb_check_encoding($row['Items Sold'], 'UTF-8'))->toBeTrue();
+
+    // This is the exact call that threw InvalidArgumentException in production.
+    expect(json_encode($export->getData()->all()))->not->toBeFalse();
+});
