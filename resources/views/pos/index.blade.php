@@ -155,6 +155,20 @@
                         </button>
                         @endif
 
+                        @if($canAddExpense)
+                        <!-- Add Expense Button -->
+                        <button
+                            @click="openExpenseModal()"
+                            class="hidden sm:flex px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition touch-btn items-center gap-2"
+                            title="Record Expense"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3v-3m-3 3v-3m12-8v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h10l4 4z" />
+                            </svg>
+                            <span class="hidden lg:inline">Expense</span>
+                        </button>
+                        @endif
+
                         <!-- Mobile Cart Toggle Button -->
                         <button
                             @click="showMobileCart = !showMobileCart"
@@ -2153,6 +2167,160 @@
         </div>
     </div>
 
+    @if($canAddExpense)
+    <!-- Add Expense Modal -->
+    <div
+        x-show="showExpenseModal"
+        x-cloak
+        @keydown.escape.window="showExpenseModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showExpenseModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3v-3m-3 3v-3m12-8v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h10l4 4z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Record Expense</h3>
+                    </div>
+                    <button
+                        @click="showExpenseModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div x-show="expenseError" x-cloak class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" x-text="expenseError"></div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category <span class="text-red-500">*</span></label>
+                        <select
+                            x-model="expenseForm.expense_category_id"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                            <option value="">Select a category...</option>
+                            @foreach($expenseCategories as $expenseCategory)
+                                <option value="{{ $expenseCategory->id }}">{{ $expenseCategory->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₱</span>
+                            <input
+                                type="number"
+                                x-model.number="expenseForm.amount"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
+                                class="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                            >
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method <span class="text-red-500">*</span></label>
+                        <select
+                            x-model="expenseForm.payment_method"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                            <option value="cash">Cash</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="check">Check</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="gcash">GCash</option>
+                            <option value="maya">Maya</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payee / Vendor</label>
+                        <input
+                            type="text"
+                            x-model="expenseForm.payee"
+                            placeholder="Who was paid?"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                        <textarea
+                            x-model="expenseForm.description"
+                            rows="2"
+                            placeholder="Describe the expense..."
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white text-base"
+                        ></textarea>
+                    </div>
+
+                    <p class="text-xs text-gray-500 dark:text-gray-400">This will be recorded as pending and still counts toward today's cash reconciliation. A manager can review it later from the admin dashboard.</p>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button
+                        @click="showExpenseModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="saveExpense()"
+                        :disabled="isSavingExpense"
+                        class="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg x-show="isSavingExpense" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        <span x-text="isSavingExpense ? 'Saving...' : 'Save Expense'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Toast Notification -->
+    <div
+        x-show="showToast"
+        x-cloak
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-2"
+        class="fixed top-4 right-4 z-[70] max-w-sm w-full"
+    >
+        <div
+            class="rounded-xl shadow-2xl p-4 flex items-start gap-3 text-white"
+            :class="toastType === 'error' ? 'bg-red-600' : 'bg-green-600'"
+        >
+            <svg x-show="toastType !== 'error'" class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <svg x-show="toastType === 'error'" class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm font-medium flex-1" x-text="toastMessage"></p>
+            <button @click="showToast = false" class="text-white/80 hover:text-white">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
     <!-- Manager: Void Approval Panel -->
     @if($isManager)
     <div
@@ -2562,6 +2730,24 @@
                 settleResults: [],
                 showSettleResultsModal: false,
                 printedReceiptIndices: [],
+
+                // Record Expense
+                showExpenseModal: false,
+                expenseForm: {
+                    expense_category_id: '',
+                    amount: '',
+                    payment_method: 'cash',
+                    payee: '',
+                    description: ''
+                },
+                isSavingExpense: false,
+                expenseError: '',
+
+                // Toast Notification
+                showToast: false,
+                toastMessage: '',
+                toastType: 'success',
+                toastTimeout: null,
 
                 init() {
                     this.filteredProducts = this.products;
@@ -3049,6 +3235,68 @@
                     this.showPaymentModal = true;
                     this.cashReceived = this.grandTotal;
                     this.calculateChange();
+                },
+
+                notify(message, type = 'success') {
+                    clearTimeout(this.toastTimeout);
+                    this.toastMessage = message;
+                    this.toastType = type;
+                    this.showToast = true;
+                    this.toastTimeout = setTimeout(() => { this.showToast = false; }, 4000);
+                },
+
+                openExpenseModal() {
+                    this.expenseForm = {
+                        expense_category_id: '',
+                        amount: '',
+                        payment_method: 'cash',
+                        payee: '',
+                        description: ''
+                    };
+                    this.expenseError = '';
+                    this.showExpenseModal = true;
+                },
+
+                async saveExpense() {
+                    this.expenseError = '';
+
+                    if (!this.expenseForm.expense_category_id) {
+                        this.expenseError = 'Please select a category';
+                        return;
+                    }
+                    if (!this.expenseForm.amount || this.expenseForm.amount <= 0) {
+                        this.expenseError = 'Please enter a valid amount';
+                        return;
+                    }
+
+                    this.isSavingExpense = true;
+
+                    try {
+                        const response = await fetch('/pos/expense', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(this.expenseForm)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.showExpenseModal = false;
+                            this.notify(`Expense recorded (${data.expense.reference_number}) — ₱${parseFloat(data.expense.amount).toFixed(2)}`);
+                        } else {
+                            this.expenseError = data.message || 'Failed to record expense';
+                            this.notify(this.expenseError, 'error');
+                        }
+                    } catch (error) {
+                        this.expenseError = 'Error recording expense: ' + error.message;
+                        this.notify(this.expenseError, 'error');
+                    } finally {
+                        this.isSavingExpense = false;
+                    }
                 },
 
                 async confirmPayment() {

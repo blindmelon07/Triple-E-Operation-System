@@ -34,6 +34,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/pos/settle-invoices', [InvoiceSettlementController::class, 'settle'])->name('pos.settle-invoices');
     Route::get('/pos/print-payment-receipt/{payment}', [InvoiceSettlementController::class, 'printPaymentReceipt'])->name('pos.print-payment-receipt');
 
+    // Record Expense from the POS (no need to go to the admin dashboard)
+    Route::post('/pos/expense', [POSController::class, 'storeExpense'])->name('pos.store-expense');
+
     // Cash Register
     Route::post('/pos/register/open', [POSController::class, 'openRegister'])->name('pos.register.open');
     Route::post('/pos/register/close', [POSController::class, 'closeRegister'])->name('pos.register.close');

@@ -10,6 +10,7 @@ use App\Models\CashRegisterSession;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
@@ -108,12 +109,67 @@ class POSController extends Controller
 
         $isManager = auth()->user()->hasAnyRole(['admin', 'super_admin']);
         $canSettleInvoices = auth()->user()->hasPermissionTo('RecordPaymentSale');
+        $canAddExpense = auth()->user()->hasPermissionTo('Create:Expense');
+        $expenseCategories = ExpenseCategory::where('is_active', true)->orderBy('name')->get();
 
         return view('pos.index', compact(
             'products', 'customers', 'categories', 'registerSession',
             'quotationCart', 'quotationId', 'quotationCustomerId', 'quotationDownPayment',
-            'isManager', 'canSettleInvoices'
+            'isManager', 'canSettleInvoices', 'canAddExpense', 'expenseCategories'
         ));
+    }
+
+    public function storeExpense(Request $request): \Illuminate\Http\JsonResponse
+    {
+        if (! auth()->user()->hasPermissionTo('Create:Expense')) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to record expenses.'], 403);
+        }
+
+        $validated = $request->validate([
+            'expense_category_id' => 'required|exists:expense_categories,id',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|string|in:cash,bank_transfer,check,credit_card,gcash,maya',
+            'payee' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        // Recorded straight from the POS as 'pending' — it still counts toward
+        // today's session reconciliation on the Daily/Period Transaction Report
+        // (only 'rejected' expenses are excluded there), but a manager can still
+        // review/approve or reject it later from the admin dashboard.
+        $expense = Expense::create([
+            'expense_category_id' => $validated['expense_category_id'],
+            'user_id' => auth()->id(),
+            'reference_number' => Expense::generateReferenceNumber(),
+            'expense_date' => now()->toDateString(),
+            'amount' => $validated['amount'],
+            'payment_method' => $validated['payment_method'],
+            'payee' => $validated['payee'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        AuditLog::create([
+            'user_id'         => auth()->id(),
+            'user_name'       => auth()->user()?->name,
+            'action'          => 'created_expense',
+            'auditable_type'  => Expense::class,
+            'auditable_id'    => $expense->id,
+            'auditable_label' => "Expense {$expense->reference_number}",
+            'new_values'      => [
+                'category_id' => $expense->expense_category_id,
+                'amount'      => $expense->amount,
+                'payee'       => $expense->payee,
+            ],
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Expense recorded successfully',
+            'expense' => $expense,
+        ]);
     }
 
     public function openRegister(Request $request): \Illuminate\Http\JsonResponse
