@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Exports\SalesReportExport;
 use App\Models\Sale;
 use App\Services\CsvExportService;
+use App\Services\ReportExportService;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
@@ -40,30 +41,7 @@ class SalesReport extends Page implements HasTable
             Action::make('export')
                 ->label('Export to CSV')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->form([
-                    Select::make('period')
-                        ->label('Period')
-                        ->options([
-                            'today' => 'Today',
-                            'yesterday' => 'Yesterday',
-                            'this_week' => 'This Week',
-                            'last_week' => 'Last Week',
-                            'this_month' => 'This Month',
-                            'last_month' => 'Last Month',
-                            'this_year' => 'This Year',
-                            'custom' => 'Custom Date Range',
-                        ])
-                        ->default('this_month')
-                        ->live(),
-                    DatePicker::make('date_from')
-                        ->label('From Date')
-                        ->visible(fn ($get) => $get('period') === 'custom')
-                        ->required(fn ($get) => $get('period') === 'custom'),
-                    DatePicker::make('date_until')
-                        ->label('To Date')
-                        ->visible(fn ($get) => $get('period') === 'custom')
-                        ->required(fn ($get) => $get('period') === 'custom'),
-                ])
+                ->form($this->dateFilterFormFields())
                 ->action(function (array $data) {
                     $export = new SalesReportExport(
                         period: $data['period'] !== 'custom' ? $data['period'] : null,
@@ -77,6 +55,52 @@ class SalesReport extends Page implements HasTable
                         $export->getFilename(),
                     );
                 }),
+            Action::make('exportPdf')
+                ->label('Export to PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->form($this->dateFilterFormFields())
+                ->action(function (array $data) {
+                    return (new ReportExportService)->exportSalesReportPdf(
+                        period: $data['period'] !== 'custom' ? $data['period'] : null,
+                        dateFrom: $data['date_from'] ?? null,
+                        dateUntil: $data['date_until'] ?? null,
+                    );
+                }),
+        ];
+    }
+
+    /**
+     * Period select + custom From/To date pickers, shared by the CSV and PDF
+     * export actions so both modals stay identical.
+     *
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    protected function dateFilterFormFields(): array
+    {
+        return [
+            Select::make('period')
+                ->label('Period')
+                ->options([
+                    'today' => 'Today',
+                    'yesterday' => 'Yesterday',
+                    'this_week' => 'This Week',
+                    'last_week' => 'Last Week',
+                    'this_month' => 'This Month',
+                    'last_month' => 'Last Month',
+                    'this_year' => 'This Year',
+                    'custom' => 'Custom Date Range',
+                ])
+                ->default('this_month')
+                ->live(),
+            DatePicker::make('date_from')
+                ->label('From Date')
+                ->visible(fn ($get) => $get('period') === 'custom')
+                ->required(fn ($get) => $get('period') === 'custom'),
+            DatePicker::make('date_until')
+                ->label('To Date')
+                ->visible(fn ($get) => $get('period') === 'custom')
+                ->required(fn ($get) => $get('period') === 'custom'),
         ];
     }
 

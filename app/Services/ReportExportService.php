@@ -106,6 +106,56 @@ class ReportExportService
     }
 
     /**
+     * Export the Sales Report (itemized) as PDF, using the same period/date-range
+     * filtering as SalesReportExport so the CSV and PDF always agree.
+     */
+    public function exportSalesReportPdf(?string $period = null, ?string $dateFrom = null, ?string $dateUntil = null): \Illuminate\Http\Response
+    {
+        $export = new \App\Exports\SalesReportExport(period: $period, dateFrom: $dateFrom, dateUntil: $dateUntil);
+
+        $sales = $export->query()->orderBy('date')->get();
+
+        $pdf = Pdf::loadView('exports.sales-report-pdf', [
+            'sales' => $sales,
+            'periodLabel' => $this->salesReportPeriodLabel($period, $dateFrom, $dateUntil),
+            'generatedAt' => now()->format('F d, Y h:i A'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        $filename = 'sales-report-'.($period ?? 'custom').'-'.now()->format('Y-m-d-His').'.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Human-readable label for the Sales Report PDF header, mirroring the
+     * period options offered in the export modal.
+     */
+    private function salesReportPeriodLabel(?string $period, ?string $dateFrom, ?string $dateUntil): string
+    {
+        if ($dateFrom && $dateUntil) {
+            $from = Carbon::parse($dateFrom);
+            $to = Carbon::parse($dateUntil);
+
+            return $from->isSameDay($to)
+                ? $from->format('F d, Y')
+                : $from->format('F d, Y').' – '.$to->format('F d, Y');
+        }
+
+        return match ($period) {
+            'today' => 'Today ('.now()->format('F d, Y').')',
+            'yesterday' => 'Yesterday ('.now()->subDay()->format('F d, Y').')',
+            'this_week' => 'This Week',
+            'last_week' => 'Last Week',
+            'this_month' => 'This Month ('.now()->format('F Y').')',
+            'last_month' => 'Last Month ('.now()->subMonth()->format('F Y').')',
+            'this_year' => 'This Year ('.now()->format('Y').')',
+            default => 'All Time',
+        };
+    }
+
+    /**
      * Export Aging Report as PDF.
      */
     public function exportAgingPdf(?int $customerId = null, ?int $supplierId = null): \Illuminate\Http\Response

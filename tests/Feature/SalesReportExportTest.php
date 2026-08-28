@@ -4,6 +4,7 @@ use App\Exports\SalesReportExport;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Services\ReportExportService;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
@@ -85,4 +86,28 @@ it('appends a grand total row summing all sales in range', function () {
 
     expect($totalRow['Date'])->toBe('GRAND TOTAL')
         ->and($totalRow['Total'])->toBe('750.00');
+});
+
+it('exports the sales report as a downloadable PDF', function () {
+    $product = Product::factory()->create(['name' => 'Cement 40kg']);
+
+    $sale = Sale::factory()->create(['date' => '2026-08-24', 'total' => 500]);
+    SaleItem::factory()->for($sale)->create([
+        'product_id' => $product->id,
+        'is_manual' => false,
+        'quantity' => 2,
+        'unit' => 'bag',
+        'price' => 500,
+    ]);
+
+    $response = (new ReportExportService)->exportSalesReportPdf(
+        period: null,
+        dateFrom: '2026-08-24',
+        dateUntil: '2026-08-24',
+    );
+
+    expect($response->getStatusCode())->toBe(200);
+    expect($response->headers->get('Content-Type'))->toBe('application/pdf');
+    expect($response->headers->get('Content-Disposition'))->toContain('attachment');
+    expect($response->headers->get('Content-Disposition'))->toContain('sales-report');
 });
