@@ -246,7 +246,6 @@ class POSController extends Controller
             ->withCount(['sale_items' => fn ($q) => $q->active()])
             ->where('cash_register_session_id', $session->id)
             ->where('is_voided', false)
-            ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
             ->orderByRaw('customer_id IS NULL ASC')
             ->orderBy('created_at')
             ->get();
@@ -319,7 +318,6 @@ class POSController extends Controller
         $allSales = Sale::with(['customer', 'sale_items.product'])
             ->whereIn('cash_register_session_id', $sessionIds)
             ->where('is_voided', false)
-            ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
             ->orderBy('created_at')
             ->get();
 
