@@ -16,7 +16,7 @@ class SalesReportExport
 
     public function query(): Builder
     {
-        $query = Sale::query()->with(['customer', 'sale_items']);
+        $query = Sale::query()->with(['customer', 'sale_items.product']);
 
         return $this->applyDateFilter($query, 'date');
     }
@@ -43,10 +43,21 @@ class SalesReportExport
     public function getData(): Collection
     {
         return $this->query()->get()->map(function (Sale $sale) {
+            $items = $sale->sale_items->where('is_voided', false);
+
             return [
                 'Date' => $sale->date?->format('Y-m-d H:i'),
                 'Customer' => $sale->customer?->name ?? 'Walk-in',
-                'Items Count' => $sale->sale_items->count(),
+                'Items Count' => $items->count(),
+                'Items Sold' => $items->map(function ($item) {
+                    $name = $item->is_manual
+                        ? $item->product_description
+                        : ($item->product?->name ?? $item->product_description);
+
+                    $qty = rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.');
+
+                    return "{$name} x{$qty}";
+                })->implode(', '),
                 'Total' => number_format($sale->total, 2),
             ];
         });
@@ -54,7 +65,7 @@ class SalesReportExport
 
     public function getHeaders(): array
     {
-        return ['Date', 'Customer', 'Items Count', 'Total'];
+        return ['Date', 'Customer', 'Items Count', 'Items Sold', 'Total'];
     }
 
     public function getFilename(): string
