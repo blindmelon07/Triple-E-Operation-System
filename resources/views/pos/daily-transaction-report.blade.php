@@ -262,7 +262,12 @@
                 @endforeach
                 <tr class="subtotal">
                     <td colspan="3">&nbsp;</td>
-                    <td class="price">{{ number_format($sale->total,2) }}</td>
+                    <td class="price">
+                        {{ number_format($sale->total,2) }}
+                        @if($sale->payment_status === 'unpaid')
+                            <br><span style="color:#cc0000;font-size:6px;">(UNPAID)</span>
+                        @endif
+                    </td>
                 </tr>
             </table>
         @empty
