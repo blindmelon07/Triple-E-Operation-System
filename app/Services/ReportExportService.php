@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF as PdfInstance;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
@@ -21,7 +22,7 @@ class ReportExportService
      *
      * @param  array<string, mixed>  $reportData
      */
-    public function exportProfitLossPdf(array $reportData, string $startDate, string $endDate): \Illuminate\Http\Response
+    public function exportProfitLossPdf(array $reportData, string $startDate, string $endDate): StreamedResponse
     {
         $pdf = Pdf::loadView('exports.profit-loss-pdf', [
             'reportData' => $reportData,
@@ -34,7 +35,7 @@ class ReportExportService
 
         $filename = 'profit-loss-report-'.now()->format('Y-m-d').'.pdf';
 
-        return $pdf->download($filename);
+        return $this->streamPdf($pdf, $filename);
     }
 
     /**
@@ -109,7 +110,7 @@ class ReportExportService
      * Export the Sales Report (itemized) as PDF, using the same period/date-range
      * filtering as SalesReportExport so the CSV and PDF always agree.
      */
-    public function exportSalesReportPdf(?string $period = null, ?string $dateFrom = null, ?string $dateUntil = null): \Illuminate\Http\Response
+    public function exportSalesReportPdf(?string $period = null, ?string $dateFrom = null, ?string $dateUntil = null): StreamedResponse
     {
         $export = new \App\Exports\SalesReportExport(period: $period, dateFrom: $dateFrom, dateUntil: $dateUntil);
 
@@ -125,7 +126,7 @@ class ReportExportService
 
         $filename = 'sales-report-'.($period ?? 'custom').'-'.now()->format('Y-m-d-His').'.pdf';
 
-        return $pdf->download($filename);
+        return $this->streamPdf($pdf, $filename);
     }
 
     /**
@@ -158,7 +159,7 @@ class ReportExportService
     /**
      * Export Aging Report as PDF.
      */
-    public function exportAgingPdf(?int $customerId = null, ?int $supplierId = null): \Illuminate\Http\Response
+    public function exportAgingPdf(?int $customerId = null, ?int $supplierId = null): StreamedResponse
     {
         $receivables = Sale::where('payment_status', '!=', 'paid')
             ->where('is_voided', false)
@@ -207,7 +208,7 @@ class ReportExportService
 
         $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->download('aging-report-'.now()->format('Y-m-d').'.pdf');
+        return $this->streamPdf($pdf, 'aging-report-'.now()->format('Y-m-d').'.pdf');
     }
 
     /**
@@ -322,7 +323,7 @@ class ReportExportService
      * supplier who has quoted a price for anything, optionally scoped to a
      * single category.
      */
-    public function exportSupplierPriceComparisonPdf(?int $categoryId = null): \Illuminate\Http\Response
+    public function exportSupplierPriceComparisonPdf(?int $categoryId = null): StreamedResponse
     {
         $export = new \App\Exports\SupplierPriceComparisonExport($categoryId);
 
@@ -335,7 +336,7 @@ class ReportExportService
 
         $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->download('supplier-price-comparison-'.now()->format('Y-m-d').'.pdf');
+        return $this->streamPdf($pdf, 'supplier-price-comparison-'.now()->format('Y-m-d').'.pdf');
     }
 
     /**
@@ -343,7 +344,7 @@ class ReportExportService
      * ledger of invoices (debits) and payments (credits) with a running balance,
      * optionally scoped to a date range with a carried-forward opening balance.
      */
-    public function exportCustomerStatementPdf(Customer $customer, ?string $dateFrom = null, ?string $dateTo = null): \Illuminate\Http\Response
+    public function exportCustomerStatementPdf(Customer $customer, ?string $dateFrom = null, ?string $dateTo = null): StreamedResponse
     {
         $sales = Sale::where('customer_id', $customer->id)
             ->where('is_voided', false)
@@ -437,7 +438,7 @@ class ReportExportService
 
         $filename = 'statement-of-account-'.Str::slug($customer->name).'-'.now()->format('Y-m-d').'.pdf';
 
-        return $pdf->download($filename);
+        return $this->streamPdf($pdf, $filename);
     }
 
     /**
@@ -452,7 +453,7 @@ class ReportExportService
         $expensesByCategory,
         $monthlyTrend,
         string $period
-    ): \Illuminate\Http\Response {
+    ): StreamedResponse {
         $pdf = Pdf::loadView('exports.financial-dashboard-pdf', [
             'dashboardData' => $dashboardData,
             'expensesByCategory' => $expensesByCategory,
@@ -465,13 +466,13 @@ class ReportExportService
 
         $filename = 'financial-dashboard-'.now()->format('Y-m-d').'.pdf';
 
-        return $pdf->download($filename);
+        return $this->streamPdf($pdf, $filename);
     }
 
     /**
      * Export a Payroll (with its items) as a printable PDF.
      */
-    public function exportPayrollPdf(Payroll $payroll): \Illuminate\Http\Response
+    public function exportPayrollPdf(Payroll $payroll): StreamedResponse
     {
         $payroll->load(['payrollItems.employee', 'generatedBy', 'approvedBy']);
 
@@ -485,7 +486,7 @@ class ReportExportService
 
         $filename = 'payroll-'.$payroll->payroll_number.'.pdf';
 
-        return $pdf->download($filename);
+        return $this->streamPdf($pdf, $filename);
     }
 
     /**
@@ -564,6 +565,28 @@ class ReportExportService
         };
 
         return Response::stream($callback, 200, $headers);
+    }
+
+    /**
+     * Stream a rendered DomPDF instance as a StreamedResponse instead of
+     * using DomPDF's own download() (a plain Illuminate\Http\Response).
+     *
+     * Several of these exports are returned directly from a Filament/
+     * Livewire action closure. Livewire only treats a StreamedResponse or
+     * BinaryFileResponse as "this is a file" and base64-encodes it into a
+     * download effect; a plain Response instead falls through to Livewire's
+     * normal JSON 'returns' payload, where the raw PDF bytes (never valid
+     * UTF-8 — PDF is a binary format) make json_encode() throw "Malformed
+     * UTF-8 characters", turning every such PDF export into a 500. Routing
+     * everything through here avoids that regardless of call site.
+     */
+    private function streamPdf(PdfInstance $pdf, string $filename): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
     /**

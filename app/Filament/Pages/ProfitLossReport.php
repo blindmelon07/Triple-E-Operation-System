@@ -140,12 +140,12 @@ class ProfitLossReport extends Page
     /**
      * Export the report as PDF.
      */
-    public function exportPdf(): \Illuminate\Http\Response
+    public function exportPdf(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $exportService = new ReportExportService;
 
         return $exportService->exportProfitLossPdf(
-            $this->reportData,
+            $this->flattenedReportDataForExport(),
             $this->startDate,
             $this->endDate
         );
@@ -159,10 +159,33 @@ class ProfitLossReport extends Page
         $exportService = new ReportExportService;
 
         return $exportService->exportProfitLossExcel(
-            $this->reportData,
+            $this->flattenedReportDataForExport(),
             $this->startDate,
             $this->endDate
         );
+    }
+
+    /**
+     * AccountingService::getProfitAndLossStatement() nests revenue/COGS/
+     * expenses under sub-keys (e.g. revenue.total, operating_expenses.
+     * general_expenses) — that's what the on-screen page reads via
+     * $this->reportData. The PDF/CSV export views were written against a
+     * flat {revenue, cost_of_goods_sold, expenses, maintenance_costs, ...}
+     * shape instead; passing the nested array straight through makes
+     * number_format() throw (array given) on export. Adapt here, without
+     * touching $this->reportData, which the page view still needs nested.
+     *
+     * @return array<string, mixed>
+     */
+    protected function flattenedReportDataForExport(): array
+    {
+        return [
+            ...$this->reportData,
+            'revenue' => $this->reportData['revenue']['total'] ?? 0,
+            'cost_of_goods_sold' => $this->reportData['cost_of_goods_sold']['total'] ?? 0,
+            'expenses' => $this->reportData['operating_expenses']['general_expenses'] ?? 0,
+            'maintenance_costs' => $this->reportData['operating_expenses']['maintenance'] ?? 0,
+        ];
     }
 
     /**

@@ -80,7 +80,7 @@ class FinancialDashboard extends Page
     /**
      * Export the dashboard as PDF.
      */
-    public function exportPdf(): \Illuminate\Http\Response
+    public function exportPdf(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $exportService = new ReportExportService;
 
