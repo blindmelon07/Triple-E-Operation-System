@@ -20,6 +20,7 @@ use App\Models\SalePayment;
 use App\Models\User;
 use App\Models\VoidRequest;
 use App\Notifications\VoidRequestNotification;
+use App\Support\DailyReportPaginator;
 use Spatie\Permission\Models\Role;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -344,8 +345,21 @@ class POSController extends Controller
 
         $expenseGroups = $this->groupExpensesByReportGroup($expenses);
 
+        // Split the growing lists into page-sized chunks up front — see
+        // DailyReportPaginator for why this has to happen before the view
+        // ever sees them.
+        $namedSales  = $sales->filter(fn ($s) => $s->customer_id !== null)->values();
+        $walkinSales = $sales->filter(fn ($s) => $s->customer_id === null)->values();
+
+        $reportPages = DailyReportPaginator::zip(
+            DailyReportPaginator::chunkSales($namedSales),
+            DailyReportPaginator::chunkSales($walkinSales),
+            DailyReportPaginator::chunkExpenseGroups($expenseGroups),
+        );
+
         $pdf = Pdf::loadView('pos.daily-transaction-report', compact(
             'session', 'sales', 'expenses', 'expenseGroups', 'settlements',
+            'namedSales', 'walkinSales', 'reportPages',
             'totalSales', 'totalPaidSales', 'totalUnpaidSales', 'totalSettlements',
             'nonCashPaidSales', 'cashPaidSales', 'totalExpenses',
             'pettyCash', 'incomeTotal', 'totalDeductions',
@@ -418,12 +432,27 @@ class POSController extends Controller
             $tca  = $it - $td - $te;
             $aca  = (float) ($session->closing_amount ?? 0);
 
+            $expenseGroupsForDay = $this->groupExpensesByReportGroup($expenses);
+            $dNamedSales  = $sales->filter(fn ($s) => $s->customer_id !== null)->values();
+            $dWalkinSales = $sales->filter(fn ($s) => $s->customer_id === null)->values();
+
             $dayReports[] = [
                 'session'          => $session,
                 'sales'            => $sales,
+                'namedSales'       => $dNamedSales,
+                'walkinSales'      => $dWalkinSales,
                 'settlements'      => $settlements,
                 'expenses'         => $expenses,
-                'expenseGroups'    => $this->groupExpensesByReportGroup($expenses),
+                'expenseGroups'    => $expenseGroupsForDay,
+                // Same row-splitting bug as the Daily Transaction Report (see
+                // DailyReportPaginator) — a session with a lot of sales can
+                // overflow this day's single-row 4-column layout, so it's
+                // pre-chunked into page-sized pieces here too.
+                'reportPages'      => DailyReportPaginator::zip(
+                    DailyReportPaginator::chunkSales($dNamedSales),
+                    DailyReportPaginator::chunkSales($dWalkinSales),
+                    DailyReportPaginator::chunkExpenseGroups($expenseGroupsForDay),
+                ),
                 'totalSales'       => $ts,
                 'totalUnpaidSales' => $tus,
                 'totalSettlements' => $tset,
@@ -464,8 +493,16 @@ class POSController extends Controller
 
         $expenseGroups = $this->groupExpensesByReportGroup($allExpenses);
 
+        // The final summary page has the same overflow risk: a long period
+        // means many session rows and many expenses sharing one row.
+        $summaryPages = DailyReportPaginator::zipTwo(
+            DailyReportPaginator::chunkFlat(collect($dayReports)),
+            DailyReportPaginator::chunkExpenseGroups($expenseGroups),
+        );
+
         $pdf = Pdf::loadView('pos.period-transaction-report', compact(
             'sessions', 'dayReports', 'periodLabel', 'dateFrom', 'dateTo',
+            'summaryPages',
             'totalSales', 'totalPaidSales', 'totalUnpaidSales', 'totalSettlements',
             'nonCashPaidSales', 'cashPaidSales', 'totalExpenses', 'expenseGroups',
             'pettyCash', 'incomeTotal', 'totalDeductions',
@@ -964,6 +1001,92 @@ class POSController extends Controller
             'success'         => true,
             'void_request_id' => $voidRequest->id,
             'message'         => 'Item void request submitted. Waiting for manager approval.',
+        ]);
+    }
+
+    /**
+     * Ask a manager to swap one line item of a completed sale for a different
+     * product. Nothing changes until the request is approved — see
+     * VoidRequestController::approveItemExchange() for what approval does.
+     */
+    public function requestItemExchange(Request $request, SaleItem $saleItem): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'void_reason'            => 'required|string|max:255',
+            'replacement_product_id' => 'required|exists:products,id',
+            'replacement_quantity'   => 'required|numeric|min:0.01',
+            'replacement_unit'       => 'required|string|max:50',
+            'replacement_unit_price' => 'required|numeric|min:0',
+        ]);
+
+        $session = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'No open register session.'], 422);
+        }
+
+        $sale = $saleItem->sale;
+
+        if (! $sale || $sale->cash_register_session_id !== $session->id) {
+            return response()->json(['success' => false, 'message' => 'This item does not belong to a sale in the current register session.'], 422);
+        }
+
+        if ($sale->is_voided) {
+            return response()->json(['success' => false, 'message' => 'This sale has already been voided.'], 422);
+        }
+
+        if ($saleItem->is_voided) {
+            return response()->json(['success' => false, 'message' => 'This item has already been voided.'], 422);
+        }
+
+        // A single item can only have one request in flight, of either kind.
+        $existing = VoidRequest::where('sale_item_id', $saleItem->id)->where('status', 'pending')->first();
+        if ($existing) {
+            return response()->json([
+                'success'         => true,
+                'void_request_id' => $existing->id,
+                'message'         => 'A request for this item is already pending.',
+            ]);
+        }
+
+        // Soft stock check so the cashier finds out now rather than after the
+        // manager walks over. Approval re-checks under a lock.
+        $replacement = Product::find($validated['replacement_product_id']);
+        $baseQuantity = $validated['replacement_quantity'] * $replacement->conversionFactorFor($validated['replacement_unit']);
+
+        if ($replacement->inventory && $replacement->inventory->quantity < $baseQuantity) {
+            return response()->json([
+                'success' => false,
+                'message' => "Not enough stock for replacement product: {$replacement->name}",
+            ], 422);
+        }
+
+        $voidRequest = VoidRequest::create([
+            'sale_id'                  => $sale->id,
+            'sale_item_id'             => $saleItem->id,
+            'type'                     => 'exchange',
+            'replacement_product_id'   => $replacement->id,
+            'replacement_quantity'     => $validated['replacement_quantity'],
+            'replacement_unit'         => $validated['replacement_unit'],
+            'replacement_unit_price'   => $validated['replacement_unit_price'],
+            'requested_by_id'          => auth()->id(),
+            'cash_register_session_id' => $session->id,
+            'void_reason'              => $validated['void_reason'],
+            'status'                   => 'pending',
+        ]);
+
+        $existingRoles = Role::whereIn('name', ['admin', 'super_admin'])->pluck('name')->toArray();
+        if (!empty($existingRoles)) {
+            User::role($existingRoles)->get()
+                ->each(fn ($manager) => $manager->notify(new VoidRequestNotification($voidRequest)));
+        }
+
+        return response()->json([
+            'success'         => true,
+            'void_request_id' => $voidRequest->id,
+            'message'         => 'Item exchange request submitted. Waiting for manager approval.',
         ]);
     }
 }

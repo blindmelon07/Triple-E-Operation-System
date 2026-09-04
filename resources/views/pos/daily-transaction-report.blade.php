@@ -111,6 +111,8 @@
         /* Divider */
         .div-line { border-top: 1px solid #aaa; margin: 3px 0; }
 
+        .continued-note { font-size: 7.5px; color: #888; font-style: italic; margin-top: 6px; }
+
         .page-footer {
             border-top: 1px solid #aaa;
             margin-top: 8px;
@@ -119,11 +121,24 @@
             font-size: 7px;
             color: #555;
         }
+
+        .page-break { page-break-after: always; }
     </style>
 </head>
 <body>
 
-{{-- HEADER --}}
+@php
+    // Non-cash breakdown — computed once from the full session, not per
+    // report page, since it's a session-wide figure shown on page 1 only.
+    $gcash   = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','gcash')->sum('total');
+    $card    = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','card')->sum('total');
+    $paymaya = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','paymaya')->sum('total');
+    $cod     = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','cod')->sum('total');
+@endphp
+
+@foreach($reportPages as $pageIndex => $page)
+
+{{-- HEADER (repeated on every page so pages stay identifiable if separated) --}}
 <div class="page-header">
     <div class="title">Tri-E Ent. OPC Daily Transaction Report</div>
     <div class="date-line">{{ $session->opened_at?->format('l, F d, Y') }}</div>
@@ -135,17 +150,6 @@
     </div>
 </div>
 
-@php
-    $namedSales  = $sales->filter(fn($s) => $s->customer_id !== null)->values();
-    $walkinSales = $sales->filter(fn($s) => $s->customer_id === null)->values();
-
-    // Non-cash breakdown
-    $gcash   = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','gcash')->sum('total');
-    $card    = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','card')->sum('total');
-    $paymaya = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','paymaya')->sum('total');
-    $cod     = (float)$sales->where('payment_status','!=','unpaid')->where('payment_method','cod')->sum('total');
-@endphp
-
 {{-- 4-COLUMN LAYOUT TABLE --}}
 <table class="layout">
 <tbody>
@@ -155,7 +159,7 @@
     <td style="width:30%;">
         <div class="col-header">Hardware Sales</div>
 
-        @forelse($namedSales as $sale)
+        @forelse($page['named'] as $sale)
             <div class="cust-name">
                 {{ $sale->customer?->name }}
                 @if($sale->customer?->address)
@@ -191,9 +195,12 @@
                 </tr>
             </table>
         @empty
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No named customer sales.</p>
+            @if($page['is_first'] && $namedSales->isEmpty())
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No named customer sales.</p>
+            @endif
         @endforelse
 
+        @if($page['named_is_last'])
         <div class="sec-total">
             <table>
                 <tr>
@@ -232,13 +239,14 @@
             </table>
         </div>
         @endif
+        @endif
     </td>
 
     {{-- ===== COL 2: WALK-IN SALES (23%) ===== --}}
     <td style="width:23%;">
         <div class="col-header">Hardware Sales</div>
 
-        @forelse($walkinSales as $sale)
+        @forelse($page['walkin'] as $sale)
             <div class="cust-name" style="font-style:italic;">
                 Walk-in
                 @if($sale->reference_number)
@@ -271,10 +279,13 @@
                 </tr>
             </table>
         @empty
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No walk-in sales.</p>
+            @if($page['is_first'] && $walkinSales->isEmpty())
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No walk-in sales.</p>
+            @endif
         @endforelse
 
         {{-- Cross-check --}}
+        @if($page['walkin_is_last'])
         <table class="xcheck-tbl" style="margin-top:8px;">
             <tr class="xh"><td colspan="2">ON EXCEL (MANUAL)</td></tr>
             <tr><td class="xl">TOTAL SALES</td><td class="xr">{{ number_format($totalSales,2) }}</td></tr>
@@ -288,6 +299,7 @@
             <tr style="height:3px;"><td colspan="2"></td></tr>
             <tr><td class="xl" style="font-weight:700;">OVERALL – TALLY !!</td><td class="xr"></td></tr>
         </table>
+        @endif
     </td>
 
     {{-- ===== COL 3: EXPENSES (20%) ===== --}}
@@ -296,13 +308,14 @@
 
         @php $hasAnyExpense = collect($expenseGroups)->sum(fn($g) => $g['items']->count()) > 0; @endphp
 
-        @if(!$hasAnyExpense)
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
+        @if(empty($page['expenses']))
+            @if($page['is_first'] && !$hasAnyExpense)
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
+            @endif
         @else
-            @foreach($expenseGroups as $group)
-                @continue($group['items']->isEmpty())
-                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($group['label']) }}</div>
-                @foreach($group['items'] as $expense)
+            @foreach($page['expenses'] as $chunk)
+                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($chunk['label']) }}</div>
+                @foreach($chunk['items'] as $expense)
                     <table class="exp-row">
                         <tr>
                             <td class="e-desc">
@@ -315,14 +328,17 @@
                         </tr>
                     </table>
                 @endforeach
+                @if($chunk['show_total'])
                 <table style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <td style="font-size:7.5px;text-align:right;" colspan="2">Subtotal: {{ number_format($group['total'],2) }}</td>
+                        <td style="font-size:7.5px;text-align:right;" colspan="2">Subtotal: {{ number_format($chunk['total'],2) }}</td>
                     </tr>
                 </table>
+                @endif
             @endforeach
         @endif
 
+        @if($page['expenses_is_last'])
         <div class="div-line"></div>
         <table style="width:100%;border-collapse:collapse;">
             <tr>
@@ -356,12 +372,14 @@
             </table>
         </div>
         @endif
+        @endif
     </td>
 
     {{-- ===== COL 4: SUMMARY TRANSACTION (27%) ===== --}}
     <td style="width:27%;">
         <div class="col-header">Summary Transaction</div>
 
+        @if($page['is_first'])
         @php $disc = $discrepancy; @endphp
 
         <table class="sum-tbl">
@@ -440,6 +458,9 @@
                 <td colspan="2" style="text-align:right;font-weight:700;font-size:8px;">{{ number_format($actualCashOnHand,2) }}</td>
             </tr>
         </table>
+        @else
+        <p class="continued-note">See page 1 for the cash reconciliation summary.</p>
+        @endif
     </td>
 
 </tr>
@@ -450,7 +471,16 @@
     Generated on {{ now()->setTimezone('Asia/Manila')->format('F d, Y h:i A') }}
     &nbsp;|&nbsp; Tri-E Enterprises OPC – Daily Transaction Report
     &nbsp;|&nbsp; Session #{{ $session->id }}
+    @if(count($reportPages) > 1)
+        &nbsp;|&nbsp; Page {{ $pageIndex + 1 }} of {{ count($reportPages) }}
+    @endif
 </div>
+
+@unless($loop->last)
+<div class="page-break"></div>
+@endunless
+
+@endforeach
 
 </body>
 </html>

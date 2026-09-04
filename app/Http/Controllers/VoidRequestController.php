@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\CashRegisterSession;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
@@ -21,25 +22,44 @@ class VoidRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        $requests = VoidRequest::with(['sale.customer', 'saleItem.product', 'requestedBy'])
+        $requests = VoidRequest::with(['sale.customer', 'saleItem.product', 'replacementProduct', 'requestedBy'])
             ->pending()
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($vr) => [
-                'id'            => $vr->id,
-                'sale_id'       => $vr->sale_id,
-                'sale_total'    => $vr->sale->total,
-                'customer_name' => $vr->sale->customer?->name ?? 'Walk-in Customer',
-                'void_reason'   => $vr->void_reason,
-                'requested_by'  => $vr->requestedBy?->name ?? 'Unknown',
-                'created_at'    => $vr->created_at->toDateTimeString(),
-                'is_item_void'  => $vr->isItemVoid(),
-                'item_name'     => $vr->isItemVoid()
-                    ? ($vr->saleItem?->is_manual ? $vr->saleItem?->product_description : $vr->saleItem?->product?->name)
-                    : null,
-                'item_quantity' => $vr->isItemVoid() ? $vr->saleItem?->quantity : null,
-                'item_price'    => $vr->isItemVoid() ? $vr->saleItem?->price : null,
-            ]);
+            ->map(function ($vr) {
+                // Both item voids and exchanges target a single line item, so the
+                // outgoing item's details are shown for either.
+                $isItemLevel  = $vr->sale_item_id !== null;
+                $isExchange   = $vr->isItemExchange();
+                $newItemPrice = $isExchange
+                    ? round((float) $vr->replacement_unit_price * (float) $vr->replacement_quantity, 2)
+                    : null;
+
+                return [
+                    'id'            => $vr->id,
+                    'sale_id'       => $vr->sale_id,
+                    'sale_total'    => $vr->sale->total,
+                    'customer_name' => $vr->sale->customer?->name ?? 'Walk-in Customer',
+                    'void_reason'   => $vr->void_reason,
+                    'requested_by'  => $vr->requestedBy?->name ?? 'Unknown',
+                    'created_at'    => $vr->created_at->toDateTimeString(),
+                    'is_item_void'  => $vr->isItemVoid(),
+                    'is_exchange'   => $isExchange,
+                    'item_name'     => $isItemLevel
+                        ? ($vr->saleItem?->is_manual ? $vr->saleItem?->product_description : $vr->saleItem?->product?->name)
+                        : null,
+                    'item_quantity' => $isItemLevel ? $vr->saleItem?->quantity : null,
+                    'item_price'    => $isItemLevel ? $vr->saleItem?->price : null,
+
+                    'replacement_name'     => $isExchange ? $vr->replacementProduct?->name : null,
+                    'replacement_quantity' => $isExchange ? $vr->replacement_quantity : null,
+                    'replacement_unit'     => $isExchange ? $vr->replacement_unit : null,
+                    'replacement_price'    => $newItemPrice,
+                    'price_difference'     => $isExchange
+                        ? round($newItemPrice - (float) $vr->saleItem?->price, 2)
+                        : null,
+                ];
+            });
 
         return response()->json(['success' => true, 'requests' => $requests]);
     }
@@ -85,6 +105,10 @@ class VoidRequestController extends Controller
             if ($voidRequest->status !== 'pending') {
                 DB::rollBack();
                 return response()->json(['success' => false, 'message' => 'Request is no longer pending.'], 422);
+            }
+
+            if ($voidRequest->isItemExchange()) {
+                return $this->approveItemExchange($request, $voidRequest);
             }
 
             if ($voidRequest->isItemVoid()) {
@@ -259,35 +283,7 @@ class VoidRequestController extends Controller
             default => 'unpaid',
         };
 
-        // Refund whatever portion of this item was already collected, reversing
-        // the oldest money first: the initial collection at sale creation (if it
-        // wasn't logged as a SalePayment row), then each later settlement in order.
-        $loggedPayments = SalePayment::where('sale_id', $sale->id)->orderBy('created_at')->get();
-        $unloggedInitial = round($oldAmountPaid - (float) $loggedPayments->sum('amount'), 2);
-        $remaining = $refundAmount;
-
-        if ($remaining > 0.01 && $unloggedInitial > 0.01 && $sale->cash_register_session_id) {
-            $take = min($remaining, $unloggedInitial);
-            $creationSession = CashRegisterSession::find($sale->cash_register_session_id);
-            if ($creationSession) {
-                $creationSession->reverseAmount($take, $sale->payment_method === 'cash');
-            }
-            $remaining = round($remaining - $take, 2);
-        }
-
-        foreach ($loggedPayments as $payment) {
-            if ($remaining <= 0.01) {
-                break;
-            }
-            $take = min($remaining, (float) $payment->amount);
-            if ($payment->cash_register_session_id) {
-                $paymentSession = CashRegisterSession::find($payment->cash_register_session_id);
-                if ($paymentSession) {
-                    $paymentSession->reverseAmount($take, $payment->payment_method === 'cash');
-                }
-            }
-            $remaining = round($remaining - $take, 2);
-        }
+        $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid);
 
         $saleItem->update([
             'is_voided'   => true,
@@ -328,6 +324,253 @@ class VoidRequestController extends Controller
         ]);
 
         return response()->json(['success' => true, 'message' => 'Item void approved successfully.']);
+    }
+
+    /**
+     * Approve a request to swap one line item of a completed sale for a different
+     * product: the outgoing item is marked voided and its stock returned, a fresh
+     * line item is written for the replacement (whose stock is taken), and the
+     * sale's total is re-struck around the price difference — collecting the extra
+     * from the customer or refunding them, depending on which way it went.
+     *
+     * Runs inside the same DB transaction / lock that approve() already opened.
+     */
+    private function approveItemExchange(Request $request, VoidRequest $voidRequest): \Illuminate\Http\JsonResponse
+    {
+        $saleItem = SaleItem::where('id', $voidRequest->sale_item_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $saleItem) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Item no longer exists.'], 422);
+        }
+
+        if ($saleItem->is_voided) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Item has already been voided.'], 422);
+        }
+
+        $sale = $saleItem->sale;
+
+        if (! $sale || $sale->is_voided) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Sale is already voided.'], 422);
+        }
+
+        $replacement = Product::find($voidRequest->replacement_product_id);
+
+        if (! $replacement) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Replacement product no longer exists.'], 422);
+        }
+
+        $newQuantity  = (float) $voidRequest->replacement_quantity;
+        $newUnit      = $voidRequest->replacement_unit;
+        $newUnitPrice = (float) $voidRequest->replacement_unit_price;
+        $newBaseQty   = $newQuantity * $replacement->conversionFactorFor($newUnit);
+        $newItemPrice = round($newUnitPrice * $newQuantity, 2);
+
+        $itemAmount = (float) $saleItem->price;
+
+        // Return the outgoing item's stock first — the replacement may well be the
+        // same product in a different unit or quantity, in which case the stock
+        // check below has to see the returned units.
+        if (! $saleItem->is_manual && $saleItem->product_id) {
+            $oldProduct  = $saleItem->product;
+            $oldBaseQty  = $saleItem->quantity * ($oldProduct?->conversionFactorFor($saleItem->unit) ?? 1);
+            $oldInventory = Inventory::where('product_id', $saleItem->product_id)->first();
+
+            if ($oldInventory) {
+                $oldInventory->increment('quantity', $oldBaseQty);
+            }
+
+            InventoryMovement::create([
+                'product_id'     => $saleItem->product_id,
+                'type'           => 'in',
+                'quantity'       => $oldBaseQty,
+                'reason'         => 'Item Exchange',
+                'reference_id'   => $sale->id,
+                'reference_type' => Sale::class,
+                'notes'          => "Item exchanged out via POS (manager approved) — Sale #{$sale->id}",
+            ]);
+        }
+
+        $replacementInventory = Inventory::where('product_id', $replacement->id)->first();
+
+        if ($replacementInventory && (float) $replacementInventory->quantity < $newBaseQty) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => "Not enough stock for replacement product: {$replacement->name}",
+            ], 422);
+        }
+
+        $saleItem->update([
+            'is_voided'   => true,
+            'voided_at'   => now(),
+            'void_reason' => 'Exchanged: ' . $voidRequest->void_reason,
+        ]);
+
+        // Creating the SaleItem both takes the replacement's stock (SaleItem::booted)
+        // and logs its own outgoing movement (SaleItemObserver), so nothing is done
+        // by hand for the incoming side beyond relabelling that movement below.
+        $newSaleItem = SaleItem::create([
+            'sale_id'          => $sale->id,
+            'product_id'       => $replacement->id,
+            'is_manual'        => false,
+            'unit'             => $newUnit,
+            'unit_price'       => $newUnitPrice,
+            'discount_amount'  => 0,
+            'discount_is_flat' => false,
+            'quantity'         => $newQuantity,
+            'price'            => $newItemPrice,
+        ]);
+
+        // Relabel the observer's row so the stock ledger reads as an exchange rather
+        // than an ordinary sale — writing our own would double-log the same movement.
+        $outgoingMovement = InventoryMovement::where('reference_type', Sale::class)
+            ->where('reference_id', $sale->id)
+            ->where('product_id', $replacement->id)
+            ->where('type', 'out')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($outgoingMovement) {
+            $outgoingMovement->update([
+                'reason' => 'Item Exchange',
+                'notes'  => "Item exchanged in via POS (manager approved) — Sale #{$sale->id}",
+            ]);
+        }
+
+        $oldTotal      = (float) $sale->total;
+        $newTotal      = max(0, round($oldTotal - $itemAmount + $newItemPrice, 2));
+        $oldAmountPaid = (float) $sale->amount_paid;
+        $wasFullyPaid  = $oldAmountPaid >= $oldTotal - 0.01;
+
+        $collectedNow  = 0.0;
+        $refundAmount  = 0.0;
+
+        if ($newTotal > $oldAmountPaid) {
+            if ($wasFullyPaid) {
+                // The sale was already settled, so the customer pays the difference
+                // over the counter now. requestItemExchange() only accepts sales
+                // belonging to the cashier's own open session, so the money goes back
+                // to the same session that took the original payment — no SalePayment
+                // row, for the same reason completeSale() skips one on a paid sale:
+                // it would double-count against the sale itself in the reports.
+                $collectedNow = round($newTotal - $oldAmountPaid, 2);
+                $session = CashRegisterSession::find(
+                    $voidRequest->cash_register_session_id ?? $sale->cash_register_session_id
+                );
+
+                if ($session) {
+                    $session->addAmount($collectedNow, $sale->payment_method === 'cash');
+                }
+
+                $newAmountPaid = $newTotal;
+            } else {
+                // Sale still has an open balance — the extra just increases what's owed.
+                $newAmountPaid = $oldAmountPaid;
+            }
+        } else {
+            // Replacement is cheaper: hand back whatever is now overpaid, reversing it
+            // out of the session(s) that took it in.
+            $newAmountPaid = min($oldAmountPaid, $newTotal);
+            $refundAmount  = round($oldAmountPaid - $newAmountPaid, 2);
+
+            $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid);
+        }
+
+        $newPaymentStatus = match (true) {
+            $newAmountPaid >= $newTotal - 0.01 => 'paid',
+            $newAmountPaid > 0 => 'partial',
+            default => 'unpaid',
+        };
+
+        $sale->update([
+            'total'          => $newTotal,
+            'amount_paid'    => $newAmountPaid,
+            'payment_status' => $newPaymentStatus,
+        ]);
+
+        $voidRequest->update([
+            'status'         => 'approved',
+            'reviewed_by_id' => auth()->id(),
+            'reviewed_at'    => now(),
+        ]);
+
+        DB::commit();
+
+        AuditLog::create([
+            'user_id'         => auth()->id(),
+            'user_name'       => auth()->user()?->name,
+            'action'          => 'approved_item_exchange_request',
+            'auditable_type'  => VoidRequest::class,
+            'auditable_id'    => $voidRequest->id,
+            'auditable_label' => "Item Exchange Request #{$voidRequest->id} for Sale #{$sale->id} (item #{$saleItem->id} → #{$newSaleItem->id})",
+            'new_values'      => [
+                'reason'            => $voidRequest->void_reason,
+                'old_item_amount'   => $itemAmount,
+                'new_item_amount'   => $newItemPrice,
+                'replacement'       => $replacement->name,
+                'old_total'         => $oldTotal,
+                'new_total'         => $newTotal,
+                'collected_now'     => $collectedNow,
+                'refund_amount'     => $refundAmount,
+            ],
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $request->userAgent(),
+        ]);
+
+        $difference = round($newItemPrice - $itemAmount, 2);
+        $message = match (true) {
+            $difference > 0.01  => 'Exchange approved. Collect ₱' . number_format(abs($difference), 2) . ' from the customer.',
+            $difference < -0.01 => 'Exchange approved. Refund ₱' . number_format(abs($difference), 2) . ' to the customer.',
+            default             => 'Exchange approved. No price difference.',
+        };
+
+        return response()->json([
+            'success'    => true,
+            'message'    => $message,
+            'difference' => $difference,
+        ]);
+    }
+
+    /**
+     * Pay back part of what a sale already collected, reversing the oldest money
+     * first: the initial collection at sale creation (when it wasn't logged as a
+     * SalePayment row), then each later settlement in order, each coming out of
+     * whichever register session actually took it in.
+     */
+    private function refundOldestFirst(Sale $sale, float $refundAmount, float $oldAmountPaid): void
+    {
+        $loggedPayments  = SalePayment::where('sale_id', $sale->id)->orderBy('created_at')->get();
+        $unloggedInitial = round($oldAmountPaid - (float) $loggedPayments->sum('amount'), 2);
+        $remaining       = $refundAmount;
+
+        if ($remaining > 0.01 && $unloggedInitial > 0.01 && $sale->cash_register_session_id) {
+            $take = min($remaining, $unloggedInitial);
+            $creationSession = CashRegisterSession::find($sale->cash_register_session_id);
+            if ($creationSession) {
+                $creationSession->reverseAmount($take, $sale->payment_method === 'cash');
+            }
+            $remaining = round($remaining - $take, 2);
+        }
+
+        foreach ($loggedPayments as $payment) {
+            if ($remaining <= 0.01) {
+                break;
+            }
+            $take = min($remaining, (float) $payment->amount);
+            if ($payment->cash_register_session_id) {
+                $paymentSession = CashRegisterSession::find($payment->cash_register_session_id);
+                if ($paymentSession) {
+                    $paymentSession->reverseAmount($take, $payment->payment_method === 'cash');
+                }
+            }
+            $remaining = round($remaining - $take, 2);
+        }
     }
 
     public function reject(Request $request, VoidRequest $voidRequest): \Illuminate\Http\JsonResponse

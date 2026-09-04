@@ -10,6 +10,11 @@ class VoidRequest extends Model
     protected $fillable = [
         'sale_id',
         'sale_item_id',
+        'type',
+        'replacement_product_id',
+        'replacement_quantity',
+        'replacement_unit',
+        'replacement_unit_price',
         'requested_by_id',
         'cash_register_session_id',
         'void_reason',
@@ -23,6 +28,8 @@ class VoidRequest extends Model
     {
         return [
             'reviewed_at' => 'datetime',
+            'replacement_quantity' => 'decimal:2',
+            'replacement_unit_price' => 'decimal:2',
         ];
     }
 
@@ -36,12 +43,27 @@ class VoidRequest extends Model
         return $this->belongsTo(SaleItem::class);
     }
 
+    public function replacementProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'replacement_product_id');
+    }
+
     /**
-     * Whether this request is for a single line item rather than the whole sale.
+     * Whether this request is to void a single line item rather than the whole
+     * sale. An exchange also targets a single item, but swaps it rather than
+     * removing it, so it deliberately falls outside this.
      */
     public function isItemVoid(): bool
     {
-        return $this->sale_item_id !== null;
+        return $this->sale_item_id !== null && ! $this->isItemExchange();
+    }
+
+    /**
+     * Whether this request swaps one line item for a different product.
+     */
+    public function isItemExchange(): bool
+    {
+        return $this->type === 'exchange';
     }
 
     public function requestedBy(): BelongsTo

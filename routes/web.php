@@ -20,6 +20,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/recent-sales', [POSController::class, 'getRecentSales'])->name('pos.recent-sales');
     Route::post('/pos/void-request/{sale}', [POSController::class, 'requestVoid'])->name('pos.void-request');
     Route::post('/pos/void-request-item/{saleItem}', [POSController::class, 'requestItemVoid'])->name('pos.void-request-item');
+    Route::post('/pos/exchange-request-item/{saleItem}', [POSController::class, 'requestItemExchange'])->name('pos.exchange-request-item');
 
     // Void Request approval flow
     Route::get('/pos/void-requests/pending', [\App\Http\Controllers\VoidRequestController::class, 'pending'])->name('pos.void-requests.pending');

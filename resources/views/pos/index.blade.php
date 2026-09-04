@@ -1663,16 +1663,27 @@
                                                     class="truncate"
                                                     x-text="(item.is_manual ? item.product_description : (item.product ? item.product.name : item.product_description)) + ' × ' + parseFloat(item.quantity)"
                                                 ></span>
-                                                <button
-                                                    x-show="sale.sale_items.filter(i => !i.is_voided).length > 1"
-                                                    @click.stop="openVoidItemModal(sale, item)"
-                                                    class="shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                                    title="Void this item"
-                                                >
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
+                                                <div class="shrink-0 flex items-center gap-1.5">
+                                                    <button
+                                                        @click.stop="openExchangeItemModal(sale, item)"
+                                                        class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                                        title="Exchange this item for another product"
+                                                    >
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        x-show="sale.sale_items.filter(i => !i.is_voided).length > 1"
+                                                        @click.stop="openVoidItemModal(sale, item)"
+                                                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                                        title="Void this item"
+                                                    >
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </template>
                                     </div>
@@ -1876,6 +1887,149 @@
         </div>
     </div>
 
+    <!-- Exchange Item Modal (swap a single line item of a completed sale) -->
+    <div
+        x-show="showExchangeItemModal"
+        x-cloak
+        @keydown.escape.window="showExchangeItemModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showExchangeItemModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Exchange Item</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="itemToExchange ? 'Replacing: ' + itemToExchange.name + ' × ' + parseFloat(itemToExchange.quantity) + ' — ₱' + parseFloat(itemToExchange.price).toFixed(2) : ''"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Step 1: pick the replacement product -->
+                <div x-show="!exchangeProduct">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Replacement product <span class="text-red-500">*</span></label>
+                    <input
+                        type="text"
+                        x-model="exchangeSearchQuery"
+                        placeholder="Search product..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base mb-3"
+                    >
+                    <div class="max-h-64 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-xl p-2">
+                        <template x-for="product in exchangeProductResults()" :key="product.id">
+                            <button
+                                @click="selectExchangeProduct(product)"
+                                class="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition flex items-center justify-between gap-3"
+                            >
+                                <span class="text-sm text-gray-800 dark:text-gray-200 truncate" x-text="product.name"></span>
+                                <span class="text-xs shrink-0 text-gray-500 dark:text-gray-400">
+                                    <span x-text="'₱' + parseFloat(product.price).toFixed(2)"></span>
+                                    <span x-text="' · stock ' + parseFloat(product.inventory?.quantity || 0)"></span>
+                                </span>
+                            </button>
+                        </template>
+                        <p x-show="exchangeProductResults().length === 0" class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No products found.</p>
+                    </div>
+                </div>
+
+                <!-- Step 2: quantity / unit / price for the chosen replacement -->
+                <div x-show="exchangeProduct" class="space-y-4">
+                    <div class="flex items-center justify-between gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                        <div>
+                            <p class="font-semibold text-gray-900 dark:text-white" x-text="exchangeProduct?.name"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'Available stock: ' + parseFloat(exchangeProduct?.inventory?.quantity || 0)"></p>
+                        </div>
+                        <button @click="exchangeProduct = null" class="text-sm text-blue-600 dark:text-blue-400 hover:underline shrink-0">Change</button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity</label>
+                            <input
+                                type="number" min="0.01" step="0.01"
+                                x-model.number="exchangeQuantity"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unit</label>
+                            <select
+                                x-model="exchangeUnit"
+                                @change="applyExchangeUnitPrice()"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                                <template x-for="u in (exchangeProduct?.units || [])" :key="u.unit">
+                                    <option :value="u.unit" x-text="u.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unit price</label>
+                            <input
+                                type="number" min="0" step="0.01"
+                                x-model.number="exchangeUnitPrice"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- What the swap does to the money -->
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl space-y-1 text-sm">
+                        <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                            <span>Item removed</span>
+                            <span x-text="'−₱' + parseFloat(itemToExchange?.price || 0).toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                            <span>Item added</span>
+                            <span x-text="'+₱' + exchangeNewPrice().toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between font-bold pt-1 border-t border-gray-200 dark:border-gray-600"
+                             :class="exchangeDifference() > 0 ? 'text-green-600 dark:text-green-400' : (exchangeDifference() < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white')">
+                            <span x-text="exchangeDifference() > 0 ? 'Customer pays' : (exchangeDifference() < 0 ? 'Refund customer' : 'No difference')"></span>
+                            <span x-text="'₱' + Math.abs(exchangeDifference()).toFixed(2)"></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for exchange <span class="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            x-model="exchangeReason"
+                            placeholder="e.g. Customer wanted a different size..."
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                            @keydown.enter="submitItemExchangeRequest()"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+                <button
+                    @click="closeExchangeItemModal()"
+                    class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                >
+                    Cancel
+                </button>
+                <button
+                    @click="submitItemExchangeRequest()"
+                    :disabled="!exchangeProduct || !exchangeReason.trim() || !(exchangeQuantity > 0) || isExchanging"
+                    class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                >
+                    <svg x-show="isExchanging" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span x-text="isExchanging ? 'Submitting...' : 'Request Exchange'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Void Waiting Modal (cashier polls for approval) -->
     <div
         x-show="showVoidWaitingModal"
@@ -1891,7 +2045,8 @@
                 </div>
             </div>
             <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Waiting for Approval</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Your void request has been sent to the manager.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1"
+               x-text="(voidPollTarget === 'exchange' ? 'Your exchange request' : 'Your void request') + ' has been sent to the manager.'"></p>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Please wait while they review it...</p>
             <div class="flex gap-3 justify-center">
                 <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-500"></div>
@@ -2365,13 +2520,30 @@
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <p class="font-bold text-gray-900 dark:text-white" x-text="'Receipt #' + String(vr.sale_id).padStart(6, '0')"></p>
                                         <span x-show="vr.is_item_void" class="text-xs px-2 py-0.5 bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-300 rounded font-semibold">ITEM VOID</span>
+                                        <span x-show="vr.is_exchange" class="text-xs px-2 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-300 rounded font-semibold">ITEM EXCHANGE</span>
                                     </div>
                                     <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Customer:</span> <span x-text="vr.customer_name"></span></p>
-                                    <template x-if="vr.is_item_void">
-                                        <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Item:</span> <span x-text="vr.item_name + ' × ' + parseFloat(vr.item_quantity) + ' — ₱' + parseFloat(vr.item_price).toFixed(2)"></span></p>
+                                    <template x-if="vr.is_item_void || vr.is_exchange">
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                                            <span class="font-medium" x-text="vr.is_exchange ? 'Remove:' : 'Item:'"></span>
+                                            <span x-text="vr.item_name + ' × ' + parseFloat(vr.item_quantity) + ' — ₱' + parseFloat(vr.item_price).toFixed(2)"></span>
+                                        </p>
+                                    </template>
+                                    <template x-if="vr.is_exchange">
+                                        <div>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                                <span class="font-medium">Add:</span>
+                                                <span x-text="vr.replacement_name + ' × ' + parseFloat(vr.replacement_quantity) + ' ' + vr.replacement_unit + ' — ₱' + parseFloat(vr.replacement_price).toFixed(2)"></span>
+                                            </p>
+                                            <p class="text-sm font-semibold"
+                                               :class="vr.price_difference > 0 ? 'text-green-700 dark:text-green-400' : (vr.price_difference < 0 ? 'text-red-700 dark:text-red-400' : 'text-gray-600 dark:text-gray-400')"
+                                               x-text="vr.price_difference > 0
+                                                    ? 'Customer pays ₱' + Math.abs(vr.price_difference).toFixed(2)
+                                                    : (vr.price_difference < 0 ? 'Refund ₱' + Math.abs(vr.price_difference).toFixed(2) : 'No price difference')"></p>
+                                        </div>
                                     </template>
                                     <p class="text-sm text-gray-600 dark:text-gray-400">
-                                        <span class="font-medium" x-text="vr.is_item_void ? 'Sale total:' : 'Amount:'"></span>
+                                        <span class="font-medium" x-text="(vr.is_item_void || vr.is_exchange) ? 'Sale total:' : 'Amount:'"></span>
                                         <span x-text="'₱' + parseFloat(vr.sale_total).toFixed(2)"></span>
                                     </p>
                                     <p class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium">Requested by:</span> <span x-text="vr.requested_by"></span></p>
@@ -2636,7 +2808,17 @@
                 isVoiding: false,
                 showVoidItemModal: false,
                 itemToVoid: null,
-                voidPollTarget: 'sale', // 'sale' | 'item' — which flow the pending request belongs to
+                voidPollTarget: 'sale', // 'sale' | 'item' | 'exchange' — which flow the pending request belongs to
+                // Exchange item flow (swap a line item of a completed sale)
+                showExchangeItemModal: false,
+                itemToExchange: null,
+                exchangeSearchQuery: '',
+                exchangeProduct: null,
+                exchangeQuantity: 1,
+                exchangeUnit: '',
+                exchangeUnitPrice: 0,
+                exchangeReason: '',
+                isExchanging: false,
                 // Cashier waiting flow
                 showVoidWaitingModal: false,
                 showVoidRejectedModal: false,
@@ -3715,6 +3897,101 @@
                     this.showVoidItemModal = true;
                 },
 
+                openExchangeItemModal(sale, item) {
+                    this.itemToExchange = {
+                        id: item.id,
+                        sale_id: sale.id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        name: item.is_manual ? item.product_description : (item.product ? item.product.name : item.product_description),
+                    };
+                    this.exchangeSearchQuery = '';
+                    this.exchangeProduct = null;
+                    this.exchangeQuantity = 1;
+                    this.exchangeUnit = '';
+                    this.exchangeUnitPrice = 0;
+                    this.exchangeReason = '';
+                    this.voidPollTarget = 'exchange';
+                    this.showExchangeItemModal = true;
+                },
+
+                closeExchangeItemModal() {
+                    this.showExchangeItemModal = false;
+                    this.itemToExchange = null;
+                    this.exchangeProduct = null;
+                    this.exchangeReason = '';
+                    this.exchangeSearchQuery = '';
+                },
+
+                exchangeProductResults() {
+                    const q = this.exchangeSearchQuery.toLowerCase();
+                    return this.products
+                        .filter(p => !q || p.name.toLowerCase().includes(q))
+                        .slice(0, 50);
+                },
+
+                selectExchangeProduct(product) {
+                    this.exchangeProduct = product;
+                    this.exchangeQuantity = 1;
+                    this.exchangeUnit = product.unit;
+                    this.applyExchangeUnitPrice();
+                },
+
+                applyExchangeUnitPrice() {
+                    const match = (this.exchangeProduct?.units || []).find(u => u.unit === this.exchangeUnit);
+                    this.exchangeUnitPrice = parseFloat(match ? match.price : (this.exchangeProduct?.price || 0));
+                },
+
+                exchangeNewPrice() {
+                    const price = parseFloat(this.exchangeUnitPrice) || 0;
+                    const qty = parseFloat(this.exchangeQuantity) || 0;
+                    return Math.round(price * qty * 100) / 100;
+                },
+
+                exchangeDifference() {
+                    const outgoing = parseFloat(this.itemToExchange?.price) || 0;
+                    return Math.round((this.exchangeNewPrice() - outgoing) * 100) / 100;
+                },
+
+                async submitItemExchangeRequest() {
+                    if (!this.itemToExchange || !this.exchangeProduct || !this.exchangeReason.trim() || this.isExchanging) return;
+                    if (!(parseFloat(this.exchangeQuantity) > 0)) return;
+
+                    this.isExchanging = true;
+                    try {
+                        const response = await fetch(`/pos/exchange-request-item/${this.itemToExchange.id}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({
+                                void_reason: this.exchangeReason.trim(),
+                                replacement_product_id: this.exchangeProduct.id,
+                                replacement_quantity: parseFloat(this.exchangeQuantity),
+                                replacement_unit: this.exchangeUnit,
+                                replacement_unit_price: parseFloat(this.exchangeUnitPrice) || 0,
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.currentVoidRequestId = data.void_request_id;
+                            this.showExchangeItemModal = false;
+                            this.showVoidWaitingModal = true;
+                            this.startVoidPolling();
+                        } else {
+                            alert(data.message || 'Failed to submit exchange request.');
+                        }
+                    } catch (e) {
+                        alert('An error occurred. Please try again.');
+                    } finally {
+                        this.isExchanging = false;
+                    }
+                },
+
                 async submitVoidRequest() {
                     if (!this.saleToVoid || !this.voidReason.trim() || this.isVoiding) return;
 
@@ -3791,7 +4068,23 @@
                                 this.stopVoidPolling();
                                 this.showVoidWaitingModal = false;
 
-                                if (this.voidPollTarget === 'item') {
+                                if (this.voidPollTarget === 'exchange') {
+                                    // Refetch rather than patching locally — the server
+                                    // decides the sale's new total, payment status, and
+                                    // which line items are now active.
+                                    const difference = this.exchangeDifference();
+                                    this.fetchRecentSales();
+                                    this.itemToExchange = null;
+                                    this.exchangeProduct = null;
+                                    this.exchangeReason = '';
+                                    alert(
+                                        difference > 0
+                                            ? `Exchange approved! Collect ₱${Math.abs(difference).toFixed(2)} from the customer.`
+                                            : (difference < 0
+                                                ? `Exchange approved! Refund ₱${Math.abs(difference).toFixed(2)} to the customer.`
+                                                : 'Exchange approved! No price difference.')
+                                    );
+                                } else if (this.voidPollTarget === 'item') {
                                     // Simplest way to reflect the item removal, the sale's new
                                     // total, and its updated payment status is to just refetch —
                                     // replicating that math client-side would risk drifting from
@@ -3820,6 +4113,8 @@
                                 this.showVoidRejectedModal = true;
                                 this.saleToVoid = null;
                                 this.itemToVoid = null;
+                                this.itemToExchange = null;
+                                this.exchangeProduct = null;
                                 this.currentVoidRequestId = null;
                             }
                         } catch (e) {}
@@ -3846,7 +4141,10 @@
                     this.currentVoidRequestId = null;
                     this.saleToVoid = null;
                     this.itemToVoid = null;
+                    this.itemToExchange = null;
+                    this.exchangeProduct = null;
                     this.voidReason = '';
+                    this.exchangeReason = '';
                 },
 
                 // Manager methods

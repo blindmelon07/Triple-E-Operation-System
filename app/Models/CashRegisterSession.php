@@ -116,4 +116,18 @@ class CashRegisterSession extends Model
             $this->decrement('total_cash_sales', $amount);
         }
     }
+
+    /**
+     * Collect extra money against a sale that already exists, without counting
+     * it as a new transaction — e.g. an item was exchanged for a pricier one
+     * and the customer paid the difference at the counter.
+     */
+    public function addAmount(float $amount, bool $isCash): void
+    {
+        $this->increment('total_sales', $amount);
+
+        if ($isCash) {
+            $this->increment('total_cash_sales', $amount);
+        }
+    }
 }

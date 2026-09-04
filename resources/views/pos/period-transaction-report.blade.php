@@ -92,16 +92,22 @@
 
         .div-line { border-top: 1px solid #aaa; margin: 3px 0; }
 
+        .continued-note { font-size: 7.5px; color: #888; font-style: italic; margin-top: 6px; }
+
         .page-footer { border-top: 1px solid #aaa; margin-top: 8px; padding-top: 3px; text-align: center; font-size: 7px; color: #555; }
+
+        .page-break { page-break-after: always; }
     </style>
 </head>
 <body>
 
-{{-- ===== ONE PAGE PER SESSION ===== --}}
+{{-- ===== ONE OR MORE PAGES PER SESSION ===== --}}
 @foreach($dayReports as $day)
 @php
     $dSession          = $day['session'];
     $dSales            = $day['sales'];
+    $dNamedSalesAll    = $day['namedSales'];
+    $dWalkinSalesAll   = $day['walkinSales'];
     $dExpenses         = $day['expenses'];
     $dTotalSales       = $day['totalSales'];
     $dTotalUnpaid      = $day['totalUnpaidSales'];
@@ -113,8 +119,6 @@
     $dTotalDeductions  = $day['totalDeductions'];
     $dActualCash       = $day['actualCashOnHand'];
     $dDiscrepancy      = $day['discrepancy'];
-    $dNamedSales       = $dSales->filter(fn($s) => $s->customer_id !== null)->values();
-    $dWalkinSales      = $dSales->filter(fn($s) => $s->customer_id === null)->values();
     $dGcash   = (float)$dSales->where('payment_status','!=','unpaid')->where('payment_method','gcash')->sum('total');
     $dCard    = (float)$dSales->where('payment_status','!=','unpaid')->where('payment_method','card')->sum('total');
     $dPaymaya = (float)$dSales->where('payment_status','!=','unpaid')->where('payment_method','paymaya')->sum('total');
@@ -122,6 +126,8 @@
 @endphp
 
 <div class="page">
+
+@foreach($day['reportPages'] as $dPage)
 
 {{-- HEADER --}}
 <div class="page-header">
@@ -133,6 +139,9 @@
         &nbsp;|&nbsp; Session #{{ $dSession->id }}
         &nbsp;|&nbsp; {{ $dSession->opened_at?->format('h:i A') }} – {{ $dSession->closed_at?->format('h:i A') ?? 'Open' }}
         &nbsp;|&nbsp; Period: {{ $periodLabel }}
+        @if(count($day['reportPages']) > 1)
+            &nbsp;|&nbsp; Session page {{ $loop->iteration }} of {{ count($day['reportPages']) }}
+        @endif
     </div>
 </div>
 
@@ -145,7 +154,7 @@
     <td style="width:30%;">
         <div class="col-header">Hardware Sales</div>
 
-        @forelse($dNamedSales as $sale)
+        @forelse($dPage['named'] as $sale)
             <div class="cust-name">
                 {{ $sale->customer?->name }}
                 @if($sale->customer?->address)
@@ -178,9 +187,12 @@
                 </tr>
             </table>
         @empty
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No named customer sales.</p>
+            @if($dPage['is_first'] && $dNamedSalesAll->isEmpty())
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No named customer sales.</p>
+            @endif
         @endforelse
 
+        @if($dPage['named_is_last'])
         <div class="sec-total">
             <table>
                 <tr><td class="lbl">TOTAL HARDWARE SALES</td><td class="amt">{{ number_format($dTotalSales,2) }}</td></tr>
@@ -189,13 +201,14 @@
                 @endif
             </table>
         </div>
+        @endif
     </td>
 
     {{-- COL 2: WALK-IN SALES (23%) --}}
     <td style="width:23%;">
         <div class="col-header">Hardware Sales</div>
 
-        @forelse($dWalkinSales as $sale)
+        @forelse($dPage['walkin'] as $sale)
             <div class="cust-name" style="font-style:italic;">
                 Walk-in
                 @if($sale->reference_number)
@@ -225,9 +238,12 @@
                 </tr>
             </table>
         @empty
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No walk-in sales.</p>
+            @if($dPage['is_first'] && $dWalkinSalesAll->isEmpty())
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No walk-in sales.</p>
+            @endif
         @endforelse
 
+        @if($dPage['walkin_is_last'])
         <table class="xcheck-tbl" style="margin-top:8px;">
             <tr class="xh"><td colspan="2">ON EXCEL (MANUAL)</td></tr>
             <tr><td class="xl">TOTAL SALES</td><td class="xr">{{ number_format($dTotalSales,2) }}</td></tr>
@@ -241,21 +257,23 @@
             <tr style="height:3px;"><td colspan="2"></td></tr>
             <tr><td class="xl" style="font-weight:700;">OVERALL – TALLY !!</td><td class="xr"></td></tr>
         </table>
+        @endif
     </td>
 
     {{-- COL 3: EXPENSES (20%) --}}
     <td style="width:20%;">
         <div class="col-header">Expenses</div>
 
-        @php $dExpenseGroups = $day['expenseGroups']; $dHasAnyExpense = collect($dExpenseGroups)->sum(fn($g) => $g['items']->count()) > 0; @endphp
+        @php $dHasAnyExpense = collect($day['expenseGroups'])->sum(fn($g) => $g['items']->count()) > 0; @endphp
 
-        @if(!$dHasAnyExpense)
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
+        @if(empty($dPage['expenses']))
+            @if($dPage['is_first'] && !$dHasAnyExpense)
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
+            @endif
         @else
-            @foreach($dExpenseGroups as $group)
-                @continue($group['items']->isEmpty())
-                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($group['label']) }}</div>
-                @foreach($group['items'] as $expense)
+            @foreach($dPage['expenses'] as $chunk)
+                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($chunk['label']) }}</div>
+                @foreach($chunk['items'] as $expense)
                     <table class="exp-row">
                         <tr>
                             <td class="e-desc">
@@ -266,14 +284,17 @@
                         </tr>
                     </table>
                 @endforeach
+                @if($chunk['show_total'])
                 <table style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <td style="font-size:7.5px;text-align:right;" colspan="2">Subtotal: {{ number_format($group['total'],2) }}</td>
+                        <td style="font-size:7.5px;text-align:right;" colspan="2">Subtotal: {{ number_format($chunk['total'],2) }}</td>
                     </tr>
                 </table>
+                @endif
             @endforeach
         @endif
 
+        @if($dPage['expenses_is_last'])
         <div class="div-line"></div>
         <table style="width:100%;border-collapse:collapse;">
             <tr>
@@ -298,12 +319,14 @@
             </table>
         </div>
         @endif
+        @endif
     </td>
 
     {{-- COL 4: SUMMARY TRANSACTION (27%) --}}
     <td style="width:27%;">
         <div class="col-header">Summary Transaction</div>
 
+        @if($dPage['is_first'])
         <table class="sum-tbl">
             <tr><td class="sl">PETTY CASH</td><td class="sv">{{ number_format($dPettyCash,2) }}</td></tr>
             <tr><td class="sl">H.W SALES:</td><td class="sv">{{ number_format($dTotalSales,2) }}</td></tr>
@@ -361,6 +384,9 @@
                 <td colspan="2" style="text-align:right;font-weight:700;font-size:8px;">{{ number_format($dActualCash,2) }}</td>
             </tr>
         </table>
+        @else
+        <p class="continued-note">See this session's first page for the cash reconciliation summary.</p>
+        @endif
     </td>
 
 </tr>
@@ -372,6 +398,12 @@
     &nbsp;|&nbsp; Period: {{ $periodLabel }}
     &nbsp;|&nbsp; Session #{{ $dSession->id }}
 </div>
+
+@unless($loop->last)
+<div class="page-break"></div>
+@endunless
+
+@endforeach{{-- end this session's report pages --}}
 
 </div>{{-- end .page --}}
 @endforeach
@@ -386,6 +418,8 @@
 
 <div class="page">
 
+@foreach($summaryPages as $sPage)
+
 <div class="page-header">
     <div class="title">Tri-E Ent. OPC Period Summary</div>
     <div class="date-line">{{ $periodLabel }}</div>
@@ -393,6 +427,9 @@
         {{ $sessions->count() }} session(s)
         &nbsp;|&nbsp; Total Sales: &#8369;{{ number_format($totalSales,2) }}
         &nbsp;|&nbsp; Total Expenses: &#8369;{{ number_format($totalExpenses,2) }}
+        @if(count($summaryPages) > 1)
+            &nbsp;|&nbsp; Summary page {{ $loop->iteration }} of {{ count($summaryPages) }}
+        @endif
     </div>
 </div>
 
@@ -416,7 +453,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($dayReports as $day)
+                @foreach($sPage['a'] as $day)
                 <tr>
                     <td>{{ $day['session']->opened_at?->format('M d, Y') }}</td>
                     <td>{{ $day['session']->user?->name }}</td>
@@ -429,6 +466,7 @@
                     <td class="r">{{ number_format($day['actualCashOnHand'],2) }}</td>
                 </tr>
                 @endforeach
+                @if($sPage['a_is_last'])
                 <tr class="sum-row">
                     <td colspan="2">PERIOD TOTAL</td>
                     <td class="r">{{ number_format($pettyCash,2) }}</td>
@@ -439,6 +477,7 @@
                     <td class="r">{{ $totalExpenses > 0 ? number_format($totalExpenses,2) : '–' }}</td>
                     <td class="r">{{ number_format($actualCashOnHand,2) }}</td>
                 </tr>
+                @endif
             </tbody>
         </table>
     </td>
@@ -449,13 +488,14 @@
 
         @php $pHasAnyExpense = collect($expenseGroups)->sum(fn($g) => $g['items']->count()) > 0; @endphp
 
-        @if(!$pHasAnyExpense)
-            <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
+        @if(empty($sPage['b']))
+            @if($sPage['is_first'] && !$pHasAnyExpense)
+                <p style="font-size:7.5px;color:#888;font-style:italic;">No expenses.</p>
+            @endif
         @else
-            @foreach($expenseGroups as $group)
-                @continue($group['items']->isEmpty())
-                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($group['label']) }}</div>
-                @foreach($group['items']->sortBy('expense_date') as $expense)
+            @foreach($sPage['b'] as $chunk)
+                <div style="font-weight:700;font-size:7.5px;text-decoration:underline;margin-top:5px;margin-bottom:2px;">{{ strtoupper($chunk['label']) }}</div>
+                @foreach($chunk['items'] as $expense)
                     <table class="exp-row">
                         <tr>
                             <td style="width:52%;font-size:7.5px;">
@@ -467,14 +507,17 @@
                         </tr>
                     </table>
                 @endforeach
+                @if($chunk['show_total'])
                 <table style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <td style="font-size:7.5px;text-align:right;" colspan="3">Subtotal: {{ number_format($group['total'],2) }}</td>
+                        <td style="font-size:7.5px;text-align:right;" colspan="3">Subtotal: {{ number_format($chunk['total'],2) }}</td>
                     </tr>
                 </table>
+                @endif
             @endforeach
         @endif
 
+        @if($sPage['b_is_last'])
         <div class="div-line"></div>
         <table style="width:100%;border-collapse:collapse;">
             <tr>
@@ -499,12 +542,14 @@
             </table>
         </div>
         @endif
+        @endif
     </td>
 
     {{-- COL 4: PERIOD SUMMARY TRANSACTION (27%) --}}
     <td style="width:27%;">
         <div class="col-header">Summary Transaction</div>
 
+        @if($sPage['is_first'])
         <table class="sum-tbl">
             <tr><td class="sl">PETTY CASH</td><td class="sv">{{ number_format($pettyCash,2) }}</td></tr>
             <tr><td class="sl">H.W SALES:</td><td class="sv">{{ number_format($totalSales,2) }}</td></tr>
@@ -562,6 +607,9 @@
                 <td colspan="2" style="text-align:right;font-weight:700;font-size:8px;">{{ number_format($actualCashOnHand,2) }}</td>
             </tr>
         </table>
+        @else
+        <p class="continued-note">See this summary's first page for the cash reconciliation summary.</p>
+        @endif
     </td>
 
 </tr>
@@ -572,6 +620,12 @@
     Generated on {{ now()->setTimezone('Asia/Manila')->format('F d, Y h:i A') }}
     &nbsp;|&nbsp; Tri-E Enterprises OPC – Period Report: {{ $periodLabel }}
 </div>
+
+@unless($loop->last)
+<div class="page-break"></div>
+@endunless
+
+@endforeach{{-- end summary report pages --}}
 
 </div>{{-- end summary .page --}}
 
