@@ -21,3 +21,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Microsoft Office lock files (created while a doc is open)
+~$*

@@ -3,6 +3,7 @@
 use App\Enums\CashRegisterStatus;
 use App\Models\CashRegisterSession;
 use App\Models\Inventory;
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -285,6 +286,33 @@ describe('approveItemExchangeRequest', function () {
 
         expect((float) $itemA->product->inventory->fresh()->quantity)->toBe(11.0); // 10 + 1 back
         expect((float) $replacement->inventory->fresh()->quantity)->toBe(7.0);     // 10 - 3 out
+    });
+
+    it('logs exactly one movement each way, both labelled as an exchange', function () {
+        $cashier = iexCashier();
+        $admin   = iexAdmin();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+        $replacement = iexReplacement();
+
+        $vr = iexExchangeRequest($sale, $itemA, $replacement, $cashier, $session, unitPrice: 180);
+
+        actingAs($admin);
+        postJson("/pos/void-requests/{$vr->id}/approve");
+
+        $movements = InventoryMovement::where('reference_type', Sale::class)
+            ->where('reference_id', $sale->id)
+            ->get();
+
+        // SaleItemObserver already logs the outgoing row when the replacement line is
+        // written — the controller must relabel it, not add a second one.
+        $out = $movements->where('product_id', $replacement->id)->where('type', 'out');
+        expect($out)->toHaveCount(1);
+        expect($out->first()->reason)->toBe('Item Exchange');
+
+        $in = $movements->where('product_id', $itemA->product_id)->where('type', 'in');
+        expect($in)->toHaveCount(1);
+        expect($in->first()->reason)->toBe('Item Exchange');
     });
 
     it('collects the extra into the register session when the replacement costs more', function () {
