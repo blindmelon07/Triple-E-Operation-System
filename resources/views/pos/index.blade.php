@@ -1610,6 +1610,28 @@
                         class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white text-base"
                     >
                 </div>
+
+                <!-- Date Range (defaults to no range — search across all dates) -->
+                <div class="mt-3 flex items-center gap-2">
+                    <input
+                        type="date"
+                        x-model="reprintDateFrom"
+                        @change="searchRecentSales()"
+                        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                    >
+                    <span class="text-gray-400 text-sm">to</span>
+                    <input
+                        type="date"
+                        x-model="reprintDateTo"
+                        @change="searchRecentSales()"
+                        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                    >
+                    <button
+                        x-show="reprintDateFrom || reprintDateTo"
+                        @click="reprintDateFrom = ''; reprintDateTo = ''; searchRecentSales()"
+                        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >Clear</button>
+                </div>
             </div>
 
             <!-- Sales List -->
@@ -1659,9 +1681,10 @@
                                         <span x-text="sale.void_reason"></span>
                                     </div>
 
-                                    <!-- Per-item list with individual void, only for sales in the current open session -->
+                                    <!-- Per-item list: exchange works on a sale from any date, but per-item
+                                         and whole-sale void stay limited to the current open session below -->
                                     <div
-                                        x-show="!sale.is_voided && registerSessionId && sale.cash_register_session_id == registerSessionId && (sale.sale_items || []).length"
+                                        x-show="!sale.is_voided && (sale.sale_items || []).length"
                                         class="mt-2 space-y-0.5"
                                     >
                                         <template x-for="item in (sale.sale_items || [])" :key="item.id">
@@ -1684,7 +1707,7 @@
                                                         </svg>
                                                     </button>
                                                     <button
-                                                        x-show="sale.sale_items.filter(i => !i.is_voided).length > 1"
+                                                        x-show="registerSessionId && sale.cash_register_session_id == registerSessionId && sale.sale_items.filter(i => !i.is_voided).length > 1"
                                                         @click.stop="openVoidItemModal(sale, item)"
                                                         class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                                         title="Void this item"
@@ -2941,6 +2964,9 @@
                 recentSales: [],
                 filteredRecentSales: [],
                 reprintSearchQuery: '',
+                reprintDateFrom: '',
+                reprintDateTo: '',
+                reprintSearchDebounce: null,
                 isLoadingRecentSales: false,
                 selectedSaleForReprint: null,
                 isProcessing: false,
@@ -3989,7 +4015,12 @@
                 async fetchRecentSales() {
                     this.isLoadingRecentSales = true;
                     try {
-                        const response = await fetch('/pos/recent-sales', {
+                        const params = new URLSearchParams();
+                        if (this.reprintSearchQuery.trim()) params.set('search', this.reprintSearchQuery.trim());
+                        if (this.reprintDateFrom) params.set('date_from', this.reprintDateFrom);
+                        if (this.reprintDateTo) params.set('date_to', this.reprintDateTo);
+
+                        const response = await fetch('/pos/recent-sales?' + params.toString(), {
                             headers: {
                                 'Accept': 'application/json',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
@@ -4007,18 +4038,12 @@
                     }
                 },
 
+                // Search/date changes go back to the server (debounced) rather than
+                // filtering the client-side list, since a search across other dates
+                // needs sales that were never fetched into that initial list at all.
                 searchRecentSales() {
-                    const query = this.reprintSearchQuery.toLowerCase();
-                    if (!query) {
-                        this.filteredRecentSales = this.recentSales;
-                        return;
-                    }
-
-                    this.filteredRecentSales = this.recentSales.filter(sale => {
-                        const receiptNumber = String(sale.id).padStart(6, '0');
-                        const customerName = sale.customer ? sale.customer.name.toLowerCase() : 'walk-in customer';
-                        return receiptNumber.includes(query) || customerName.includes(query);
-                    });
+                    clearTimeout(this.reprintSearchDebounce);
+                    this.reprintSearchDebounce = setTimeout(() => this.fetchRecentSales(), 300);
                 },
 
                 reprintReceipt(type) {

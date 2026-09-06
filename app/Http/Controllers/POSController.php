@@ -919,14 +919,40 @@ class POSController extends Controller
         return view('pos.receipt-print', compact('sale', 'type'));
     }
 
-    public function getRecentSales(): \Illuminate\Http\JsonResponse
+    /**
+     * Powers the POS "Reprint Receipt" / exchange lookup list. With no filters this
+     * stays a cheap recent-50 snapshot; passing a search term or a date range means
+     * the cashier is deliberately looking further back than today, so the limit
+     * opens up to let that search actually reach older sales.
+     */
+    public function getRecentSales(Request $request): \Illuminate\Http\JsonResponse
     {
         try {
-            $sales = Sale::with(['customer', 'sale_items.product'])
+            $search = trim((string) $request->query('search', ''));
+            $dateFrom = $request->query('date_from');
+            $dateTo = $request->query('date_to');
+            $hasFilters = $search !== '' || $dateFrom || $dateTo;
+
+            $query = Sale::with(['customer', 'sale_items.product'])
                 ->withCount(['sale_items' => fn ($q) => $q->active()])
-                ->orderBy('created_at', 'desc')
-                ->limit(50)
-                ->get();
+                ->orderBy('created_at', 'desc');
+
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('id', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
+                });
+            }
+
+            if ($dateFrom) {
+                $query->whereDate('date', '>=', $dateFrom);
+            }
+
+            if ($dateTo) {
+                $query->whereDate('date', '<=', $dateTo);
+            }
+
+            $sales = $query->limit($hasFilters ? 200 : 50)->get();
 
             return response()->json([
                 'success' => true,
@@ -1051,8 +1077,13 @@ class POSController extends Controller
 
     /**
      * Ask a manager to swap one line item of a completed sale for a different
-     * product. Nothing changes until the request is approved — see
-     * VoidRequestController::approveItemExchange() for what approval does.
+     * product — the sale can be from any date, not just the cashier's current
+     * shift. Nothing changes until the request is approved — see
+     * VoidRequestController::approveItemExchange() for what approval does. Any
+     * price difference is collected/refunded through the requesting cashier's
+     * own open session (the drawer that's actually open right now), never by
+     * rewriting the totals of the sale's original — possibly already closed and
+     * reconciled — session.
      */
     public function requestItemExchange(Request $request, SaleItem $saleItem): \Illuminate\Http\JsonResponse
     {
@@ -1069,13 +1100,13 @@ class POSController extends Controller
             ->first();
 
         if (! $session) {
-            return response()->json(['success' => false, 'message' => 'No open register session.'], 422);
+            return response()->json(['success' => false, 'message' => 'You need an open register session to process an exchange.'], 422);
         }
 
         $sale = $saleItem->sale;
 
-        if (! $sale || $sale->cash_register_session_id !== $session->id) {
-            return response()->json(['success' => false, 'message' => 'This item does not belong to a sale in the current register session.'], 422);
+        if (! $sale) {
+            return response()->json(['success' => false, 'message' => 'Sale not found.'], 422);
         }
 
         if ($sale->is_voided) {

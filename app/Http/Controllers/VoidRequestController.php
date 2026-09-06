@@ -283,7 +283,7 @@ class VoidRequestController extends Controller
             default => 'unpaid',
         };
 
-        $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid);
+        $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid, $voidRequest->cash_register_session_id);
 
         $saleItem->update([
             'is_voided'   => true,
@@ -454,15 +454,14 @@ class VoidRequestController extends Controller
         if ($newTotal > $oldAmountPaid) {
             if ($wasFullyPaid) {
                 // The sale was already settled, so the customer pays the difference
-                // over the counter now. requestItemExchange() only accepts sales
-                // belonging to the cashier's own open session, so the money goes back
-                // to the same session that took the original payment — no SalePayment
-                // row, for the same reason completeSale() skips one on a paid sale:
-                // it would double-count against the sale itself in the reports.
+                // over the counter now. That money is posted to whichever session is
+                // open right now for the cashier processing the exchange — which may
+                // not be the same session (or even the same day) that took the sale's
+                // original payment — no SalePayment row, for the same reason
+                // completeSale() skips one on a paid sale: it would double-count
+                // against the sale itself in the reports.
                 $collectedNow = round($newTotal - $oldAmountPaid, 2);
-                $session = CashRegisterSession::find(
-                    $voidRequest->cash_register_session_id ?? $sale->cash_register_session_id
-                );
+                $session = CashRegisterSession::find($voidRequest->cash_register_session_id);
 
                 if ($session) {
                     $session->addAmount($collectedNow, $sale->payment_method === 'cash');
@@ -479,7 +478,7 @@ class VoidRequestController extends Controller
             $newAmountPaid = min($oldAmountPaid, $newTotal);
             $refundAmount  = round($oldAmountPaid - $newAmountPaid, 2);
 
-            $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid);
+            $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid, $voidRequest->cash_register_session_id);
         }
 
         $newPaymentStatus = match (true) {
@@ -540,21 +539,32 @@ class VoidRequestController extends Controller
     /**
      * Pay back part of what a sale already collected, reversing the oldest money
      * first: the initial collection at sale creation (when it wasn't logged as a
-     * SalePayment row), then each later settlement in order, each coming out of
-     * whichever register session actually took it in.
+     * SalePayment row), then each later settlement in order.
+     *
+     * Every reversal posts against $actingSessionId — the register session that is
+     * open right now and doing the refund — rather than whichever session
+     * originally took each payment in. A void/exchange can be requested against a
+     * sale from a previous, already-closed shift, and that shift's totals were
+     * already reconciled and reported on at close; rewriting them after the fact
+     * would silently desync a closed session from its own closure report. The
+     * money is physically leaving today's drawer, so today's session is what
+     * should reflect it.
      */
-    private function refundOldestFirst(Sale $sale, float $refundAmount, float $oldAmountPaid): void
+    private function refundOldestFirst(Sale $sale, float $refundAmount, float $oldAmountPaid, ?int $actingSessionId): void
     {
+        $actingSession = $actingSessionId ? CashRegisterSession::find($actingSessionId) : null;
+
+        if (! $actingSession) {
+            return;
+        }
+
         $loggedPayments  = SalePayment::where('sale_id', $sale->id)->orderBy('created_at')->get();
         $unloggedInitial = round($oldAmountPaid - (float) $loggedPayments->sum('amount'), 2);
         $remaining       = $refundAmount;
 
-        if ($remaining > 0.01 && $unloggedInitial > 0.01 && $sale->cash_register_session_id) {
+        if ($remaining > 0.01 && $unloggedInitial > 0.01) {
             $take = min($remaining, $unloggedInitial);
-            $creationSession = CashRegisterSession::find($sale->cash_register_session_id);
-            if ($creationSession) {
-                $creationSession->reverseAmount($take, $sale->payment_method === 'cash');
-            }
+            $actingSession->reverseAmount($take, $sale->payment_method === 'cash');
             $remaining = round($remaining - $take, 2);
         }
 
@@ -563,12 +573,7 @@ class VoidRequestController extends Controller
                 break;
             }
             $take = min($remaining, (float) $payment->amount);
-            if ($payment->cash_register_session_id) {
-                $paymentSession = CashRegisterSession::find($payment->cash_register_session_id);
-                if ($paymentSession) {
-                    $paymentSession->reverseAmount($take, $payment->payment_method === 'cash');
-                }
-            }
+            $actingSession->reverseAmount($take, $payment->payment_method === 'cash');
             $remaining = round($remaining - $take, 2);
         }
     }
