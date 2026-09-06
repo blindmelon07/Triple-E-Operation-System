@@ -176,6 +176,16 @@
                 </div>
             </td>
         </tr>
+        @if($session->totalAdjustments() > 0)
+        <tr>
+            <td colspan="4">
+                <div class="summary-card">
+                    <div class="label">Cash Added Mid-Shift</div>
+                    <div class="value">₱{{ number_format($session->totalAdjustments(), 2) }}</div>
+                </div>
+            </td>
+        </tr>
+        @endif
     </table>
 
     {{-- Sales List --}}

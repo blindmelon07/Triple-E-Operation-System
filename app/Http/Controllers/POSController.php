@@ -113,8 +113,10 @@ class POSController extends Controller
         $canAddExpense = auth()->user()->hasPermissionTo('Create:Expense');
         $expenseCategories = ExpenseCategory::where('is_active', true)->orderBy('name')->get();
 
+        $registerTotalAdjustments = $registerSession ? $registerSession->totalAdjustments() : 0;
+
         return view('pos.index', compact(
-            'products', 'customers', 'categories', 'registerSession',
+            'products', 'customers', 'categories', 'registerSession', 'registerTotalAdjustments',
             'quotationCart', 'quotationId', 'quotationCustomerId', 'quotationDownPayment',
             'isManager', 'canSettleInvoices', 'canAddExpense', 'expenseCategories'
         ));
@@ -216,6 +218,49 @@ class POSController extends Controller
             'success' => true,
             'message' => 'Register opened successfully',
             'session' => $session,
+        ]);
+    }
+
+    public function addCashToRegister(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $session = CashRegisterSession::open()
+            ->forUser(auth()->id())
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No open register session found.',
+            ], 422);
+        }
+
+        $adjustment = $session->addCash($validated['amount'], $validated['reason'] ?? null, auth()->id());
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'user_name' => auth()->user()?->name,
+            'action' => 'added_cash_to_register',
+            'auditable_type' => CashRegisterSession::class,
+            'auditable_id' => $session->id,
+            'auditable_label' => "Register Session #{$session->id}",
+            'new_values' => [
+                'amount' => $adjustment->amount,
+                'reason' => $adjustment->reason,
+            ],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cash added to register',
+            'adjustment' => $adjustment,
+            'total_adjustments' => $session->totalAdjustments(),
         ]);
     }
 
@@ -335,7 +380,7 @@ class POSController extends Controller
                             + $nonCashSettlements;
         $cashPaidSales    = $totalPaidSales - $nonCashPaidSales;
         $totalExpenses    = (float) $expenses->sum('amount');
-        $pettyCash        = (float) $session->opening_amount;
+        $pettyCash        = (float) $session->opening_amount + $session->totalAdjustments();
 
         $incomeTotal     = $pettyCash + $totalSales + $totalSettlements;
         $totalDeductions = $totalUnpaidSales + $nonCashPaidSales;

@@ -98,6 +98,16 @@
                                     Register Open
                                 </span>
                                 <button
+                                    @click="openAddCashModal()"
+                                    class="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition touch-btn flex items-center gap-2 text-sm"
+                                    title="Add Cash to Drawer"
+                                >
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v6m3-3H9m11 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span class="hidden lg:inline">Add Cash</span>
+                                </button>
+                                <button
                                     @click="openCloseRegisterModal()"
                                     class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition touch-btn flex items-center gap-2 text-sm"
                                     title="Close Register"
@@ -2605,6 +2615,91 @@
     </div>
     @endif
 
+    <!-- Add Cash to Drawer Modal -->
+    <div
+        x-show="showAddCashModal"
+        x-cloak
+        @keydown.escape.window="showAddCashModal = false"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
+        @click.self="showAddCashModal = false"
+    >
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v6m3-3H9m11 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Add Cash to Drawer</h3>
+                    </div>
+                    <button
+                        @click="showAddCashModal = false"
+                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-btn rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Add extra starting money to the drawer without closing the register — e.g. topping up change mid-shift.</p>
+
+                <div x-show="addCashError" x-cloak class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" x-text="addCashError"></div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₱</span>
+                            <input
+                                type="number"
+                                x-model.number="addCashForm.amount"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
+                                @keydown.enter="submitAddCash()"
+                                autofocus
+                                class="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white text-base"
+                            >
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason (optional)</label>
+                        <input
+                            type="text"
+                            x-model="addCashForm.reason"
+                            placeholder="e.g. Added change from the office"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white text-base"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button
+                        @click="showAddCashModal = false"
+                        class="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="submitAddCash()"
+                        :disabled="isAddingCash"
+                        class="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg x-show="isAddingCash" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        <span x-text="isAddingCash ? 'Adding...' : 'Add Cash'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Open Register Modal -->
     <div
         x-show="showOpenRegisterModal"
@@ -2676,6 +2771,12 @@
                         <span class="text-gray-600 dark:text-gray-400">Opening Amount</span>
                         <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerOpeningAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
                     </div>
+                    <template x-if="registerTotalAdjustments > 0">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Cash Added Mid-Shift</span>
+                            <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalAdjustments.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                        </div>
+                    </template>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600 dark:text-gray-400">Total Sales</span>
                         <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalSales.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
@@ -2890,14 +2991,19 @@
                 registerTotalSales: @json($registerSession ? (float)$registerSession->total_sales : 0),
                 registerTotalCashSales: @json($registerSession ? (float)$registerSession->total_cash_sales : 0),
                 registerTotalTransactions: @json($registerSession ? (int)$registerSession->total_transactions : 0),
+                registerTotalAdjustments: @json($registerSession ? (float)$registerTotalAdjustments : 0),
                 showOpenRegisterModal: @json($registerSession === null),
                 showCloseRegisterModal: false,
+                showAddCashModal: false,
                 openingAmountInput: 0,
                 closingAmountInput: 0,
                 closingNotes: '',
+                addCashForm: { amount: '', reason: '' },
                 isOpeningRegister: false,
                 isClosingRegister: false,
+                isAddingCash: false,
                 registerError: '',
+                addCashError: '',
 
                 // Settle Outstanding Invoice
                 showSettleModal: false,
@@ -2962,7 +3068,7 @@
                 },
 
                 get registerExpectedCash() {
-                    return this.registerOpeningAmount + this.registerTotalCashSales;
+                    return this.registerOpeningAmount + this.registerTotalCashSales + this.registerTotalAdjustments;
                 },
 
                 get registerDiscrepancy() {
@@ -3000,6 +3106,7 @@
                             this.registerTotalSales = 0;
                             this.registerTotalCashSales = 0;
                             this.registerTotalTransactions = 0;
+                            this.registerTotalAdjustments = 0;
                             this.showOpenRegisterModal = false;
                             this.openingAmountInput = 0;
                         } else {
@@ -3009,6 +3116,51 @@
                         this.registerError = 'Error opening register: ' + error.message;
                     } finally {
                         this.isOpeningRegister = false;
+                    }
+                },
+
+                openAddCashModal() {
+                    this.addCashForm = { amount: '', reason: '' };
+                    this.addCashError = '';
+                    this.showAddCashModal = true;
+                },
+
+                async submitAddCash() {
+                    this.addCashError = '';
+
+                    if (!this.addCashForm.amount || this.addCashForm.amount <= 0) {
+                        this.addCashError = 'Please enter a valid amount';
+                        return;
+                    }
+
+                    this.isAddingCash = true;
+
+                    try {
+                        const response = await fetch('/pos/register/add-cash', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(this.addCashForm)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.registerTotalAdjustments = parseFloat(data.total_adjustments);
+                            this.showAddCashModal = false;
+                            this.notify(`Added ₱${parseFloat(data.adjustment.amount).toFixed(2)} to the drawer`);
+                        } else {
+                            this.addCashError = data.message || 'Failed to add cash';
+                            this.notify(this.addCashError, 'error');
+                        }
+                    } catch (error) {
+                        this.addCashError = 'Error adding cash: ' + error.message;
+                        this.notify(this.addCashError, 'error');
+                    } finally {
+                        this.isAddingCash = false;
                     }
                 },
 
@@ -3051,6 +3203,7 @@
                             this.registerTotalSales = 0;
                             this.registerTotalCashSales = 0;
                             this.registerTotalTransactions = 0;
+                            this.registerTotalAdjustments = 0;
                             this.showCloseRegisterModal = false;
                             this.showOpenRegisterModal = true;
 

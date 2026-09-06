@@ -54,6 +54,11 @@ class CashRegisterSession extends Model
         return $this->hasMany(Sale::class);
     }
 
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(CashRegisterAdjustment::class);
+    }
+
     public function scopeOpen($query)
     {
         return $query->where('status', CashRegisterStatus::Open);
@@ -66,7 +71,32 @@ class CashRegisterSession extends Model
 
     public function calculateExpected(): float
     {
-        return (float) $this->opening_amount + (float) $this->total_cash_sales;
+        return (float) $this->opening_amount + (float) $this->total_cash_sales + $this->totalAdjustments();
+    }
+
+    /**
+     * Sum of all mid-shift cash top-ups added via addCash(). opening_amount
+     * itself is never mutated after open, so this has to be added on top of it
+     * wherever "how much cash should be in the drawer" is calculated.
+     */
+    public function totalAdjustments(): float
+    {
+        return (float) $this->adjustments()->sum('amount');
+    }
+
+    /**
+     * Add starting money to the drawer while the register is already open
+     * (e.g. the cashier ran low on change). Recorded as its own ledger entry
+     * rather than changing opening_amount, so the original opening count and
+     * every top-up stay individually auditable.
+     */
+    public function addCash(float $amount, ?string $reason, int $userId): CashRegisterAdjustment
+    {
+        return $this->adjustments()->create([
+            'user_id' => $userId,
+            'amount' => $amount,
+            'reason' => $reason,
+        ]);
     }
 
     public function close(float $actualAmount, ?string $notes = null): void
