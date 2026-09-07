@@ -2,9 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Supplier;
 use App\Services\CsvExportService;
 use App\Support\ReportBuilder\ReportModules;
 use App\Support\ReportBuilder\ReportQueryService;
+use App\Support\ReportBuilder\SupplierStatementService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -56,6 +58,20 @@ class CustomReportBuilder extends Page
      */
     private const PDF_ROW_LIMIT = 250;
 
+    /** 'data' = the generic column-picker builder below; 'supplier_statement' = the per-supplier, per-month statement of account. */
+    public string $reportMode = 'data';
+
+    public ?int $supplierId = null;
+
+    public ?string $statementDateFrom = null;
+
+    public ?string $statementDateTo = null;
+
+    public bool $statementGenerated = false;
+
+    /** @var array<int, array<string, mixed>> */
+    public array $statementMonths = [];
+
     public ?string $module = null;
 
     /** @var array<int, string> */
@@ -88,6 +104,50 @@ class CustomReportBuilder extends Page
     public function moduleOptions(): array
     {
         return ReportModules::moduleOptions();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function supplierOptions(): array
+    {
+        return Supplier::orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    public function updatedReportMode(): void
+    {
+        $this->statementGenerated = false;
+        $this->generated = false;
+    }
+
+    public function updatedSupplierId(): void
+    {
+        $this->statementGenerated = false;
+    }
+
+    public function updatedStatementDateFrom(): void
+    {
+        $this->statementGenerated = false;
+    }
+
+    public function updatedStatementDateTo(): void
+    {
+        $this->statementGenerated = false;
+    }
+
+    public function generateStatement(): void
+    {
+        if (! $this->supplierId) {
+            Notification::make()->title('Pick a supplier first.')->warning()->send();
+
+            return;
+        }
+
+        $statement = (new SupplierStatementService($this->supplierId))
+            ->build($this->statementDateFrom, $this->statementDateTo);
+
+        $this->statementMonths = $statement['months'];
+        $this->statementGenerated = true;
     }
 
     /**
@@ -264,6 +324,7 @@ class CustomReportBuilder extends Page
                 ->label('Export CSV')
                 ->icon(Heroicon::OutlinedTableCells)
                 ->color('success')
+                ->visible(fn () => $this->reportMode === 'data')
                 ->disabled(fn () => ! $this->generated)
                 ->action(fn () => $this->exportCsv()),
 
@@ -271,9 +332,73 @@ class CustomReportBuilder extends Page
                 ->label('Export PDF')
                 ->icon(Heroicon::OutlinedDocumentArrowDown)
                 ->color('gray')
+                ->visible(fn () => $this->reportMode === 'data')
                 ->disabled(fn () => ! $this->generated)
                 ->action(fn () => $this->exportPdf()),
+
+            Action::make('exportStatementCsv')
+                ->label('Export CSV')
+                ->icon(Heroicon::OutlinedTableCells)
+                ->color('success')
+                ->visible(fn () => $this->reportMode === 'supplier_statement')
+                ->disabled(fn () => ! $this->statementGenerated)
+                ->action(fn () => $this->exportStatementCsv()),
+
+            Action::make('exportStatementPdf')
+                ->label('Export PDF')
+                ->icon(Heroicon::OutlinedDocumentArrowDown)
+                ->color('gray')
+                ->visible(fn () => $this->reportMode === 'supplier_statement')
+                ->disabled(fn () => ! $this->statementGenerated)
+                ->action(fn () => $this->exportStatementPdf()),
         ];
+    }
+
+    public function exportStatementCsv(): StreamedResponse
+    {
+        $headers = ['Month', 'Date', 'Description', 'Purchases', 'Payments', 'Balance'];
+
+        $rows = collect();
+
+        foreach ($this->statementMonths as $month) {
+            $rows->push([$month['label'], '', 'Opening Balance', '', '', number_format($month['opening_balance'], 2)]);
+
+            foreach ($month['purchases'] as $purchase) {
+                $rows->push(['', $purchase->date->format('Y-m-d'), 'Purchase #'.$purchase->id, number_format($purchase->total, 2), '', '']);
+            }
+
+            foreach ($month['payments'] as $payment) {
+                $rows->push(['', $payment->paid_date->format('Y-m-d'), 'Payment ('.$payment->payment_method.')', '', number_format($payment->amount, 2), '']);
+            }
+
+            $rows->push(['', '', 'Closing Balance', number_format($month['purchases_total'], 2), number_format($month['payments_total'], 2), number_format($month['closing_balance'], 2)]);
+        }
+
+        $supplierName = Supplier::find($this->supplierId)?->name ?? 'supplier';
+        $filename = 'statement-of-account-'.\Illuminate\Support\Str::slug($supplierName).'-'.now()->format('Y-m-d-His').'.csv';
+
+        return (new CsvExportService)->export($headers, $rows, $filename);
+    }
+
+    public function exportStatementPdf(): StreamedResponse
+    {
+        $supplier = Supplier::findOrFail($this->supplierId);
+
+        $pdf = Pdf::loadView('exports.supplier-statement-pdf', [
+            'supplier' => $supplier,
+            'months' => $this->statementMonths,
+            'dateFrom' => $this->statementDateFrom,
+            'dateTo' => $this->statementDateTo,
+            'generatedAt' => now()->format('F d, Y h:i A'),
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'statement-of-account-'.\Illuminate\Support\Str::slug($supplier->name).'-'.now()->format('Y-m-d-His').'.pdf';
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
     public function exportCsv(): StreamedResponse

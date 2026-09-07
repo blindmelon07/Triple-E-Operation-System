@@ -68,6 +68,14 @@ class EditPurchase extends EditRecord
                     $purchase->payment_status = $newAmountPaid >= (float) $purchase->total ? 'paid' : 'partial';
                     $purchase->save();
 
+                    $purchase->purchasePayments()->create([
+                        'amount' => $data['amount_paid'],
+                        'payment_method' => $data['payment_method'],
+                        'paid_date' => $data['paid_date'],
+                        'recorded_by_id' => auth()->id(),
+                        'balance_after' => $purchase->balance,
+                    ]);
+
                     Notification::make()
                         ->title('Payment recorded successfully')
                         ->success()
