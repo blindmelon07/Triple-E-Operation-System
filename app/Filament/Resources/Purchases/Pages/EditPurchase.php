@@ -15,16 +15,24 @@ class EditPurchase extends EditRecord
 {
     protected static string $resource = PurchaseResource::class;
 
-    protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
+    // Total is derived from the line items, so it has to be computed after
+    // Filament has actually persisted the purchase_items relationship
+    // (saveRelationships() runs after handleRecordUpdate) — computing it
+    // from the raw form $data beforehand is fragile and can silently save 0
+    // even when the items themselves saved fine (e.g. editing a purchase
+    // just to fill in SI #/P.O # without touching the items repeater).
+    protected function afterSave(): void
     {
-        $total = 0;
-        if (!empty($data['purchase_items'])) {
-            foreach ($data['purchase_items'] as $item) {
-                $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
-            }
-        }
-        $data['total'] = $total;
-        return parent::handleRecordUpdate($record, $data);
+        $this->recalculateTotal();
+    }
+
+    private function recalculateTotal(): void
+    {
+        $total = $this->record->purchase_items()
+            ->get()
+            ->sum(fn ($item) => (float) $item->price * (float) $item->quantity);
+
+        $this->record->update(['total' => $total]);
     }
 
     protected function getHeaderActions(): array
