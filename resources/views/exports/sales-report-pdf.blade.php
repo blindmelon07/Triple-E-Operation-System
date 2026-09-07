@@ -19,6 +19,10 @@
             border-bottom: 2px solid #1e40af;
             padding-bottom: 12px;
         }
+        .header img {
+            max-height: 50px;
+            margin-bottom: 8px;
+        }
         .header h1 {
             color: #1e40af;
             font-size: 18px;
@@ -74,6 +78,9 @@
 <body>
 
     <div class="header">
+        @if($logoDataUri ?? null)
+            <img src="{{ $logoDataUri }}" alt="Company Logo">
+        @endif
         <h1>Sales Report</h1>
         <p>Tri-E Enterprises &nbsp;|&nbsp; Period: {{ $periodLabel }}</p>
         <p>{{ $sales->count() }} sale{{ $sales->count() === 1 ? '' : 's' }}</p>

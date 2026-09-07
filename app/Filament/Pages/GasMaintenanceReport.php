@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Vehicle;
 use App\Services\CsvExportService;
+use App\Support\CompanyLogo;
 use App\Support\ReportBuilder\GasMaintenanceReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use BackedEnum;
@@ -153,6 +154,7 @@ class GasMaintenanceReport extends Page
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ])->setPaper('a4', 'portrait');
 
         $filename = 'gas-maintenance-report-'.now()->format('Y-m-d-His').'.pdf';

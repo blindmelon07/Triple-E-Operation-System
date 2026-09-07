@@ -8,6 +8,7 @@ use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\Supplier;
+use App\Support\CompanyLogo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfInstance;
 use Carbon\Carbon;
@@ -29,6 +30,7 @@ class ReportExportService
             'startDate' => $startDate,
             'endDate' => $endDate,
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'portrait');
@@ -120,6 +122,7 @@ class ReportExportService
             'sales' => $sales,
             'periodLabel' => $this->salesReportPeriodLabel($period, $dateFrom, $dateUntil),
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -204,6 +207,7 @@ class ReportExportService
             'generatedAt' => now()->format('F d, Y h:i A'),
             'customerFilterName' => $customerId ? Customer::find($customerId)?->name : null,
             'supplierFilterName' => $supplierId ? Supplier::find($supplierId)?->name : null,
+            'logoDataUri' => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -332,6 +336,7 @@ class ReportExportService
             'suppliers' => $export->getSuppliers(),
             'categoryName' => $categoryId ? \App\Models\Category::find($categoryId)?->name : null,
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -432,6 +437,7 @@ class ReportExportService
             'dateFrom'       => $from,
             'dateTo'         => $to,
             'generatedAt'    => now()->format('F d, Y h:i A'),
+            'logoDataUri'    => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'portrait');
@@ -460,6 +466,7 @@ class ReportExportService
             'monthlyTrend' => $monthlyTrend,
             'period' => $period,
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -479,7 +486,7 @@ class ReportExportService
         $pdf = Pdf::loadView('exports.payroll-pdf', [
             'payroll' => $payroll,
             'generatedAt' => now()->format('F d, Y h:i A'),
-            'logoDataUri' => $this->logoDataUri(),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -589,19 +596,4 @@ class ReportExportService
         ]);
     }
 
-    /**
-     * Base64-encode the company logo for embedding in a PDF. DomPDF's
-     * default chroot/remote settings can refuse an asset() URL or a plain
-     * public_path(), so a data URI sidesteps both — it always renders.
-     */
-    private function logoDataUri(): ?string
-    {
-        $path = public_path('images/logo.png');
-
-        if (! file_exists($path)) {
-            return null;
-        }
-
-        return 'data:image/png;base64,'.base64_encode(file_get_contents($path));
-    }
 }

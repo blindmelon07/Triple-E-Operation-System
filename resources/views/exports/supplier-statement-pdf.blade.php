@@ -18,6 +18,10 @@
             border-bottom: 2px solid #1e40af;
             padding-bottom: 15px;
         }
+        .header img {
+            max-height: 50px;
+            margin-bottom: 8px;
+        }
         .header h1 {
             color: #1e40af;
             margin: 0;
@@ -66,6 +70,9 @@
 </head>
 <body>
     <div class="header">
+        @if($logoDataUri ?? null)
+            <img src="{{ $logoDataUri }}" alt="Company Logo">
+        @endif
         <h1>Statement of Account</h1>
         <p>{{ $supplier->name }}</p>
         <p>

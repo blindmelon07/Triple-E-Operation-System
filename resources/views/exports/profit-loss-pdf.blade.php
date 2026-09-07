@@ -18,6 +18,10 @@
             border-bottom: 2px solid #1e40af;
             padding-bottom: 20px;
         }
+        .header img {
+            max-height: 50px;
+            margin-bottom: 8px;
+        }
         .header h1 {
             color: #1e40af;
             margin: 0;
@@ -128,6 +132,9 @@
 </head>
 <body>
     <div class="header">
+        @if($logoDataUri ?? null)
+            <img src="{{ $logoDataUri }}" alt="Company Logo">
+        @endif
         <h1>Profit & Loss Statement</h1>
         <p>For the Period {{ \Carbon\Carbon::parse($startDate)->format('F d, Y') }} to {{ \Carbon\Carbon::parse($endDate)->format('F d, Y') }}</p>
     </div>

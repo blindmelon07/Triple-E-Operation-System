@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Supplier;
 use App\Services\CsvExportService;
+use App\Support\CompanyLogo;
 use App\Support\ReportBuilder\ReportModules;
 use App\Support\ReportBuilder\ReportQueryService;
 use App\Support\ReportBuilder\SupplierStatementService;
@@ -385,6 +386,7 @@ class CustomReportBuilder extends Page
             'dateFrom' => $this->statementDateFrom,
             'dateTo' => $this->statementDateTo,
             'generatedAt' => now()->format('F d, Y h:i A'),
+            'logoDataUri' => CompanyLogo::dataUri(),
         ])->setPaper('a4', 'portrait');
 
         $filename = 'statement-of-account-'.\Illuminate\Support\Str::slug($supplier->name).'-'.now()->format('Y-m-d-His').'.pdf';
@@ -429,6 +431,7 @@ class CustomReportBuilder extends Page
             'generatedAt' => now()->format('F d, Y h:i A'),
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
+            'logoDataUri' => CompanyLogo::dataUri(),
         ])->setPaper('a4', 'landscape');
 
         $filename = 'custom-report-'.$this->module.'-'.now()->format('Y-m-d-His').'.pdf';

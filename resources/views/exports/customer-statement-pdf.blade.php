@@ -23,6 +23,8 @@
             padding-bottom: 10px;
             margin-bottom: 14px;
         }
+        .header-brand { display: flex; align-items: center; gap: 8px; }
+        .header-brand img { max-height: 40px; }
         .company-name { font-size: 15px; font-weight: 700; color: #1e40af; }
         .company-sub  { font-size: 8px; color: #64748b; margin-top: 2px; }
         .report-title { text-align: right; }
@@ -138,9 +140,14 @@
 
     {{-- Header --}}
     <div class="header">
-        <div>
-            <div class="company-name">Tri-E Enterprises</div>
-            <div class="company-sub">Maharlika Highway, Cabidan, Sorsogon City &nbsp;|&nbsp; (+639) 993-052-2540</div>
+        <div class="header-brand">
+            @if($logoDataUri ?? null)
+                <img src="{{ $logoDataUri }}" alt="Company Logo">
+            @endif
+            <div>
+                <div class="company-name">Tri-E Enterprises</div>
+                <div class="company-sub">Maharlika Highway, Cabidan, Sorsogon City &nbsp;|&nbsp; (+639) 993-052-2540</div>
+            </div>
         </div>
         <div class="report-title">
             <h2>Statement of Account</h2>
