@@ -69,10 +69,6 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr class="bg-gray-50 dark:bg-gray-800 font-medium">
-                                            <td class="px-3 py-2" colspan="3">Opening Balance</td>
-                                            <td class="px-3 py-2 text-right">{{ number_format($month['opening_balance'], 2) }}</td>
-                                        </tr>
                                         @foreach($month['purchases'] as $purchase)
                                             <tr class="border-b border-gray-100 dark:border-gray-800">
                                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $purchase->date->format('M d, Y') }}</td>
@@ -93,10 +89,6 @@
                                             <td class="px-3 py-2" colspan="2">Totals</td>
                                             <td class="px-3 py-2 text-right">{{ number_format($month['purchases_total'], 2) }}</td>
                                             <td class="px-3 py-2 text-right">{{ number_format($month['payments_total'], 2) }}</td>
-                                        </tr>
-                                        <tr class="bg-gray-100 dark:bg-gray-700 font-semibold">
-                                            <td class="px-3 py-2" colspan="3">Closing Balance</td>
-                                            <td class="px-3 py-2 text-right">{{ number_format($month['closing_balance'], 2) }}</td>
                                         </tr>
                                     </tbody>
                                 </table>

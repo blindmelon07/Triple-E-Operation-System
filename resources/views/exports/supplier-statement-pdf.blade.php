@@ -90,10 +90,6 @@
                 </tr>
             </thead>
             <tbody>
-                <tr class="balance-row">
-                    <td colspan="3">Opening Balance</td>
-                    <td class="text-right">{{ number_format($month['opening_balance'], 2) }}</td>
-                </tr>
                 @foreach($month['purchases'] as $purchase)
                     <tr>
                         <td>{{ $purchase->date->format('M d, Y') }}</td>
@@ -114,10 +110,6 @@
                     <td colspan="2">Totals for {{ $month['label'] }}</td>
                     <td class="text-right">{{ number_format($month['purchases_total'], 2) }}</td>
                     <td class="text-right">{{ number_format($month['payments_total'], 2) }}</td>
-                </tr>
-                <tr class="balance-row">
-                    <td colspan="3">Closing Balance</td>
-                    <td class="text-right">{{ number_format($month['closing_balance'], 2) }}</td>
                 </tr>
             </tbody>
         </table>
