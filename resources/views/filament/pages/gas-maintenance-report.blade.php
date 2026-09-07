@@ -56,13 +56,13 @@
                                 @foreach($rows as $vehicle)
                                     <tr class="border-b border-gray-100 dark:border-gray-800">
                                         <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                                            {{ $vehicle->plate_number }}
-                                            <span class="block text-xs text-gray-400 dark:text-gray-500">{{ $vehicle->full_name }}</span>
+                                            {{ $vehicle['plate_number'] }}
+                                            <span class="block text-xs text-gray-400 dark:text-gray-500">{{ $vehicle['full_name'] }}</span>
                                         </td>
-                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle->fuel_total, 2) }}</td>
-                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle->fuel_liters, 2) }} L</td>
-                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle->maintenance_total, 2) }}</td>
-                                        <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle->grand_total, 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['fuel_total'], 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['fuel_liters'], 2) }} L</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['maintenance_total'], 2) }}</td>
+                                        <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['grand_total'], 2) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

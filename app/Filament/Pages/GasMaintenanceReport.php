@@ -43,7 +43,14 @@ class GasMaintenanceReport extends Page
 
     public bool $generated = false;
 
-    /** @var array<int, \App\Models\Vehicle> */
+    /**
+     * Plain arrays, not Vehicle models — the fuel/maintenance totals are
+     * computed sums, not real columns, so they wouldn't survive Livewire
+     * re-hydrating each Vehicle from the DB by key on the next request
+     * (e.g. when the Export actions fire).
+     *
+     * @var array<int, array{id: int, plate_number: string, full_name: string, fuel_total: float, fuel_liters: float, maintenance_total: float, grand_total: float}>
+     */
     public array $rows = [];
 
     /** @var array{fuel_total: float, fuel_liters: float, maintenance_total: float, grand_total: float} */
@@ -84,7 +91,15 @@ class GasMaintenanceReport extends Page
     {
         $result = (new GasMaintenanceReportService)->build($this->dateFrom, $this->dateTo, $this->vehicleId);
 
-        $this->rows = $result['rows']->all();
+        $this->rows = $result['rows']->map(fn (Vehicle $v) => [
+            'id' => $v->id,
+            'plate_number' => $v->plate_number,
+            'full_name' => $v->full_name,
+            'fuel_total' => $v->fuel_total,
+            'fuel_liters' => $v->fuel_liters,
+            'maintenance_total' => $v->maintenance_total,
+            'grand_total' => $v->grand_total,
+        ])->all();
         $this->totals = $result['totals'];
         $this->generated = true;
 
@@ -116,13 +131,13 @@ class GasMaintenanceReport extends Page
     {
         $headers = ['Vehicle', 'Plate #', 'Fuel Cost', 'Fuel Liters', 'Maintenance Cost', 'Total'];
 
-        $rows = collect($this->rows)->map(fn (Vehicle $v) => [
-            $v->full_name,
-            $v->plate_number,
-            number_format($v->fuel_total, 2),
-            number_format($v->fuel_liters, 2),
-            number_format($v->maintenance_total, 2),
-            number_format($v->grand_total, 2),
+        $rows = collect($this->rows)->map(fn (array $v) => [
+            $v['full_name'],
+            $v['plate_number'],
+            number_format($v['fuel_total'], 2),
+            number_format($v['fuel_liters'], 2),
+            number_format($v['maintenance_total'], 2),
+            number_format($v['grand_total'], 2),
         ]);
 
         $filename = 'gas-maintenance-report-'.now()->format('Y-m-d-His').'.csv';

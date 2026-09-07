@@ -86,11 +86,11 @@
             <tbody>
                 @foreach($rows as $vehicle)
                     <tr>
-                        <td>{{ $vehicle->plate_number }} — {{ $vehicle->full_name }}</td>
-                        <td class="text-right">{{ number_format($vehicle->fuel_total, 2) }}</td>
-                        <td class="text-right">{{ number_format($vehicle->fuel_liters, 2) }} L</td>
-                        <td class="text-right">{{ number_format($vehicle->maintenance_total, 2) }}</td>
-                        <td class="text-right">{{ number_format($vehicle->grand_total, 2) }}</td>
+                        <td>{{ $vehicle['plate_number'] }} — {{ $vehicle['full_name'] }}</td>
+                        <td class="text-right">{{ number_format($vehicle['fuel_total'], 2) }}</td>
+                        <td class="text-right">{{ number_format($vehicle['fuel_liters'], 2) }} L</td>
+                        <td class="text-right">{{ number_format($vehicle['maintenance_total'], 2) }}</td>
+                        <td class="text-right">{{ number_format($vehicle['grand_total'], 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>
