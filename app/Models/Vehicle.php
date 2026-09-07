@@ -61,6 +61,14 @@ class Vehicle extends Model
     }
 
     /**
+     * @return HasMany<FuelLog, $this>
+     */
+    public function fuelLogs(): HasMany
+    {
+        return $this->hasMany(FuelLog::class);
+    }
+
+    /**
      * Get the full vehicle name.
      */
     public function getFullNameAttribute(): string
@@ -82,6 +90,14 @@ class Vehicle extends Model
     public function getTotalMaintenanceCostAttribute(): float
     {
         return (float) $this->maintenanceRecords()->sum('cost');
+    }
+
+    /**
+     * Get total fuel cost.
+     */
+    public function getTotalFuelCostAttribute(): float
+    {
+        return (float) $this->fuelLogs()->sum('cost');
     }
 
     /**

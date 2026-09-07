@@ -13,6 +13,7 @@ use App\Filament\Resources\EmployeeCompensations\EmployeeCompensationResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\ExpenseCategories\ExpenseCategoryResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
+use App\Filament\Resources\FuelLogs\FuelLogResource;
 use App\Filament\Resources\GovernmentContributions\GovernmentContributionResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
@@ -224,6 +225,18 @@ class Home extends Page
                 'color'       => '#65a30d',
                 'bg'          => '#f7fee7',
                 'border'      => '#bbf7d0',
+            ];
+        }
+
+        if ($isAdmin || $user->can('ViewAny:FuelLog')) {
+            $cards[] = [
+                'title'       => 'Fuel Logs',
+                'description' => 'Track fuel purchases per vehicle',
+                'icon'        => 'heroicon-o-fire',
+                'url'         => FuelLogResource::getUrl(),
+                'color'       => '#ea580c',
+                'bg'          => '#fff7ed',
+                'border'      => '#fed7aa',
             ];
         }
 
