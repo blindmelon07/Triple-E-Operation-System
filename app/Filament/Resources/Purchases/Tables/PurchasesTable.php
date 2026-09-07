@@ -16,6 +16,8 @@ class PurchasesTable
             ->columns([
                 TextColumn::make('supplier.name')->label('Supplier')->searchable(),
                 TextColumn::make('date')->date(),
+                TextColumn::make('si_number')->label('SI #')->searchable(),
+                TextColumn::make('po_number')->label('P.O #')->searchable(),
                 TextColumn::make('purchase_items_count')->counts('purchase_items')->label('Items'),
                 TextColumn::make('total')->money('PHP')->label('Total'),
                 TextColumn::make('receipt_status')

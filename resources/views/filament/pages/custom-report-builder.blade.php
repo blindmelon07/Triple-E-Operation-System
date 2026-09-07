@@ -59,37 +59,28 @@
                         <div>
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ $month['label'] }}</h3>
                             <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
+                                <table class="min-w-full text-sm border border-gray-200 dark:border-gray-700">
                                     <thead>
-                                        <tr class="border-b border-gray-200 dark:border-gray-700">
-                                            <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Date</th>
-                                            <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Description</th>
-                                            <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Purchases</th>
-                                            <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Payments</th>
+                                        <tr class="bg-blue-100 dark:bg-blue-900/40">
+                                            <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Date</th>
+                                            <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">SI #</th>
+                                            <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">P.O #</th>
+                                            <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total</th>
+                                            <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @php $runningTotal = 0; @endphp
                                         @foreach($month['purchases'] as $purchase)
+                                            @php $runningTotal += (float) $purchase->total; @endphp
                                             <tr class="border-b border-gray-100 dark:border-gray-800">
-                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $purchase->date->format('M d, Y') }}</td>
-                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Purchase #{{ $purchase->id }}</td>
-                                                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($purchase->total, 2) }}</td>
-                                                <td class="px-3 py-2 text-right text-gray-400">—</td>
+                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $purchase->date->format('j-M-y') }}</td>
+                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $purchase->si_number ?: '—' }}</td>
+                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $purchase->po_number ?: '—' }}</td>
+                                                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($purchase->total, 2) }}</td>
+                                                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($runningTotal, 2) }}</td>
                                             </tr>
                                         @endforeach
-                                        @foreach($month['payments'] as $payment)
-                                            <tr class="border-b border-gray-100 dark:border-gray-800">
-                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $payment->paid_date->format('M d, Y') }}</td>
-                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Payment ({{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }})</td>
-                                                <td class="px-3 py-2 text-right text-gray-400">—</td>
-                                                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($payment->amount, 2) }}</td>
-                                            </tr>
-                                        @endforeach
-                                        <tr class="bg-gray-50 dark:bg-gray-800 font-medium">
-                                            <td class="px-3 py-2" colspan="2">Totals</td>
-                                            <td class="px-3 py-2 text-right">{{ number_format($month['purchases_total'], 2) }}</td>
-                                            <td class="px-3 py-2 text-right">{{ number_format($month['payments_total'], 2) }}</td>
-                                        </tr>
                                     </tbody>
                                 </table>
                             </div>

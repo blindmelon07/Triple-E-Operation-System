@@ -84,33 +84,24 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Description</th>
-                    <th class="text-right">Purchases</th>
-                    <th class="text-right">Payments</th>
+                    <th>SI #</th>
+                    <th>P.O #</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Total Amount</th>
                 </tr>
             </thead>
             <tbody>
+                @php $runningTotal = 0; @endphp
                 @foreach($month['purchases'] as $purchase)
+                    @php $runningTotal += (float) $purchase->total; @endphp
                     <tr>
-                        <td>{{ $purchase->date->format('M d, Y') }}</td>
-                        <td>Purchase #{{ $purchase->id }}</td>
+                        <td>{{ $purchase->date->format('j-M-y') }}</td>
+                        <td>{{ $purchase->si_number ?: '—' }}</td>
+                        <td>{{ $purchase->po_number ?: '—' }}</td>
                         <td class="text-right">{{ number_format($purchase->total, 2) }}</td>
-                        <td class="text-right">-</td>
+                        <td class="text-right">{{ number_format($runningTotal, 2) }}</td>
                     </tr>
                 @endforeach
-                @foreach($month['payments'] as $payment)
-                    <tr>
-                        <td>{{ $payment->paid_date->format('M d, Y') }}</td>
-                        <td>Payment ({{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }})</td>
-                        <td class="text-right">-</td>
-                        <td class="text-right">{{ number_format($payment->amount, 2) }}</td>
-                    </tr>
-                @endforeach
-                <tr class="balance-row">
-                    <td colspan="2">Totals for {{ $month['label'] }}</td>
-                    <td class="text-right">{{ number_format($month['purchases_total'], 2) }}</td>
-                    <td class="text-right">{{ number_format($month['payments_total'], 2) }}</td>
-                </tr>
             </tbody>
         </table>
     @empty

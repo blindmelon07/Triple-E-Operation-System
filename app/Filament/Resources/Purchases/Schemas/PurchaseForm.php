@@ -37,6 +37,12 @@ class PurchaseForm
                             }
                         }
                     }),
+                \Filament\Forms\Components\TextInput::make('si_number')
+                    ->label('SI #')
+                    ->helperText('Supplier invoice number.'),
+                \Filament\Forms\Components\TextInput::make('po_number')
+                    ->label('P.O #')
+                    ->helperText('Purchase order number.'),
                 \Filament\Schemas\Components\Section::make('Payment Terms')
                     ->schema([
                         \Filament\Forms\Components\DatePicker::make('due_date')

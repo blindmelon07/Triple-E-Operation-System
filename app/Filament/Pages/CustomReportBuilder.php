@@ -356,22 +356,17 @@ class CustomReportBuilder extends Page
 
     public function exportStatementCsv(): StreamedResponse
     {
-        $headers = ['Month', 'Date', 'Description', 'Purchases', 'Payments', 'Balance'];
+        $headers = ['Month', 'Date', 'SI #', 'P.O #', 'Total', 'Total Amount'];
 
         $rows = collect();
 
         foreach ($this->statementMonths as $month) {
-            $rows->push([$month['label'], '', 'Opening Balance', '', '', number_format($month['opening_balance'], 2)]);
+            $runningTotal = 0.0;
 
             foreach ($month['purchases'] as $purchase) {
-                $rows->push(['', $purchase->date->format('Y-m-d'), 'Purchase #'.$purchase->id, number_format($purchase->total, 2), '', '']);
+                $runningTotal += (float) $purchase->total;
+                $rows->push([$month['label'], $purchase->date->format('Y-m-d'), $purchase->si_number ?: '', $purchase->po_number ?: '', number_format($purchase->total, 2), number_format($runningTotal, 2)]);
             }
-
-            foreach ($month['payments'] as $payment) {
-                $rows->push(['', $payment->paid_date->format('Y-m-d'), 'Payment ('.$payment->payment_method.')', '', number_format($payment->amount, 2), '']);
-            }
-
-            $rows->push(['', '', 'Closing Balance', number_format($month['purchases_total'], 2), number_format($month['payments_total'], 2), number_format($month['closing_balance'], 2)]);
         }
 
         $supplierName = Supplier::find($this->supplierId)?->name ?? 'supplier';
