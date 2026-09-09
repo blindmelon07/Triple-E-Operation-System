@@ -22,6 +22,7 @@ class FuelLog extends Model
         'price_per_liter',
         'cost',
         'fuel_station',
+        'si_dr_number',
         'notes',
         'receipt_path',
     ];

@@ -5,7 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Vehicle;
 use App\Services\CsvExportService;
 use App\Support\CompanyLogo;
-use App\Support\ReportBuilder\GasMaintenanceReportService;
+use App\Support\ReportBuilder\MaintenanceReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -17,24 +17,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
- * Per-vehicle summary of gas (fuel) and maintenance spend over a date range —
- * see App\Support\ReportBuilder\GasMaintenanceReportService for the query.
+ * Itemized maintenance-expense ledger over a date range — see
+ * App\Support\ReportBuilder\MaintenanceReportService for the query.
  */
-class GasMaintenanceReport extends Page
+class MaintenanceReport extends Page
 {
     use HasPageShield;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFire;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 
-    protected static ?string $navigationLabel = 'Gas & Maintenance Report';
+    protected static ?string $navigationLabel = 'Maintenance Report';
 
-    protected static ?string $title = 'Gas & Maintenance Report';
+    protected static ?string $title = 'Maintenance Report';
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 21;
+    protected static ?int $navigationSort = 22;
 
-    protected string $view = 'filament.pages.gas-maintenance-report';
+    protected string $view = 'filament.pages.maintenance-report';
 
     public ?int $vehicleId = null;
 
@@ -45,21 +45,13 @@ class GasMaintenanceReport extends Page
     public bool $generated = false;
 
     /**
-     * Plain arrays, not Vehicle models — the fuel/maintenance totals are
-     * computed sums, not real columns, so they wouldn't survive Livewire
-     * re-hydrating each Vehicle from the DB by key on the next request
-     * (e.g. when the Export actions fire).
-     *
-     * @var array<int, array{id: int, plate_number: string, full_name: string, fuel_total: float, fuel_liters: float, maintenance_total: float, grand_total: float}>
+     * @var array<int, array{date: string, supplier: string, si_number: string, po_number: string, amount: float, running_total: float}>
      */
     public array $rows = [];
 
-    /** @var array{fuel_total: float, fuel_liters: float, maintenance_total: float, grand_total: float} */
+    /** @var array{amount: float} */
     public array $totals = [
-        'fuel_total' => 0,
-        'fuel_liters' => 0,
-        'maintenance_total' => 0,
-        'grand_total' => 0,
+        'amount' => 0,
     ];
 
     /**
@@ -90,22 +82,14 @@ class GasMaintenanceReport extends Page
 
     public function generate(): void
     {
-        $result = (new GasMaintenanceReportService)->build($this->dateFrom, $this->dateTo, $this->vehicleId);
+        $result = (new MaintenanceReportService)->build($this->dateFrom, $this->dateTo, $this->vehicleId);
 
-        $this->rows = $result['rows']->map(fn (Vehicle $v) => [
-            'id' => $v->id,
-            'plate_number' => $v->plate_number,
-            'full_name' => $v->full_name,
-            'fuel_total' => $v->fuel_total,
-            'fuel_liters' => $v->fuel_liters,
-            'maintenance_total' => $v->maintenance_total,
-            'grand_total' => $v->grand_total,
-        ])->all();
+        $this->rows = $result['rows']->all();
         $this->totals = $result['totals'];
         $this->generated = true;
 
         if (empty($this->rows)) {
-            Notification::make()->title('No gas or maintenance activity found for those filters.')->warning()->send();
+            Notification::make()->title('No maintenance activity found for those filters.')->warning()->send();
         }
     }
 
@@ -130,25 +114,25 @@ class GasMaintenanceReport extends Page
 
     public function exportCsv(): StreamedResponse
     {
-        $headers = ['Vehicle', 'Plate #', 'Fuel Cost', 'Fuel Liters', 'Maintenance Cost', 'Total'];
+        $headers = ['Date', 'Supplier', 'SI /DR #', 'PO#', 'Amount', 'Total'];
 
-        $rows = collect($this->rows)->map(fn (array $v) => [
-            $v['full_name'],
-            $v['plate_number'],
-            number_format($v['fuel_total'], 2),
-            number_format($v['fuel_liters'], 2),
-            number_format($v['maintenance_total'], 2),
-            number_format($v['grand_total'], 2),
+        $rows = collect($this->rows)->map(fn (array $r) => [
+            $r['date'],
+            $r['supplier'],
+            $r['si_number'],
+            $r['po_number'],
+            number_format($r['amount'], 2),
+            number_format($r['running_total'], 2),
         ]);
 
-        $filename = 'gas-maintenance-report-'.now()->format('Y-m-d-His').'.csv';
+        $filename = 'maintenance-report-'.now()->format('Y-m-d-His').'.csv';
 
         return (new CsvExportService)->export($headers, $rows, $filename);
     }
 
     public function exportPdf(): StreamedResponse
     {
-        $pdf = Pdf::loadView('exports.gas-maintenance-report-pdf', [
+        $pdf = Pdf::loadView('exports.maintenance-report-pdf', [
             'rows' => $this->rows,
             'totals' => $this->totals,
             'dateFrom' => $this->dateFrom,
@@ -157,7 +141,7 @@ class GasMaintenanceReport extends Page
             'logoDataUri' => CompanyLogo::dataUri(),
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'gas-maintenance-report-'.now()->format('Y-m-d-His').'.pdf';
+        $filename = 'maintenance-report-'.now()->format('Y-m-d-His').'.pdf';
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();

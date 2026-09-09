@@ -36,6 +36,11 @@ class FuelLogsTable
                     ->searchable()
                     ->toggleable(),
 
+                TextColumn::make('si_dr_number')
+                    ->label('SI/DR #')
+                    ->searchable()
+                    ->toggleable(),
+
                 TextColumn::make('vehicle.full_name')
                     ->label('Truck/Unit')
                     ->description(fn ($record) => $record->vehicle?->plate_number)

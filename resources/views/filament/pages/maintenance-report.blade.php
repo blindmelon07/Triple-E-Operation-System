@@ -39,40 +39,37 @@
         @if($generated)
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
                 @if(empty($rows))
-                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No gas or maintenance activity found for those filters.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No maintenance activity found for those filters.</p>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm border border-gray-200 dark:border-gray-700">
                             <thead>
                                 <tr class="bg-blue-100 dark:bg-blue-900/40">
-                                    <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Vehicle</th>
-                                    <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Fuel Cost</th>
-                                    <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Fuel Liters</th>
-                                    <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Maintenance Cost</th>
+                                    <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Date</th>
+                                    <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Supplier</th>
+                                    <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">SI /DR #</th>
+                                    <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">PO#</th>
+                                    <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Amount</th>
                                     <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($rows as $vehicle)
+                                @foreach($rows as $r)
                                     <tr class="border-b border-gray-100 dark:border-gray-800">
-                                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                                            {{ $vehicle['plate_number'] }}
-                                            <span class="block text-xs text-gray-400 dark:text-gray-500">{{ $vehicle['full_name'] }}</span>
-                                        </td>
-                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['fuel_total'], 2) }}</td>
-                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['fuel_liters'], 2) }} L</td>
-                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['maintenance_total'], 2) }}</td>
-                                        <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($vehicle['grand_total'], 2) }}</td>
+                                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['date'] }}</td>
+                                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['supplier'] }}</td>
+                                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['si_number'] }}</td>
+                                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['po_number'] }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($r['amount'], 2) }}</td>
+                                        <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($r['running_total'], 2) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
-                                    <td class="px-3 py-2 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">Grand Total</td>
-                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['fuel_total'], 2) }}</td>
-                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['fuel_liters'], 2) }} L</td>
-                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['maintenance_total'], 2) }}</td>
-                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['grand_total'], 2) }}</td>
+                                    <td class="px-3 py-2 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700" colspan="4">Grand Total</td>
+                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['amount'], 2) }}</td>
+                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['amount'], 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>

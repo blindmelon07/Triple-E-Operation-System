@@ -39,6 +39,11 @@ class FuelLogForm
                             ->maxLength(255)
                             ->placeholder('Gas station name'),
 
+                        TextInput::make('si_dr_number')
+                            ->label('SI/DR #')
+                            ->helperText('Sales invoice / delivery receipt number.')
+                            ->maxLength(255),
+
                         Select::make('vehicle_id')
                             ->label('Truck/Unit')
                             ->options(
