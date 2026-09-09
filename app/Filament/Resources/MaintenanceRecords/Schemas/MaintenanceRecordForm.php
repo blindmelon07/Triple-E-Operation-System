@@ -99,7 +99,6 @@ class MaintenanceRecordForm
                             ->schema([
                                 TextInput::make('item_name')
                                     ->label('Product/Item')
-                                    ->required()
                                     ->maxLength(255)
                                     ->placeholder('e.g. Engine oil, brake pads')
                                     ->columnSpan(2),
@@ -107,13 +106,11 @@ class MaintenanceRecordForm
                                 Select::make('unit')
                                     ->label('Unit')
                                     ->options(ProductUnit::class)
-                                    ->default(ProductUnit::Piece)
-                                    ->required(),
+                                    ->default(ProductUnit::Piece),
 
                                 TextInput::make('quantity')
                                     ->label('Qty')
                                     ->numeric()
-                                    ->required()
                                     ->default(1)
                                     ->minValue(0)
                                     ->live(onBlur: true),
@@ -121,7 +118,6 @@ class MaintenanceRecordForm
                                 TextInput::make('unit_price')
                                     ->label('Price')
                                     ->numeric()
-                                    ->required()
                                     ->default(0)
                                     ->prefix('₱')
                                     ->minValue(0)
@@ -160,7 +156,6 @@ class MaintenanceRecordForm
                             )
                             ->searchable()
                             ->preload()
-                            ->required()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
                                 $vehicle = $state ? Vehicle::find($state) : null;
