@@ -28,42 +28,45 @@ class FuelLogForm
                             ->disabled()
                             ->dehydrated(),
 
+                        DatePicker::make('fuel_date')
+                            ->label('Date')
+                            ->required()
+                            ->default(now())
+                            ->maxDate(now()),
+
+                        TextInput::make('fuel_station')
+                            ->label('Gas Station')
+                            ->maxLength(255)
+                            ->placeholder('Gas station name'),
+
                         Select::make('vehicle_id')
-                            ->label('Vehicle')
+                            ->label('Truck/Unit')
                             ->options(
                                 Vehicle::whereIn('status', ['active', 'maintenance'])
                                     ->get()
-                                    ->mapWithKeys(fn ($v) => [$v->id => "{$v->plate_number} - {$v->full_name}"])
+                                    ->mapWithKeys(fn ($v) => [$v->id => $v->full_name])
                             )
                             ->searchable()
                             ->preload()
                             ->required()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
-                                if ($state) {
-                                    $vehicle = Vehicle::find($state);
-                                    if ($vehicle) {
-                                        $set('odometer_reading', $vehicle->current_mileage);
-                                    }
-                                }
+                                $vehicle = $state ? Vehicle::find($state) : null;
+                                $set('plate_number_display', $vehicle?->plate_number);
+                                $set('odometer_reading', $vehicle?->current_mileage);
                             }),
 
-                        DatePicker::make('fuel_date')
-                            ->label('Fuel Date')
-                            ->required()
-                            ->default(now())
-                            ->maxDate(now()),
+                        TextInput::make('plate_number_display')
+                            ->label('Plate Number')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->default(fn (Get $get) => Vehicle::find($get('vehicle_id'))?->plate_number),
 
                         TextInput::make('odometer_reading')
                             ->label('Odometer Reading')
                             ->numeric()
                             ->minValue(0)
                             ->suffix('km'),
-
-                        TextInput::make('fuel_station')
-                            ->label('Fuel Station')
-                            ->maxLength(255)
-                            ->placeholder('Gas station name'),
                     ])
                     ->columns(2),
 

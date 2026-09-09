@@ -21,7 +21,7 @@ class MaintenanceRecordForm
     {
         return $schema
             ->components([
-                Section::make('Service Information')
+                Section::make('Maintenance Expense')
                     ->schema([
                         TextInput::make('reference_number')
                             ->label('Reference Number')
@@ -29,25 +29,30 @@ class MaintenanceRecordForm
                             ->disabled()
                             ->dehydrated(),
 
-                        Select::make('vehicle_id')
-                            ->label('Vehicle')
-                            ->options(
-                                Vehicle::whereIn('status', ['active', 'maintenance'])
-                                    ->get()
-                                    ->mapWithKeys(fn ($v) => [$v->id => "{$v->plate_number} - {$v->full_name}"])
-                            )
+                        DatePicker::make('maintenance_date')
+                            ->label('Date')
+                            ->required()
+                            ->default(now())
+                            ->maxDate(now()->addMonth()),
+
+                        Select::make('supplier_id')
+                            ->label('Supplier')
+                            ->relationship('supplier', 'name')
                             ->searchable()
                             ->preload()
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
-                                if ($state) {
-                                    $vehicle = Vehicle::find($state);
-                                    if ($vehicle) {
-                                        $set('mileage_at_service', $vehicle->current_mileage);
-                                    }
-                                }
-                            }),
+                            ->createOptionForm([
+                                TextInput::make('name')->required()->maxLength(255),
+                            ]),
+
+                        TextInput::make('si_number')
+                            ->label('SI #')
+                            ->helperText('Supplier invoice number.')
+                            ->maxLength(255),
+
+                        TextInput::make('po_number')
+                            ->label('PO #')
+                            ->helperText('Purchase order number.')
+                            ->maxLength(255),
 
                         Select::make('maintenance_type_id')
                             ->label('Service Type')
@@ -70,19 +75,6 @@ class MaintenanceRecordForm
                                     ->suffix('months'),
                             ]),
 
-                        DatePicker::make('maintenance_date')
-                            ->label('Service Date')
-                            ->required()
-                            ->default(now())
-                            ->maxDate(now()->addMonth()),
-
-                        TextInput::make('mileage_at_service')
-                            ->label('Mileage at Service')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0)
-                            ->suffix('km'),
-
                         Select::make('status')
                             ->label('Status')
                             ->options([
@@ -94,43 +86,79 @@ class MaintenanceRecordForm
                             ->default('completed')
                             ->required(),
                     ])
-                    ->columns(2),
+                    ->columns(3),
 
-                Section::make('Cost Breakdown')
+                Section::make('Product / Item')
                     ->schema([
-                        TextInput::make('parts_cost')
-                            ->label('Parts Cost')
+                        TextInput::make('item_name')
+                            ->label('Product/Item')
+                            ->maxLength(255)
+                            ->placeholder('e.g. Engine oil, brake pads'),
+
+                        TextInput::make('quantity')
+                            ->label('Qty')
                             ->numeric()
-                            ->prefix('₱')
-                            ->default(0)
                             ->minValue(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set) {
-                                $parts = floatval($get('parts_cost') ?? 0);
-                                $labor = floatval($get('labor_cost') ?? 0);
-                                $set('cost', $parts + $labor);
+                                $qty = floatval($get('quantity') ?? 0);
+                                $price = floatval($get('unit_price') ?? 0);
+                                $set('cost', round($qty * $price, 2));
                             }),
 
-                        TextInput::make('labor_cost')
-                            ->label('Labor Cost')
+                        TextInput::make('unit_price')
+                            ->label('Price')
                             ->numeric()
                             ->prefix('₱')
-                            ->default(0)
                             ->minValue(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set) {
-                                $parts = floatval($get('parts_cost') ?? 0);
-                                $labor = floatval($get('labor_cost') ?? 0);
-                                $set('cost', $parts + $labor);
+                                $qty = floatval($get('quantity') ?? 0);
+                                $price = floatval($get('unit_price') ?? 0);
+                                $set('cost', round($qty * $price, 2));
                             }),
 
                         TextInput::make('cost')
-                            ->label('Total Cost')
+                            ->label('Amount')
                             ->numeric()
                             ->prefix('₱')
                             ->default(0)
                             ->disabled()
                             ->dehydrated(),
+                    ])
+                    ->columns(4),
+
+                Section::make('Truck / Unit')
+                    ->schema([
+                        Select::make('vehicle_id')
+                            ->label('Truck/Unit')
+                            ->options(
+                                Vehicle::whereIn('status', ['active', 'maintenance'])
+                                    ->get()
+                                    ->mapWithKeys(fn ($v) => [$v->id => $v->full_name])
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
+                                $vehicle = $state ? Vehicle::find($state) : null;
+                                $set('plate_number_display', $vehicle?->plate_number);
+                                $set('mileage_at_service', $vehicle?->current_mileage);
+                            }),
+
+                        TextInput::make('plate_number_display')
+                            ->label('Plate Number')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->default(fn (Get $get) => Vehicle::find($get('vehicle_id'))?->plate_number),
+
+                        TextInput::make('mileage_at_service')
+                            ->label('Mileage at Service')
+                            ->required()
+                            ->numeric()
+                            ->minValue(0)
+                            ->suffix('km'),
 
                         TextInput::make('service_provider')
                             ->label('Service Provider / Shop')
@@ -161,7 +189,8 @@ class MaintenanceRecordForm
                             ->maxSize(5120)
                             ->acceptedFileTypes(['image/*', 'application/pdf']),
                     ])
-                    ->columns(1),
+                    ->columns(1)
+                    ->collapsed(),
 
                 Section::make('Next Service Reminder')
                     ->schema([

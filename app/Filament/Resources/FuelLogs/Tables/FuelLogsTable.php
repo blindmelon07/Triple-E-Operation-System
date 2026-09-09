@@ -31,9 +31,14 @@ class FuelLogsTable
                     ->date('M d, Y')
                     ->sortable(),
 
-                TextColumn::make('vehicle.plate_number')
-                    ->label('Vehicle')
-                    ->description(fn ($record) => $record->vehicle?->full_name)
+                TextColumn::make('fuel_station')
+                    ->label('Gas Station')
+                    ->searchable()
+                    ->toggleable(),
+
+                TextColumn::make('vehicle.full_name')
+                    ->label('Truck/Unit')
+                    ->description(fn ($record) => $record->vehicle?->plate_number)
                     ->searchable()
                     ->sortable(),
 
@@ -63,12 +68,6 @@ class FuelLogsTable
                     ->suffix(' km')
                     ->sortable()
                     ->toggleable(),
-
-                TextColumn::make('fuel_station')
-                    ->label('Station')
-                    ->searchable()
-                    ->limit(20)
-                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('user.name')
                     ->label('Recorded By')

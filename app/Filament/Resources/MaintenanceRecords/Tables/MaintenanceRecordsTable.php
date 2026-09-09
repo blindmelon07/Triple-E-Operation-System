@@ -30,9 +30,41 @@ class MaintenanceRecordsTable
                     ->date('M d, Y')
                     ->sortable(),
 
-                TextColumn::make('vehicle.plate_number')
-                    ->label('Vehicle')
-                    ->description(fn ($record) => $record->vehicle?->full_name)
+                TextColumn::make('supplier.name')
+                    ->label('Supplier')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('si_number')
+                    ->label('SI #')
+                    ->searchable()
+                    ->toggleable(),
+
+                TextColumn::make('po_number')
+                    ->label('PO #')
+                    ->searchable()
+                    ->toggleable(),
+
+                TextColumn::make('item_name')
+                    ->label('Product/Item')
+                    ->searchable()
+                    ->limit(25)
+                    ->toggleable(),
+
+                TextColumn::make('quantity')
+                    ->label('Qty')
+                    ->numeric(decimalPlaces: 2)
+                    ->toggleable(),
+
+                TextColumn::make('unit_price')
+                    ->label('Price')
+                    ->money('PHP')
+                    ->toggleable(),
+
+                TextColumn::make('vehicle.full_name')
+                    ->label('Truck/Unit')
+                    ->description(fn ($record) => $record->vehicle?->plate_number)
                     ->searchable()
                     ->sortable(),
 
@@ -51,7 +83,7 @@ class MaintenanceRecordsTable
                     ->toggleable(),
 
                 TextColumn::make('cost')
-                    ->label('Total Cost')
+                    ->label('Amount')
                     ->money('PHP')
                     ->sortable()
                     ->summarize([

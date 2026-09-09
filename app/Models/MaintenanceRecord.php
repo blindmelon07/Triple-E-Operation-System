@@ -14,11 +14,17 @@ class MaintenanceRecord extends Model
 
     protected $fillable = [
         'vehicle_id',
+        'supplier_id',
         'maintenance_type_id',
         'user_id',
         'reference_number',
+        'si_number',
+        'po_number',
         'maintenance_date',
         'mileage_at_service',
+        'item_name',
+        'quantity',
+        'unit_price',
         'cost',
         'parts_cost',
         'labor_cost',
@@ -42,6 +48,8 @@ class MaintenanceRecord extends Model
             'cost' => 'decimal:2',
             'parts_cost' => 'decimal:2',
             'labor_cost' => 'decimal:2',
+            'quantity' => 'decimal:2',
+            'unit_price' => 'decimal:2',
             'mileage_at_service' => 'integer',
             'next_service_mileage' => 'integer',
         ];
@@ -53,6 +61,14 @@ class MaintenanceRecord extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    /**
+     * @return BelongsTo<Supplier, $this>
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     /**
