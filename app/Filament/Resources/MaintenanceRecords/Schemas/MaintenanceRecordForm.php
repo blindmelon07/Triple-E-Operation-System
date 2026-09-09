@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MaintenanceRecords\Schemas;
 
+use App\Enums\ProductUnit;
 use App\Models\MaintenanceRecord;
 use App\Models\MaintenanceType;
 use App\Models\Vehicle;
@@ -103,6 +104,12 @@ class MaintenanceRecordForm
                                     ->placeholder('e.g. Engine oil, brake pads')
                                     ->columnSpan(2),
 
+                                Select::make('unit')
+                                    ->label('Unit')
+                                    ->options(ProductUnit::class)
+                                    ->default(ProductUnit::Piece)
+                                    ->required(),
+
                                 TextInput::make('quantity')
                                     ->label('Qty')
                                     ->numeric()
@@ -120,7 +127,7 @@ class MaintenanceRecordForm
                                     ->minValue(0)
                                     ->live(onBlur: true),
                             ])
-                            ->columns(4)
+                            ->columns(5)
                             ->defaultItems(1)
                             ->reorderable(false)
                             ->live()

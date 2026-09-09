@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductUnit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,7 @@ class MaintenanceRecordItem extends Model
     protected $fillable = [
         'maintenance_record_id',
         'item_name',
+        'unit',
         'quantity',
         'unit_price',
     ];
@@ -20,6 +22,7 @@ class MaintenanceRecordItem extends Model
     protected function casts(): array
     {
         return [
+            'unit' => ProductUnit::class,
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
         ];
