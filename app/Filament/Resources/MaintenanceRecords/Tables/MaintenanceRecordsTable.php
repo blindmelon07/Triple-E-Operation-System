@@ -18,6 +18,7 @@ class MaintenanceRecordsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('items'))
             ->columns([
                 TextColumn::make('reference_number')
                     ->label('Reference')
@@ -46,20 +47,11 @@ class MaintenanceRecordsTable
                     ->searchable()
                     ->toggleable(),
 
-                TextColumn::make('item_name')
+                TextColumn::make('items.item_name')
                     ->label('Product/Item')
+                    ->listWithLineBreaks()
+                    ->limitList(3)
                     ->searchable()
-                    ->limit(25)
-                    ->toggleable(),
-
-                TextColumn::make('quantity')
-                    ->label('Qty')
-                    ->numeric(decimalPlaces: 2)
-                    ->toggleable(),
-
-                TextColumn::make('unit_price')
-                    ->label('Price')
-                    ->money('PHP')
                     ->toggleable(),
 
                 TextColumn::make('vehicle.full_name')

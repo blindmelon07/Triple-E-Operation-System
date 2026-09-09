@@ -7,6 +7,7 @@ use App\Models\MaintenanceType;
 use App\Models\Vehicle;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -90,43 +91,56 @@ class MaintenanceRecordForm
 
                 Section::make('Product / Item')
                     ->schema([
-                        TextInput::make('item_name')
-                            ->label('Product/Item')
-                            ->maxLength(255)
-                            ->placeholder('e.g. Engine oil, brake pads'),
+                        Repeater::make('items')
+                            ->label('')
+                            ->relationship()
+                            ->addActionLabel('+ Add Product Item')
+                            ->schema([
+                                TextInput::make('item_name')
+                                    ->label('Product/Item')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('e.g. Engine oil, brake pads')
+                                    ->columnSpan(2),
 
-                        TextInput::make('quantity')
-                            ->label('Qty')
-                            ->numeric()
-                            ->minValue(0)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                $qty = floatval($get('quantity') ?? 0);
-                                $price = floatval($get('unit_price') ?? 0);
-                                $set('cost', round($qty * $price, 2));
-                            }),
+                                TextInput::make('quantity')
+                                    ->label('Qty')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(1)
+                                    ->minValue(0)
+                                    ->live(onBlur: true),
 
-                        TextInput::make('unit_price')
-                            ->label('Price')
-                            ->numeric()
-                            ->prefix('₱')
-                            ->minValue(0)
-                            ->live(onBlur: true)
+                                TextInput::make('unit_price')
+                                    ->label('Price')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(0)
+                                    ->prefix('₱')
+                                    ->minValue(0)
+                                    ->live(onBlur: true),
+                            ])
+                            ->columns(4)
+                            ->defaultItems(1)
+                            ->reorderable(false)
+                            ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
-                                $qty = floatval($get('quantity') ?? 0);
-                                $price = floatval($get('unit_price') ?? 0);
-                                $set('cost', round($qty * $price, 2));
+                                $items = $get('items') ?? [];
+                                $total = collect($items)->sum(
+                                    fn ($item) => floatval($item['quantity'] ?? 0) * floatval($item['unit_price'] ?? 0)
+                                );
+                                $set('cost', round($total, 2));
                             }),
 
                         TextInput::make('cost')
-                            ->label('Amount')
+                            ->label('Total Amount')
                             ->numeric()
                             ->prefix('₱')
                             ->default(0)
                             ->disabled()
                             ->dehydrated(),
                     ])
-                    ->columns(4),
+                    ->columns(1),
 
                 Section::make('Truck / Unit')
                     ->schema([
