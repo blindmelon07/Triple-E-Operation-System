@@ -67,13 +67,6 @@ class MaintenanceRecordsTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('mileage_at_service')
-                    ->label('Mileage')
-                    ->numeric()
-                    ->suffix(' km')
-                    ->sortable()
-                    ->toggleable(),
-
                 TextColumn::make('cost')
                     ->label('Amount')
                     ->money('PHP')

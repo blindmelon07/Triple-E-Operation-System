@@ -165,7 +165,6 @@ class MaintenanceRecordForm
                             ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
                                 $vehicle = $state ? Vehicle::find($state) : null;
                                 $set('plate_number_display', $vehicle?->plate_number);
-                                $set('mileage_at_service', $vehicle?->current_mileage);
                             }),
 
                         TextInput::make('plate_number_display')
@@ -173,13 +172,6 @@ class MaintenanceRecordForm
                             ->disabled()
                             ->dehydrated(false)
                             ->default(fn (Get $get) => Vehicle::find($get('vehicle_id'))?->plate_number),
-
-                        TextInput::make('mileage_at_service')
-                            ->label('Mileage at Service')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0)
-                            ->suffix('km'),
 
                         TextInput::make('service_provider')
                             ->label('Service Provider / Shop')
