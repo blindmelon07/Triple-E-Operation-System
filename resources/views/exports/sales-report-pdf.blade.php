@@ -82,7 +82,7 @@
             <img src="{{ $logoDataUri }}" alt="Company Logo">
         @endif
         <h1>Sales Report</h1>
-        <p>Tri-E Enterprises &nbsp;|&nbsp; Period: {{ $periodLabel }}</p>
+        <p>Tri-E Enterprises OPC &nbsp;|&nbsp; Period: {{ $periodLabel }}</p>
         <p>{{ $sales->count() }} sale{{ $sales->count() === 1 ? '' : 's' }}</p>
     </div>
 

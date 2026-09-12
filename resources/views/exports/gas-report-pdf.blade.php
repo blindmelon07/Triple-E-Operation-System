@@ -22,6 +22,12 @@
             max-height: 50px;
             margin-bottom: 8px;
         }
+        .header .company-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1e40af;
+            margin: 0 0 6px;
+        }
         .header h1 {
             color: #1e40af;
             margin: 0;
@@ -66,6 +72,7 @@
         @if($logoDataUri ?? null)
             <img src="{{ $logoDataUri }}" alt="Company Logo">
         @endif
+        <p class="company-name">Tri-e Enterprises OPC</p>
         <h1>Gas Report</h1>
         <p>
             @if($dateFrom || $dateTo)

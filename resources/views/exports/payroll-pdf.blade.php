@@ -148,7 +148,7 @@
         @if ($logoDataUri)
             <img src="{{ $logoDataUri }}" alt="Company Logo">
         @endif
-        <h1>Tri-E Enterprises</h1>
+        <h1>Tri-E Enterprises OPC</h1>
         <p>Payroll Statement &mdash; {{ $payroll->payroll_number }} &middot; {{ $payroll->pay_period_type->getLabel() }}</p>
         <p>Pay Period: {{ $payroll->pay_period_start->format('F d, Y') }} &ndash; {{ $payroll->pay_period_end->format('F d, Y') }}</p>
     </div>

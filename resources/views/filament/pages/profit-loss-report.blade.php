@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    @include('filament.pages.partials.company-header')
     <div class="space-y-6">
         {{-- Filters --}}
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">

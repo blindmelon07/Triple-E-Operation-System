@@ -145,7 +145,7 @@
                 <img src="{{ $logoDataUri }}" alt="Company Logo">
             @endif
             <div>
-                <div class="company-name">Tri-E Enterprises</div>
+                <div class="company-name">Tri-E Enterprises OPC</div>
                 <div class="company-sub">Maharlika Highway, Cabidan, Sorsogon City &nbsp;|&nbsp; (+639) 993-052-2540</div>
             </div>
         </div>

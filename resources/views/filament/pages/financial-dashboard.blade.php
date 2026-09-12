@@ -1,4 +1,5 @@
 ﻿<x-filament-panels::page>
+    @include('filament.pages.partials.company-header')
     @php
         $peso = '&#8369;';
     @endphp
