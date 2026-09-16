@@ -44,8 +44,8 @@ class FuelLogsTable
                 TextColumn::make('vehicle.full_name')
                     ->label('Truck/Unit')
                     ->description(fn ($record) => $record->vehicle?->plate_number)
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(['make', 'model', 'year'])
+                    ->sortable(['make', 'model', 'year']),
 
                 TextColumn::make('liters')
                     ->label('Liters')
