@@ -53,7 +53,6 @@ class FuelLogForm
                             )
                             ->searchable()
                             ->preload()
-                            ->required()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
                                 $vehicle = $state ? Vehicle::find($state) : null;
