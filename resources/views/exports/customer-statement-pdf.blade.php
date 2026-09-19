@@ -125,6 +125,25 @@
             padding-top: 5px;
         }
 
+        /* ── Signatures ── */
+        .signature-block {
+            width: 100%;
+            margin-top: 36px;
+        }
+        .signature-block td { padding: 0 30px; vertical-align: top; }
+        .signature-line {
+            border-bottom: 1px solid #1e293b;
+            height: 28px;
+        }
+        .signature-label {
+            font-size: 8.5px;
+            color: #64748b;
+            text-align: center;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
         /* ── Footer ── */
         .footer {
             text-align: center;
@@ -277,6 +296,20 @@
                 </tr>
             </tfoot>
         @endif
+    </table>
+
+    {{-- Signatures --}}
+    <table class="signature-block">
+        <tr>
+            <td style="width:50%">
+                <div class="signature-line"></div>
+                <div class="signature-label">Prepared By</div>
+            </td>
+            <td style="width:50%">
+                <div class="signature-line"></div>
+                <div class="signature-label">Received By</div>
+            </td>
+        </tr>
     </table>
 
     <div class="footer">
