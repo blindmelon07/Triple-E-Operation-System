@@ -349,10 +349,29 @@ class ReportExportService
      * ledger of invoices (debits) and payments (credits) with a running balance,
      * optionally scoped to a date range with a carried-forward opening balance.
      */
-    public function exportCustomerStatementPdf(Customer $customer, ?string $dateFrom = null, ?string $dateTo = null): StreamedResponse
+    public function exportCustomerStatementPdf(Customer $customer, ?string $dateFrom = null, ?string $dateTo = null, ?string $paymentStatus = null): StreamedResponse
+    {
+        $pdf = $this->buildCustomerStatementPdf($customer, $dateFrom, $dateTo, $paymentStatus);
+
+        $filename = 'statement-of-account-'.Str::slug($customer->name).'-'.now()->format('Y-m-d').'.pdf';
+
+        return $this->streamPdf($pdf, $filename);
+    }
+
+    /**
+     * Build the same Statement of Account PDF as exportCustomerStatementPdf(),
+     * without streaming it — used when the statement needs to be attached to
+     * an email instead of downloaded directly.
+     *
+     * $paymentStatus scopes which invoices appear in the ledger: 'paid' shows only
+     * fully-paid invoices, 'unpaid' shows unpaid and partially-paid ones, null shows all.
+     */
+    public function buildCustomerStatementPdf(Customer $customer, ?string $dateFrom = null, ?string $dateTo = null, ?string $paymentStatus = null): PdfInstance
     {
         $sales = Sale::where('customer_id', $customer->id)
             ->where('is_voided', false)
+            ->when($paymentStatus === 'paid', fn ($q) => $q->where('payment_status', 'paid'))
+            ->when($paymentStatus === 'unpaid', fn ($q) => $q->whereIn('payment_status', ['unpaid', 'partial']))
             ->orderBy('date')
             ->orderBy('created_at')
             ->get();
@@ -436,15 +455,14 @@ class ReportExportService
             'totalPaid'      => (float) $periodEntries->sum('credit'),
             'dateFrom'       => $from,
             'dateTo'         => $to,
+            'paymentStatus'  => $paymentStatus,
             'generatedAt'    => now()->format('F d, Y h:i A'),
             'logoDataUri'    => CompanyLogo::dataUri(),
         ]);
 
         $pdf->setPaper('a4', 'portrait');
 
-        $filename = 'statement-of-account-'.Str::slug($customer->name).'-'.now()->format('Y-m-d').'.pdf';
-
-        return $this->streamPdf($pdf, $filename);
+        return $pdf;
     }
 
     /**

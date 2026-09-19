@@ -75,6 +75,7 @@ Route::middleware(['auth'])->group(function () {
             $customer,
             $request->query('date_from'),
             $request->query('date_to'),
+            $request->query('payment_status'),
         );
     })->name('customer-statement.export-pdf');
 });

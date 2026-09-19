@@ -160,6 +160,11 @@
                     Full Account History
                 @endif
             </p>
+            @if(($paymentStatus ?? null) === 'paid')
+                <p>Filter: Paid invoices only</p>
+            @elseif(($paymentStatus ?? null) === 'unpaid')
+                <p>Filter: Unpaid invoices only</p>
+            @endif
             <p>Generated: {{ $generatedAt }}</p>
         </div>
     </div>
