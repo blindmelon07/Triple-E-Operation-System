@@ -1944,9 +1944,26 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-6 space-y-4">
-                <!-- Step 1: pick the replacement product -->
+                <!-- Replacement lines already added to this exchange -->
+                <div x-show="exchangeItems.length > 0" class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Replacing with</label>
+                    <template x-for="(line, index) in exchangeItems" :key="index">
+                        <div class="flex items-center justify-between gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                            <div class="min-w-0">
+                                <p class="font-medium text-gray-900 dark:text-white truncate" x-text="line.product_name"></p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="parseFloat(line.quantity) + ' ' + line.unit + ' × ₱' + parseFloat(line.unit_price).toFixed(2) + ' = ₱' + exchangeLineTotal(line).toFixed(2)"></p>
+                            </div>
+                            <button @click="removeExchangeLine(index)" class="text-sm text-red-600 dark:text-red-400 hover:underline shrink-0">Remove</button>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Pick a replacement product to add -->
                 <div x-show="!exchangeProduct">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Replacement product <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <span x-text="exchangeItems.length > 0 ? 'Add another replacement product' : 'Replacement product'"></span>
+                        <span class="text-red-500">*</span>
+                    </label>
                     <input
                         type="text"
                         x-model="exchangeSearchQuery"
@@ -1970,7 +1987,7 @@
                     </div>
                 </div>
 
-                <!-- Step 2: quantity / unit / price for the chosen replacement -->
+                <!-- Quantity / unit / price for the product just picked, then add it as a line -->
                 <div x-show="exchangeProduct" class="space-y-4">
                     <div class="flex items-center justify-between gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                         <div>
@@ -2011,33 +2028,41 @@
                         </div>
                     </div>
 
-                    <!-- What the swap does to the money -->
-                    <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl space-y-1 text-sm">
-                        <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                            <span>Item removed</span>
-                            <span x-text="'−₱' + parseFloat(itemToExchange?.price || 0).toFixed(2)"></span>
-                        </div>
-                        <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                            <span>Item added</span>
-                            <span x-text="'+₱' + exchangeNewPrice().toFixed(2)"></span>
-                        </div>
-                        <div class="flex justify-between font-bold pt-1 border-t border-gray-200 dark:border-gray-600"
-                             :class="exchangeDifference() > 0 ? 'text-green-600 dark:text-green-400' : (exchangeDifference() < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white')">
-                            <span x-text="exchangeDifference() > 0 ? 'Customer pays' : (exchangeDifference() < 0 ? 'Refund customer' : 'No difference')"></span>
-                            <span x-text="'₱' + Math.abs(exchangeDifference()).toFixed(2)"></span>
-                        </div>
-                    </div>
+                    <button
+                        @click="addExchangeLine()"
+                        :disabled="!(exchangeQuantity > 0)"
+                        class="w-full px-4 py-2 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-xl hover:bg-blue-200 dark:hover:bg-blue-900/60 disabled:opacity-50 transition font-semibold text-sm"
+                    >
+                        + Add to exchange
+                    </button>
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for exchange <span class="text-red-500">*</span></label>
-                        <input
-                            type="text"
-                            x-model="exchangeReason"
-                            placeholder="e.g. Customer wanted a different size..."
-                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
-                            @keydown.enter="submitItemExchangeRequest()"
-                        >
+                <!-- What the swap does to the money -->
+                <div x-show="exchangeItems.length > 0" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl space-y-1 text-sm">
+                    <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                        <span>Item removed</span>
+                        <span x-text="'−₱' + parseFloat(itemToExchange?.price || 0).toFixed(2)"></span>
                     </div>
+                    <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                        <span>Items added</span>
+                        <span x-text="'+₱' + exchangeItemsTotal().toFixed(2)"></span>
+                    </div>
+                    <div class="flex justify-between font-bold pt-1 border-t border-gray-200 dark:border-gray-600"
+                         :class="exchangeDifference() > 0 ? 'text-green-600 dark:text-green-400' : (exchangeDifference() < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white')">
+                        <span x-text="exchangeDifference() > 0 ? 'Customer pays' : (exchangeDifference() < 0 ? 'Refund customer' : 'No difference')"></span>
+                        <span x-text="'₱' + Math.abs(exchangeDifference()).toFixed(2)"></span>
+                    </div>
+                </div>
+
+                <div x-show="exchangeItems.length > 0">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for exchange <span class="text-red-500">*</span></label>
+                    <input
+                        type="text"
+                        x-model="exchangeReason"
+                        placeholder="e.g. Customer wanted a different size..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-base"
+                        @keydown.enter="submitItemExchangeRequest()"
+                    >
                 </div>
             </div>
 
@@ -2050,7 +2075,7 @@
                 </button>
                 <button
                     @click="submitItemExchangeRequest()"
-                    :disabled="!exchangeProduct || !exchangeReason.trim() || !(exchangeQuantity > 0) || isExchanging"
+                    :disabled="exchangeItems.length === 0 || !exchangeReason.trim() || isExchanging"
                     class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition font-semibold flex items-center justify-center gap-2"
                 >
                     <svg x-show="isExchanging" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -2564,10 +2589,12 @@
                                     </template>
                                     <template x-if="vr.is_exchange">
                                         <div>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">
-                                                <span class="font-medium">Add:</span>
-                                                <span x-text="vr.replacement_name + ' × ' + parseFloat(vr.replacement_quantity) + ' ' + vr.replacement_unit + ' — ₱' + parseFloat(vr.replacement_price).toFixed(2)"></span>
-                                            </p>
+                                            <template x-for="(line, idx) in vr.replacements" :key="idx">
+                                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                                    <span class="font-medium" x-text="idx === 0 ? 'Add:' : ''"></span>
+                                                    <span x-text="line.product_name + ' × ' + parseFloat(line.quantity) + ' ' + line.unit + ' — ₱' + parseFloat(line.line_total).toFixed(2)"></span>
+                                                </p>
+                                            </template>
                                             <p class="text-sm font-semibold"
                                                :class="vr.price_difference > 0 ? 'text-green-700 dark:text-green-400' : (vr.price_difference < 0 ? 'text-red-700 dark:text-red-400' : 'text-gray-600 dark:text-gray-400')"
                                                x-text="vr.price_difference > 0
@@ -2933,7 +2960,7 @@
                 showVoidItemModal: false,
                 itemToVoid: null,
                 voidPollTarget: 'sale', // 'sale' | 'item' | 'exchange' — which flow the pending request belongs to
-                // Exchange item flow (swap a line item of a completed sale)
+                // Exchange item flow (swap a line item of a completed sale for one or more replacements)
                 showExchangeItemModal: false,
                 itemToExchange: null,
                 exchangeSearchQuery: '',
@@ -2941,6 +2968,7 @@
                 exchangeQuantity: 1,
                 exchangeUnit: '',
                 exchangeUnitPrice: 0,
+                exchangeItems: [], // lines added to this exchange so far: {product_id, product_name, quantity, unit, unit_price}
                 exchangeReason: '',
                 isExchanging: false,
                 // Cashier waiting flow
@@ -4088,6 +4116,7 @@
                     this.exchangeQuantity = 1;
                     this.exchangeUnit = '';
                     this.exchangeUnitPrice = 0;
+                    this.exchangeItems = [];
                     this.exchangeReason = '';
                     this.voidPollTarget = 'exchange';
                     this.showExchangeItemModal = true;
@@ -4097,6 +4126,7 @@
                     this.showExchangeItemModal = false;
                     this.itemToExchange = null;
                     this.exchangeProduct = null;
+                    this.exchangeItems = [];
                     this.exchangeReason = '';
                     this.exchangeSearchQuery = '';
                 },
@@ -4120,20 +4150,45 @@
                     this.exchangeUnitPrice = parseFloat(match ? match.price : (this.exchangeProduct?.price || 0));
                 },
 
-                exchangeNewPrice() {
-                    const price = parseFloat(this.exchangeUnitPrice) || 0;
-                    const qty = parseFloat(this.exchangeQuantity) || 0;
-                    return Math.round(price * qty * 100) / 100;
+                // Adds the currently-configured product/qty/unit/price as one more
+                // replacement line, then clears the picker so another can be added.
+                addExchangeLine() {
+                    if (!this.exchangeProduct || !(parseFloat(this.exchangeQuantity) > 0)) return;
+
+                    this.exchangeItems.push({
+                        product_id: this.exchangeProduct.id,
+                        product_name: this.exchangeProduct.name,
+                        quantity: parseFloat(this.exchangeQuantity),
+                        unit: this.exchangeUnit,
+                        unit_price: parseFloat(this.exchangeUnitPrice) || 0,
+                    });
+
+                    this.exchangeProduct = null;
+                    this.exchangeSearchQuery = '';
+                    this.exchangeQuantity = 1;
+                    this.exchangeUnit = '';
+                    this.exchangeUnitPrice = 0;
+                },
+
+                removeExchangeLine(index) {
+                    this.exchangeItems.splice(index, 1);
+                },
+
+                exchangeLineTotal(line) {
+                    return Math.round((parseFloat(line.unit_price) || 0) * (parseFloat(line.quantity) || 0) * 100) / 100;
+                },
+
+                exchangeItemsTotal() {
+                    return Math.round(this.exchangeItems.reduce((sum, line) => sum + this.exchangeLineTotal(line), 0) * 100) / 100;
                 },
 
                 exchangeDifference() {
                     const outgoing = parseFloat(this.itemToExchange?.price) || 0;
-                    return Math.round((this.exchangeNewPrice() - outgoing) * 100) / 100;
+                    return Math.round((this.exchangeItemsTotal() - outgoing) * 100) / 100;
                 },
 
                 async submitItemExchangeRequest() {
-                    if (!this.itemToExchange || !this.exchangeProduct || !this.exchangeReason.trim() || this.isExchanging) return;
-                    if (!(parseFloat(this.exchangeQuantity) > 0)) return;
+                    if (!this.itemToExchange || this.exchangeItems.length === 0 || !this.exchangeReason.trim() || this.isExchanging) return;
 
                     this.isExchanging = true;
                     try {
@@ -4146,10 +4201,12 @@
                             },
                             body: JSON.stringify({
                                 void_reason: this.exchangeReason.trim(),
-                                replacement_product_id: this.exchangeProduct.id,
-                                replacement_quantity: parseFloat(this.exchangeQuantity),
-                                replacement_unit: this.exchangeUnit,
-                                replacement_unit_price: parseFloat(this.exchangeUnitPrice) || 0,
+                                replacements: this.exchangeItems.map(line => ({
+                                    product_id: line.product_id,
+                                    quantity: parseFloat(line.quantity),
+                                    unit: line.unit,
+                                    unit_price: parseFloat(line.unit_price) || 0,
+                                })),
                             }),
                         });
 
@@ -4254,6 +4311,7 @@
                                     this.fetchRecentSales();
                                     this.itemToExchange = null;
                                     this.exchangeProduct = null;
+                                    this.exchangeItems = [];
                                     this.exchangeReason = '';
                                     alert(
                                         difference > 0
@@ -4293,6 +4351,7 @@
                                 this.itemToVoid = null;
                                 this.itemToExchange = null;
                                 this.exchangeProduct = null;
+                                this.exchangeItems = [];
                                 this.currentVoidRequestId = null;
                             }
                         } catch (e) {}
@@ -4321,6 +4380,7 @@
                     this.itemToVoid = null;
                     this.itemToExchange = null;
                     this.exchangeProduct = null;
+                    this.exchangeItems = [];
                     this.voidReason = '';
                     this.exchangeReason = '';
                 },

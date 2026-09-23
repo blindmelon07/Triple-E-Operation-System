@@ -6,7 +6,6 @@ use App\Models\AuditLog;
 use App\Models\CashRegisterSession;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
-use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
@@ -22,7 +21,7 @@ class VoidRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        $requests = VoidRequest::with(['sale.customer', 'saleItem.product', 'replacementProduct', 'requestedBy'])
+        $requests = VoidRequest::with(['sale.customer', 'saleItem.product', 'exchangeItems.product', 'requestedBy'])
             ->pending()
             ->orderBy('created_at')
             ->get()
@@ -32,7 +31,7 @@ class VoidRequestController extends Controller
                 $isItemLevel  = $vr->sale_item_id !== null;
                 $isExchange   = $vr->isItemExchange();
                 $newItemPrice = $isExchange
-                    ? round((float) $vr->replacement_unit_price * (float) $vr->replacement_quantity, 2)
+                    ? round($vr->exchangeItems->sum(fn ($line) => (float) $line->unit_price * (float) $line->quantity), 2)
                     : null;
 
                 return [
@@ -51,11 +50,15 @@ class VoidRequestController extends Controller
                     'item_quantity' => $isItemLevel ? $vr->saleItem?->quantity : null,
                     'item_price'    => $isItemLevel ? $vr->saleItem?->price : null,
 
-                    'replacement_name'     => $isExchange ? $vr->replacementProduct?->name : null,
-                    'replacement_quantity' => $isExchange ? $vr->replacement_quantity : null,
-                    'replacement_unit'     => $isExchange ? $vr->replacement_unit : null,
-                    'replacement_price'    => $newItemPrice,
-                    'price_difference'     => $isExchange
+                    'replacements'      => $isExchange ? $vr->exchangeItems->map(fn ($line) => [
+                        'product_name' => $line->product?->name,
+                        'quantity'     => (float) $line->quantity,
+                        'unit'         => $line->unit,
+                        'unit_price'   => (float) $line->unit_price,
+                        'line_total'   => round((float) $line->quantity * (float) $line->unit_price, 2),
+                    ])->values() : null,
+                    'replacement_price' => $newItemPrice,
+                    'price_difference'  => $isExchange
                         ? round($newItemPrice - (float) $vr->saleItem?->price, 2)
                         : null,
                 ];
@@ -358,18 +361,19 @@ class VoidRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Sale is already voided.'], 422);
         }
 
-        $replacement = Product::find($voidRequest->replacement_product_id);
+        $exchangeItems = $voidRequest->exchangeItems()->with('product')->get();
 
-        if (! $replacement) {
+        if ($exchangeItems->isEmpty()) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Replacement product no longer exists.'], 422);
+            return response()->json(['success' => false, 'message' => 'This request has no replacement items.'], 422);
         }
 
-        $newQuantity  = (float) $voidRequest->replacement_quantity;
-        $newUnit      = $voidRequest->replacement_unit;
-        $newUnitPrice = (float) $voidRequest->replacement_unit_price;
-        $newBaseQty   = $newQuantity * $replacement->conversionFactorFor($newUnit);
-        $newItemPrice = round($newUnitPrice * $newQuantity, 2);
+        foreach ($exchangeItems as $line) {
+            if (! $line->product) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'A replacement product no longer exists.'], 422);
+            }
+        }
 
         $itemAmount = (float) $saleItem->price;
 
@@ -396,14 +400,26 @@ class VoidRequestController extends Controller
             ]);
         }
 
-        $replacementInventory = Inventory::where('product_id', $replacement->id)->first();
+        // Aggregate demand by product first — two lines can name the same product
+        // (e.g. different units) and must be checked against their combined total,
+        // not each in isolation, before anything is written.
+        $baseQtyByProduct = [];
+        foreach ($exchangeItems as $line) {
+            $baseQtyByProduct[$line->product_id] = ($baseQtyByProduct[$line->product_id] ?? 0)
+                + (float) $line->quantity * $line->product->conversionFactorFor($line->unit);
+        }
 
-        if ($replacementInventory && (float) $replacementInventory->quantity < $newBaseQty) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => "Not enough stock for replacement product: {$replacement->name}",
-            ], 422);
+        foreach ($baseQtyByProduct as $productId => $baseQty) {
+            $product = $exchangeItems->firstWhere('product_id', $productId)->product;
+            $inventory = Inventory::where('product_id', $productId)->first();
+
+            if ($inventory && (float) $inventory->quantity < $baseQty) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Not enough stock for replacement product: {$product->name}",
+                ], 422);
+            }
         }
 
         $saleItem->update([
@@ -412,36 +428,49 @@ class VoidRequestController extends Controller
             'void_reason' => 'Exchanged: ' . $voidRequest->void_reason,
         ]);
 
-        // Creating the SaleItem both takes the replacement's stock (SaleItem::booted)
-        // and logs its own outgoing movement (SaleItemObserver), so nothing is done
-        // by hand for the incoming side beyond relabelling that movement below.
-        $newSaleItem = SaleItem::create([
-            'sale_id'          => $sale->id,
-            'product_id'       => $replacement->id,
-            'is_manual'        => false,
-            'unit'             => $newUnit,
-            'unit_price'       => $newUnitPrice,
-            'discount_amount'  => 0,
-            'discount_is_flat' => false,
-            'quantity'         => $newQuantity,
-            'price'            => $newItemPrice,
-        ]);
+        $newItemPrice = 0.0;
+        $newSaleItems = collect();
 
-        // Relabel the observer's row so the stock ledger reads as an exchange rather
-        // than an ordinary sale — writing our own would double-log the same movement.
-        $outgoingMovement = InventoryMovement::where('reference_type', Sale::class)
-            ->where('reference_id', $sale->id)
-            ->where('product_id', $replacement->id)
-            ->where('type', 'out')
-            ->orderByDesc('id')
-            ->first();
+        foreach ($exchangeItems as $line) {
+            $lineTotal = round((float) $line->unit_price * (float) $line->quantity, 2);
+            $newItemPrice += $lineTotal;
 
-        if ($outgoingMovement) {
-            $outgoingMovement->update([
-                'reason' => 'Item Exchange',
-                'notes'  => "Item exchanged in via POS (manager approved) — Sale #{$sale->id}",
-            ]);
+            // Creating the SaleItem both takes the replacement's stock (SaleItem::booted)
+            // and logs its own outgoing movement (SaleItemObserver), so nothing is done
+            // by hand for the incoming side beyond relabelling that movement below.
+            $newSaleItems->push(SaleItem::create([
+                'sale_id'          => $sale->id,
+                'product_id'       => $line->product_id,
+                'is_manual'        => false,
+                'unit'             => $line->unit,
+                'unit_price'       => $line->unit_price,
+                'discount_amount'  => 0,
+                'discount_is_flat' => false,
+                'quantity'         => $line->quantity,
+                'price'            => $lineTotal,
+            ]));
+
+            // Relabel the observer's row so the stock ledger reads as an exchange
+            // rather than an ordinary sale — writing our own would double-log the
+            // same movement. Done immediately after each SaleItem, one line at a
+            // time, so two lines sharing a product each grab their own most-recent
+            // row instead of racing each other.
+            $outgoingMovement = InventoryMovement::where('reference_type', Sale::class)
+                ->where('reference_id', $sale->id)
+                ->where('product_id', $line->product_id)
+                ->where('type', 'out')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($outgoingMovement) {
+                $outgoingMovement->update([
+                    'reason' => 'Item Exchange',
+                    'notes'  => "Item exchanged in via POS (manager approved) — Sale #{$sale->id}",
+                ]);
+            }
         }
+
+        $newItemPrice = round($newItemPrice, 2);
 
         $oldTotal      = (float) $sale->total;
         $newTotal      = max(0, round($oldTotal - $itemAmount + $newItemPrice, 2));
@@ -507,12 +536,17 @@ class VoidRequestController extends Controller
             'action'          => 'approved_item_exchange_request',
             'auditable_type'  => VoidRequest::class,
             'auditable_id'    => $voidRequest->id,
-            'auditable_label' => "Item Exchange Request #{$voidRequest->id} for Sale #{$sale->id} (item #{$saleItem->id} → #{$newSaleItem->id})",
+            'auditable_label' => "Item Exchange Request #{$voidRequest->id} for Sale #{$sale->id} (item #{$saleItem->id} → #" . $newSaleItems->pluck('id')->implode(', #') . ')',
             'new_values'      => [
                 'reason'            => $voidRequest->void_reason,
                 'old_item_amount'   => $itemAmount,
                 'new_item_amount'   => $newItemPrice,
-                'replacement'       => $replacement->name,
+                'replacements'      => $exchangeItems->map(fn ($line) => [
+                    'product'    => $line->product->name,
+                    'quantity'   => (float) $line->quantity,
+                    'unit'       => $line->unit,
+                    'unit_price' => (float) $line->unit_price,
+                ])->all(),
                 'old_total'         => $oldTotal,
                 'new_total'         => $newTotal,
                 'collected_now'     => $collectedNow,

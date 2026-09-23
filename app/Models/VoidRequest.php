@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VoidRequest extends Model
 {
@@ -11,10 +12,6 @@ class VoidRequest extends Model
         'sale_id',
         'sale_item_id',
         'type',
-        'replacement_product_id',
-        'replacement_quantity',
-        'replacement_unit',
-        'replacement_unit_price',
         'requested_by_id',
         'cash_register_session_id',
         'void_reason',
@@ -28,8 +25,6 @@ class VoidRequest extends Model
     {
         return [
             'reviewed_at' => 'datetime',
-            'replacement_quantity' => 'decimal:2',
-            'replacement_unit_price' => 'decimal:2',
         ];
     }
 
@@ -43,9 +38,13 @@ class VoidRequest extends Model
         return $this->belongsTo(SaleItem::class);
     }
 
-    public function replacementProduct(): BelongsTo
+    /**
+     * The replacement line(s) for an 'exchange' type request — one returned
+     * item can be swapped for several replacement products.
+     */
+    public function exchangeItems(): HasMany
     {
-        return $this->belongsTo(Product::class, 'replacement_product_id');
+        return $this->hasMany(ExchangeItem::class);
     }
 
     /**

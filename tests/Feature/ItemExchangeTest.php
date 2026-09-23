@@ -2,6 +2,7 @@
 
 use App\Enums\CashRegisterStatus;
 use App\Models\CashRegisterSession;
+use App\Models\ExchangeItem;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Product;
@@ -93,19 +94,43 @@ function iexExchangeRequest(
     float $unitPrice,
     float $quantity = 1
 ): VoidRequest {
-    return VoidRequest::create([
+    return iexExchangeRequestMulti($sale, $item, [
+        ['product' => $replacement, 'quantity' => $quantity, 'unit_price' => $unitPrice],
+    ], $cashier, $session);
+}
+
+/**
+ * Same as iexExchangeRequest() but takes several replacement lines — each a
+ * ['product' => Product, 'quantity' => float, 'unit_price' => float, 'unit' => ?string].
+ */
+function iexExchangeRequestMulti(
+    Sale $sale,
+    SaleItem $item,
+    array $lines,
+    User $cashier,
+    CashRegisterSession $session
+): VoidRequest {
+    $voidRequest = VoidRequest::create([
         'sale_id'                  => $sale->id,
         'sale_item_id'             => $item->id,
         'type'                     => 'exchange',
-        'replacement_product_id'   => $replacement->id,
-        'replacement_quantity'     => $quantity,
-        'replacement_unit'         => $replacement->unit->value,
-        'replacement_unit_price'   => $unitPrice,
         'requested_by_id'          => $cashier->id,
         'cash_register_session_id' => $session->id,
         'void_reason'              => 'Customer wanted a different item',
         'status'                   => 'pending',
     ]);
+
+    foreach ($lines as $line) {
+        ExchangeItem::create([
+            'void_request_id' => $voidRequest->id,
+            'product_id'      => $line['product']->id,
+            'quantity'        => $line['quantity'],
+            'unit'            => $line['unit'] ?? $line['product']->unit->value,
+            'unit_price'      => $line['unit_price'],
+        ]);
+    }
+
+    return $voidRequest;
 }
 
 // ─── requestItemExchange (POST /pos/exchange-request-item/{saleItem}) ───────
@@ -121,11 +146,10 @@ describe('requestItemExchange', function () {
 
         actingAs($cashier);
         $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
-            'void_reason'            => 'Wrong size',
-            'replacement_product_id' => $replacement->id,
-            'replacement_quantity'   => 1,
-            'replacement_unit'       => $replacement->unit->value,
-            'replacement_unit_price' => 180,
+            'void_reason'   => 'Wrong size',
+            'replacements'  => [
+                ['product_id' => $replacement->id, 'quantity' => 1, 'unit' => $replacement->unit->value, 'unit_price' => 180],
+            ],
         ]);
 
         $response->assertOk()->assertJson(['success' => true]);
@@ -135,7 +159,66 @@ describe('requestItemExchange', function () {
         expect($vr->type)->toBe('exchange');
         expect($vr->isItemExchange())->toBeTrue();
         expect($vr->isItemVoid())->toBeFalse(); // an exchange is not an item void
-        expect((float) $vr->replacement_unit_price)->toBe(180.0);
+        expect($vr->exchangeItems)->toHaveCount(1);
+        expect((float) $vr->exchangeItems->first()->unit_price)->toBe(180.0);
+    });
+
+    it('cashier can submit an exchange request for multiple replacement products', function () {
+        $cashier = iexCashier();
+        iexAdmin();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+        $replacementA = iexReplacement();
+        $replacementB = iexReplacement();
+
+        actingAs($cashier);
+        $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
+            'void_reason'  => 'Wanted two smaller items instead',
+            'replacements' => [
+                ['product_id' => $replacementA->id, 'quantity' => 1, 'unit' => $replacementA->unit->value, 'unit_price' => 60],
+                ['product_id' => $replacementB->id, 'quantity' => 2, 'unit' => $replacementB->unit->value, 'unit_price' => 40],
+            ],
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $vr = VoidRequest::where('sale_item_id', $itemA->id)->where('status', 'pending')->first();
+        expect($vr->exchangeItems)->toHaveCount(2);
+        expect($vr->exchangeItems->pluck('product_id')->all())->toEqualCanonicalizing([$replacementA->id, $replacementB->id]);
+    });
+
+    it('rejects a request with no replacement lines', function () {
+        $cashier = iexCashier();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+
+        actingAs($cashier);
+        $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
+            'void_reason'  => 'Swap',
+            'replacements' => [],
+        ]);
+
+        $response->assertStatus(422);
+        expect(VoidRequest::where('sale_item_id', $itemA->id)->exists())->toBeFalse();
+    });
+
+    it('refuses when two lines for the same product together exceed available stock', function () {
+        $cashier = iexCashier();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+        $replacement = iexReplacement(stock: 5);
+
+        actingAs($cashier);
+        $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
+            'void_reason'  => 'Swap',
+            'replacements' => [
+                ['product_id' => $replacement->id, 'quantity' => 3, 'unit' => $replacement->unit->value, 'unit_price' => 50],
+                ['product_id' => $replacement->id, 'quantity' => 3, 'unit' => $replacement->unit->value, 'unit_price' => 50],
+            ],
+        ]);
+
+        $response->assertStatus(422)->assertJson(['success' => false]);
+        expect(VoidRequest::where('sale_item_id', $itemA->id)->exists())->toBeFalse();
     });
 
     it('allows exchanging the only remaining item — unlike an item void', function () {
@@ -154,11 +237,10 @@ describe('requestItemExchange', function () {
 
         actingAs($cashier);
         $response = postJson("/pos/exchange-request-item/{$item->id}", [
-            'void_reason'            => 'Swap',
-            'replacement_product_id' => $replacement->id,
-            'replacement_quantity'   => 1,
-            'replacement_unit'       => $replacement->unit->value,
-            'replacement_unit_price' => 100,
+            'void_reason'  => 'Swap',
+            'replacements' => [
+                ['product_id' => $replacement->id, 'quantity' => 1, 'unit' => $replacement->unit->value, 'unit_price' => 100],
+            ],
         ]);
 
         $response->assertOk()->assertJson(['success' => true]);
@@ -172,11 +254,10 @@ describe('requestItemExchange', function () {
 
         actingAs($cashier);
         $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
-            'void_reason'            => 'Swap',
-            'replacement_product_id' => $replacement->id,
-            'replacement_quantity'   => 5,
-            'replacement_unit'       => $replacement->unit->value,
-            'replacement_unit_price' => 50,
+            'void_reason'  => 'Swap',
+            'replacements' => [
+                ['product_id' => $replacement->id, 'quantity' => 5, 'unit' => $replacement->unit->value, 'unit_price' => 50],
+            ],
         ]);
 
         $response->assertStatus(422)->assertJson(['success' => false]);
@@ -193,11 +274,10 @@ describe('requestItemExchange', function () {
 
         actingAs($cashier2);
         $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
-            'void_reason'            => 'Wrong session',
-            'replacement_product_id' => $replacement->id,
-            'replacement_quantity'   => 1,
-            'replacement_unit'       => $replacement->unit->value,
-            'replacement_unit_price' => 100,
+            'void_reason'  => 'Wrong session',
+            'replacements' => [
+                ['product_id' => $replacement->id, 'quantity' => 1, 'unit' => $replacement->unit->value, 'unit_price' => 100],
+            ],
         ]);
 
         $response->assertStatus(422)->assertJson(['success' => false]);
@@ -212,11 +292,10 @@ describe('requestItemExchange', function () {
 
         actingAs($cashier);
         $response = postJson("/pos/exchange-request-item/{$itemA->id}", [
-            'void_reason'            => 'Swap',
-            'replacement_product_id' => $replacement->id,
-            'replacement_quantity'   => 1,
-            'replacement_unit'       => $replacement->unit->value,
-            'replacement_unit_price' => 100,
+            'void_reason'  => 'Swap',
+            'replacements' => [
+                ['product_id' => $replacement->id, 'quantity' => 1, 'unit' => $replacement->unit->value, 'unit_price' => 100],
+            ],
         ]);
 
         $response->assertStatus(422)->assertJson(['success' => false]);
@@ -419,6 +498,95 @@ describe('approveItemExchangeRequest', function () {
 
         $response->assertStatus(403);
         expect($itemA->fresh()->is_voided)->toBeFalse();
+    });
+
+    it('swaps one outgoing item for two different replacement products', function () {
+        $cashier = iexCashier();
+        $admin   = iexAdmin();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+        $replacementA = iexReplacement();
+        $replacementB = iexReplacement();
+
+        // 100 out, (60 + 2*40=80) in = 140 → new total 250-100+140=290
+        $vr = iexExchangeRequestMulti($sale, $itemA, [
+            ['product' => $replacementA, 'quantity' => 1, 'unit_price' => 60],
+            ['product' => $replacementB, 'quantity' => 2, 'unit_price' => 40],
+        ], $cashier, $session);
+
+        actingAs($admin);
+        $response = postJson("/pos/void-requests/{$vr->id}/approve");
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        expect($itemA->fresh()->is_voided)->toBeTrue();
+
+        $newItemA = SaleItem::where('sale_id', $sale->id)->where('product_id', $replacementA->id)->first();
+        $newItemB = SaleItem::where('sale_id', $sale->id)->where('product_id', $replacementB->id)->first();
+        expect((float) $newItemA->price)->toBe(60.0);
+        expect((float) $newItemB->price)->toBe(80.0);
+
+        expect((float) $sale->fresh()->total)->toBe(290.0);
+        expect($vr->fresh()->status)->toBe('approved');
+    });
+
+    it('handles two replacement lines for the same product, decrementing stock by their sum', function () {
+        $cashier = iexCashier();
+        $admin   = iexAdmin();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+        $replacement = iexReplacement(stock: 10);
+
+        $vr = iexExchangeRequestMulti($sale, $itemA, [
+            ['product' => $replacement, 'quantity' => 2, 'unit_price' => 30],
+            ['product' => $replacement, 'quantity' => 3, 'unit_price' => 30],
+        ], $cashier, $session);
+
+        actingAs($admin);
+        $response = postJson("/pos/void-requests/{$vr->id}/approve");
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        expect((float) $replacement->inventory->fresh()->quantity)->toBe(5.0); // 10 - (2+3)
+
+        $newItems = SaleItem::where('sale_id', $sale->id)->where('product_id', $replacement->id)->get();
+        expect($newItems)->toHaveCount(2);
+
+        // Each line must have its own outgoing movement, both relabelled — not one
+        // shared row and not a mismatch between the two.
+        $out = InventoryMovement::where('reference_type', Sale::class)
+            ->where('reference_id', $sale->id)
+            ->where('product_id', $replacement->id)
+            ->where('type', 'out')
+            ->orderBy('id')
+            ->get();
+        expect($out)->toHaveCount(2);
+        expect($out->pluck('reason')->unique()->all())->toBe(['Item Exchange']);
+    });
+
+    it('rolls back entirely when two lines for the same product together exceed stock', function () {
+        $cashier = iexCashier();
+        $admin   = iexAdmin();
+        $session = iexSession($cashier);
+        [$sale, $itemA] = iexSaleWithTwoItems($session);
+        $replacement = iexReplacement(stock: 4);
+
+        // Neither line alone exceeds stock, but 3 + 3 = 6 > 4 available.
+        $vr = iexExchangeRequestMulti($sale, $itemA, [
+            ['product' => $replacement, 'quantity' => 3, 'unit_price' => 30],
+            ['product' => $replacement, 'quantity' => 3, 'unit_price' => 30],
+        ], $cashier, $session);
+
+        actingAs($admin);
+        $response = postJson("/pos/void-requests/{$vr->id}/approve");
+
+        $response->assertStatus(422)->assertJson(['success' => false]);
+
+        expect($itemA->fresh()->is_voided)->toBeFalse();
+        expect((float) $sale->fresh()->total)->toBe(250.0);
+        expect((float) $replacement->inventory->fresh()->quantity)->toBe(4.0);
+        expect(SaleItem::where('sale_id', $sale->id)->where('product_id', $replacement->id)->exists())->toBeFalse();
+        expect($vr->fresh()->status)->toBe('pending');
     });
 
 });

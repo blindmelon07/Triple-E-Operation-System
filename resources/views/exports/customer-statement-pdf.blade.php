@@ -131,6 +131,18 @@
             margin-top: 36px;
         }
         .signature-block td { padding: 0 30px; vertical-align: top; }
+        .signature-role {
+            font-size: 9px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        .signature-note {
+            font-size: 7.5px;
+            font-style: italic;
+            color: #475569;
+            margin-bottom: 10px;
+        }
         .signature-line {
             border-bottom: 1px solid #1e293b;
             height: 28px;
@@ -302,12 +314,15 @@
     <table class="signature-block">
         <tr>
             <td style="width:50%">
+                <div class="signature-role">Prepared By</div>
                 <div class="signature-line"></div>
-                <div class="signature-label">Prepared By</div>
+                <div class="signature-label">Printed Name / Signature / Date</div>
             </td>
             <td style="width:50%">
+                <div class="signature-role">Received By</div>
+                <div class="signature-note">RECEIVED AND VERIFIED AS TRUE AND COMPLETE BY:</div>
                 <div class="signature-line"></div>
-                <div class="signature-label">Received By</div>
+                <div class="signature-label">Printed Name / Signature / Date</div>
             </td>
         </tr>
     </table>

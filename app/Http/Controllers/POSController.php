@@ -1076,23 +1076,24 @@ class POSController extends Controller
     }
 
     /**
-     * Ask a manager to swap one line item of a completed sale for a different
-     * product — the sale can be from any date, not just the cashier's current
-     * shift. Nothing changes until the request is approved — see
-     * VoidRequestController::approveItemExchange() for what approval does. Any
-     * price difference is collected/refunded through the requesting cashier's
-     * own open session (the drawer that's actually open right now), never by
-     * rewriting the totals of the sale's original — possibly already closed and
-     * reconciled — session.
+     * Ask a manager to swap one line item of a completed sale for one or more
+     * replacement products — the sale can be from any date, not just the
+     * cashier's current shift. Nothing changes until the request is approved —
+     * see VoidRequestController::approveItemExchange() for what approval does.
+     * Any price difference is collected/refunded through the requesting
+     * cashier's own open session (the drawer that's actually open right now),
+     * never by rewriting the totals of the sale's original — possibly already
+     * closed and reconciled — session.
      */
     public function requestItemExchange(Request $request, SaleItem $saleItem): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
-            'void_reason'            => 'required|string|max:255',
-            'replacement_product_id' => 'required|exists:products,id',
-            'replacement_quantity'   => 'required|numeric|min:0.01',
-            'replacement_unit'       => 'required|string|max:50',
-            'replacement_unit_price' => 'required|numeric|min:0',
+            'void_reason'                    => 'required|string|max:255',
+            'replacements'                   => 'required|array|min:1',
+            'replacements.*.product_id'      => 'required|exists:products,id',
+            'replacements.*.quantity'        => 'required|numeric|min:0.01',
+            'replacements.*.unit'            => 'required|string|max:50',
+            'replacements.*.unit_price'      => 'required|numeric|min:0',
         ]);
 
         $session = CashRegisterSession::open()
@@ -1128,30 +1129,48 @@ class POSController extends Controller
         }
 
         // Soft stock check so the cashier finds out now rather than after the
-        // manager walks over. Approval re-checks under a lock.
-        $replacement = Product::find($validated['replacement_product_id']);
-        $baseQuantity = $validated['replacement_quantity'] * $replacement->conversionFactorFor($validated['replacement_unit']);
-
-        if ($replacement->inventory && $replacement->inventory->quantity < $baseQuantity) {
-            return response()->json([
-                'success' => false,
-                'message' => "Not enough stock for replacement product: {$replacement->name}",
-            ], 422);
+        // manager walks over. Approval re-checks under a lock. Lines are grouped
+        // by product so two lines for the same product (e.g. different units)
+        // are checked against their combined demand, not each in isolation.
+        $baseQuantityByProduct = [];
+        foreach ($validated['replacements'] as $line) {
+            $product = Product::find($line['product_id']);
+            $baseQuantityByProduct[$product->id] = ($baseQuantityByProduct[$product->id] ?? 0)
+                + $line['quantity'] * $product->conversionFactorFor($line['unit']);
         }
 
-        $voidRequest = VoidRequest::create([
-            'sale_id'                  => $sale->id,
-            'sale_item_id'             => $saleItem->id,
-            'type'                     => 'exchange',
-            'replacement_product_id'   => $replacement->id,
-            'replacement_quantity'     => $validated['replacement_quantity'],
-            'replacement_unit'         => $validated['replacement_unit'],
-            'replacement_unit_price'   => $validated['replacement_unit_price'],
-            'requested_by_id'          => auth()->id(),
-            'cash_register_session_id' => $session->id,
-            'void_reason'              => $validated['void_reason'],
-            'status'                   => 'pending',
-        ]);
+        foreach ($baseQuantityByProduct as $productId => $baseQuantity) {
+            $product = Product::find($productId);
+            if ($product->inventory && $product->inventory->quantity < $baseQuantity) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Not enough stock for replacement product: {$product->name}",
+                ], 422);
+            }
+        }
+
+        $voidRequest = DB::transaction(function () use ($validated, $sale, $saleItem, $session) {
+            $voidRequest = VoidRequest::create([
+                'sale_id'                  => $sale->id,
+                'sale_item_id'             => $saleItem->id,
+                'type'                     => 'exchange',
+                'requested_by_id'          => auth()->id(),
+                'cash_register_session_id' => $session->id,
+                'void_reason'              => $validated['void_reason'],
+                'status'                   => 'pending',
+            ]);
+
+            foreach ($validated['replacements'] as $line) {
+                $voidRequest->exchangeItems()->create([
+                    'product_id' => $line['product_id'],
+                    'quantity'   => $line['quantity'],
+                    'unit'       => $line['unit'],
+                    'unit_price' => $line['unit_price'],
+                ]);
+            }
+
+            return $voidRequest;
+        });
 
         $existingRoles = Role::whereIn('name', ['admin', 'super_admin'])->pluck('name')->toArray();
         if (!empty($existingRoles)) {
