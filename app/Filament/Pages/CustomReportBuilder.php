@@ -387,6 +387,7 @@ class CustomReportBuilder extends Page
             'dateTo' => $this->statementDateTo,
             'generatedAt' => now()->format('F d, Y h:i A'),
             'logoDataUri' => CompanyLogo::dataUri(),
+            'preparedBy' => auth()->user()?->name,
         ])->setPaper('a4', 'portrait');
 
         $filename = 'statement-of-account-'.\Illuminate\Support\Str::slug($supplier->name).'-'.now()->format('Y-m-d-His').'.pdf';

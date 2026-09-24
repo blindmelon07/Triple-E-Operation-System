@@ -5,14 +5,14 @@ namespace App\Support\ReportBuilder;
 use App\Models\Purchase;
 use App\Models\PurchasePayment;
 use App\Models\Supplier;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Builds a supplier's statement of account: purchases and payments grouped by
- * calendar month, with a running balance carried across the supplier's full
- * history so the opening balance of the first displayed month is correct even
- * when the caller only asked for a narrower date window.
+ * calendar month. Only entries dated inside the requested window are listed;
+ * everything before it is rolled into the first month's opening balance.
  */
 class SupplierStatementService
 {
@@ -47,8 +47,21 @@ class SupplierStatementService
             ->orderBy('paid_date')
             ->get();
 
-        $purchasesByMonth = $purchases->groupBy(fn (Purchase $p) => $p->date->format('Y-m'));
-        $paymentsByMonth = $payments->groupBy(fn (PurchasePayment $p) => $p->paid_date->format('Y-m'));
+        $from = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
+        $to = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
+
+        // Anything dated before the window only feeds the opening balance.
+        $runningBalance = (float) $purchases->filter(fn (Purchase $p) => $from && $p->date->lt($from))->sum('total')
+            - (float) $payments->filter(fn (PurchasePayment $p) => $from && $p->paid_date->lt($from))->sum('amount');
+
+        $inRange = fn (CarbonInterface $date) => (! $from || $date->gte($from)) && (! $to || $date->lte($to));
+
+        $purchasesByMonth = $purchases
+            ->filter(fn (Purchase $p) => $inRange($p->date))
+            ->groupBy(fn (Purchase $p) => $p->date->format('Y-m'));
+        $paymentsByMonth = $payments
+            ->filter(fn (PurchasePayment $p) => $inRange($p->paid_date))
+            ->groupBy(fn (PurchasePayment $p) => $p->paid_date->format('Y-m'));
 
         $allMonths = $purchasesByMonth->keys()
             ->merge($paymentsByMonth->keys())
@@ -56,11 +69,7 @@ class SupplierStatementService
             ->sort()
             ->values();
 
-        $from = $dateFrom ? Carbon::parse($dateFrom)->format('Y-m') : null;
-        $to = $dateTo ? Carbon::parse($dateTo)->format('Y-m') : null;
-
         $months = [];
-        $runningBalance = 0.0;
 
         foreach ($allMonths as $monthKey) {
             $monthPurchases = $purchasesByMonth->get($monthKey, collect());
@@ -72,10 +81,6 @@ class SupplierStatementService
             $opening = $runningBalance;
             $closing = $opening + $purchasesTotal - $paymentsTotal;
             $runningBalance = $closing;
-
-            if (($from && $monthKey < $from) || ($to && $monthKey > $to)) {
-                continue;
-            }
 
             $months[] = [
                 'month' => $monthKey,
