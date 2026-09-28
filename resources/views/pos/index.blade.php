@@ -2611,9 +2611,27 @@
                                 </div>
                                 <span class="text-xs text-gray-400" x-text="vr.created_at"></span>
                             </div>
+                            <!-- Already-paid money coming back: refund it in cash, or deduct it from the customer's other unpaid invoices -->
+                            <template x-if="vr.refund_amount > 0 && vr.customer_open_balance > 0">
+                                <div class="mb-3 p-3 bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-700 rounded-lg text-sm">
+                                    <p class="font-medium text-gray-800 dark:text-gray-200 mb-2"
+                                       x-text="'Hand back ₱' + parseFloat(vr.refund_amount).toFixed(2) + ' by:'"></p>
+                                    <label class="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-1 cursor-pointer">
+                                        <input type="radio" value="credit" x-model="vr.refund_mode" class="text-green-600">
+                                        <span x-text="'Deduct from customer\'s unpaid balance (₱' + parseFloat(vr.customer_open_balance).toFixed(2) + ')'"></span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-gray-700 dark:text-gray-300 cursor-pointer">
+                                        <input type="radio" value="cash" x-model="vr.refund_mode" class="text-green-600">
+                                        <span>Refund in cash</span>
+                                    </label>
+                                    <p x-show="vr.refund_mode === 'credit' && vr.refund_amount > vr.customer_open_balance"
+                                       class="mt-2 text-xs text-orange-700 dark:text-orange-400"
+                                       x-text="'The remaining ₱' + (vr.refund_amount - vr.customer_open_balance).toFixed(2) + ' will be refunded in cash.'"></p>
+                                </div>
+                            </template>
                             <div class="flex gap-2">
                                 <button
-                                    @click="approveVoidRequest(vr.id)"
+                                    @click="approveVoidRequest(vr)"
                                     class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-semibold"
                                 >
                                     Approve
@@ -4303,11 +4321,19 @@
                                 this.stopVoidPolling();
                                 this.showVoidWaitingModal = false;
 
+                                // Manager may have deducted the refund from the customer's
+                                // unpaid balance instead of handing back cash.
+                                const credited = parseFloat(data.credited_amount || 0);
+                                const creditNote = credited > 0
+                                    ? ` ₱${credited.toFixed(2)} was deducted from the customer's unpaid balance — do not refund that in cash.`
+                                    : '';
+
                                 if (this.voidPollTarget === 'exchange') {
                                     // Refetch rather than patching locally — the server
                                     // decides the sale's new total, payment status, and
                                     // which line items are now active.
                                     const difference = this.exchangeDifference();
+                                    const cashBack = Math.max(0, Math.abs(difference) - credited);
                                     this.fetchRecentSales();
                                     this.itemToExchange = null;
                                     this.exchangeProduct = null;
@@ -4317,7 +4343,9 @@
                                         difference > 0
                                             ? `Exchange approved! Collect ₱${Math.abs(difference).toFixed(2)} from the customer.`
                                             : (difference < 0
-                                                ? `Exchange approved! Refund ₱${Math.abs(difference).toFixed(2)} to the customer.`
+                                                ? (cashBack > 0.01
+                                                    ? `Exchange approved! Refund ₱${cashBack.toFixed(2)} to the customer.${creditNote}`
+                                                    : `Exchange approved!${creditNote}`)
                                                 : 'Exchange approved! No price difference.')
                                     );
                                 } else if (this.voidPollTarget === 'item') {
@@ -4327,7 +4355,7 @@
                                     // what the server actually computed.
                                     this.fetchRecentSales();
                                     this.itemToVoid = null;
-                                    alert('Item void approved! It has been removed from the sale.');
+                                    alert('Item void approved! It has been removed from the sale.' + creditNote);
                                 } else {
                                     // Mark sale as voided in the local list
                                     const idx = this.recentSales.findIndex(s => s.id === this.saleToVoid?.id);
@@ -4404,20 +4432,27 @@
                             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
                         });
                         const data = await res.json();
-                        if (data.success) this.pendingVoidRequests = data.requests;
+                        // Default to deducting from the customer's balance whenever there is one to deduct from
+                        if (data.success) this.pendingVoidRequests = data.requests.map(vr => ({
+                            ...vr,
+                            refund_mode: vr.refund_amount > 0 && vr.customer_open_balance > 0 ? 'credit' : 'cash',
+                        }));
                     } catch (e) {} finally {
                         this.isLoadingVoidRequests = false;
                     }
                 },
 
-                async approveVoidRequest(id) {
+                async approveVoidRequest(request) {
+                    const id = request.id;
                     try {
                         const res = await fetch(`/pos/void-requests/${id}/approve`, {
                             method: 'POST',
-                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                            body: JSON.stringify({ refund_mode: request.refund_mode || 'cash' }),
                         });
                         const data = await res.json();
                         if (data.success) {
+                            if (data.message && request.refund_mode === 'credit') alert(data.message);
                             this.pendingVoidRequests = this.pendingVoidRequests.filter(vr => vr.id !== id);
                             this.pendingVoidCount = Math.max(0, this.pendingVoidCount - 1);
                             // Refresh the recent sales list if it is loaded

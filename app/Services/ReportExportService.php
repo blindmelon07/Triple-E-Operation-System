@@ -418,7 +418,9 @@ class ReportExportService
                 $entries->push([
                     'date'   => $payment->created_at,
                     'label'  => "Payment — {$invoiceNumber}",
-                    'detail' => ucfirst($payment->payment_method).($payment->reference_number ? " Ref# {$payment->reference_number}" : ''),
+                    'detail' => $payment->payment_method === 'return_credit'
+                        ? "Returned item credit from {$payment->reference_number}"
+                        : ucfirst($payment->payment_method).($payment->reference_number ? " Ref# {$payment->reference_number}" : ''),
                     'debit'  => 0.0,
                     'credit' => (float) $payment->amount,
                 ]);

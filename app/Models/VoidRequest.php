@@ -19,12 +19,15 @@ class VoidRequest extends Model
         'reviewed_by_id',
         'reviewed_at',
         'rejection_reason',
+        'refund_mode',
+        'credited_amount',
     ];
 
     protected function casts(): array
     {
         return [
-            'reviewed_at' => 'datetime',
+            'reviewed_at'     => 'datetime',
+            'credited_amount' => 'decimal:2',
         ];
     }
 

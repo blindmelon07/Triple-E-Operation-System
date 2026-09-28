@@ -61,6 +61,14 @@ class VoidRequestController extends Controller
                     'price_difference'  => $isExchange
                         ? round($newItemPrice - (float) $vr->saleItem?->price, 2)
                         : null,
+
+                    // What approving this would hand back to the customer, and how much
+                    // they still owe on their other invoices — together these tell the
+                    // approver whether the refund can be deducted from that balance.
+                    'refund_amount'         => $isItemLevel ? $this->expectedRefund($vr, $newItemPrice ?? 0.0) : 0.0,
+                    'customer_open_balance' => $isItemLevel && $vr->sale->customer_id
+                        ? $this->otherOpenBalance($vr->sale)
+                        : 0.0,
                 ];
             });
 
@@ -88,7 +96,33 @@ class VoidRequestController extends Controller
             'success'          => true,
             'status'           => $voidRequest->status,
             'rejection_reason' => $voidRequest->rejection_reason,
+            'credited_amount'  => (float) $voidRequest->credited_amount,
         ]);
+    }
+
+    /**
+     * How much of what the sale already collected would be handed back if this
+     * item void/exchange were approved now — mirrors the math in
+     * approveItemVoid()/approveItemExchange().
+     */
+    private function expectedRefund(VoidRequest $vr, float $newItemPrice): float
+    {
+        $newTotal = max(0, round((float) $vr->sale->total - (float) $vr->saleItem?->price + $newItemPrice, 2));
+
+        return max(0, round((float) $vr->sale->amount_paid - $newTotal, 2));
+    }
+
+    /**
+     * What the sale's customer still owes across all their other open invoices.
+     */
+    private function otherOpenBalance(Sale $sale): float
+    {
+        return round((float) Sale::where('customer_id', $sale->customer_id)
+            ->where('id', '!=', $sale->id)
+            ->where('is_voided', false)
+            ->where('payment_status', '!=', 'paid')
+            ->selectRaw('COALESCE(SUM(total - amount_paid), 0) as open_balance')
+            ->value('open_balance'), 2);
     }
 
     public function approve(Request $request, VoidRequest $voidRequest): \Illuminate\Http\JsonResponse
@@ -96,6 +130,10 @@ class VoidRequestController extends Controller
         if (! auth()->user()->hasAnyRole(['admin', 'super_admin'])) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
+
+        $request->validate([
+            'refund_mode' => 'nullable|string|in:cash,credit',
+        ]);
 
         try {
             DB::beginTransaction();
@@ -286,7 +324,7 @@ class VoidRequestController extends Controller
             default => 'unpaid',
         };
 
-        $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid, $voidRequest->cash_register_session_id);
+        [$refundMode, $creditedAmount] = $this->handBack($request, $sale, $refundAmount, $oldAmountPaid, $voidRequest);
 
         $saleItem->update([
             'is_voided'   => true,
@@ -301,9 +339,11 @@ class VoidRequestController extends Controller
         ]);
 
         $voidRequest->update([
-            'status'         => 'approved',
-            'reviewed_by_id' => auth()->id(),
-            'reviewed_at'    => now(),
+            'status'          => 'approved',
+            'reviewed_by_id'  => auth()->id(),
+            'reviewed_at'     => now(),
+            'refund_mode'     => $refundMode,
+            'credited_amount' => $creditedAmount,
         ]);
 
         DB::commit();
@@ -321,12 +361,16 @@ class VoidRequestController extends Controller
                 'old_total'      => $oldTotal,
                 'new_total'      => $newTotal,
                 'refund_amount'  => max(0, $refundAmount),
+                'credited_amount' => $creditedAmount,
             ],
             'ip_address'      => $request->ip(),
             'user_agent'      => $request->userAgent(),
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Item void approved successfully.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Item void approved successfully.' . $this->creditNote($refundAmount, $creditedAmount),
+        ]);
     }
 
     /**
@@ -477,8 +521,10 @@ class VoidRequestController extends Controller
         $oldAmountPaid = (float) $sale->amount_paid;
         $wasFullyPaid  = $oldAmountPaid >= $oldTotal - 0.01;
 
-        $collectedNow  = 0.0;
-        $refundAmount  = 0.0;
+        $collectedNow   = 0.0;
+        $refundAmount   = 0.0;
+        $refundMode     = null;
+        $creditedAmount = 0.0;
 
         if ($newTotal > $oldAmountPaid) {
             if ($wasFullyPaid) {
@@ -507,7 +553,7 @@ class VoidRequestController extends Controller
             $newAmountPaid = min($oldAmountPaid, $newTotal);
             $refundAmount  = round($oldAmountPaid - $newAmountPaid, 2);
 
-            $this->refundOldestFirst($sale, $refundAmount, $oldAmountPaid, $voidRequest->cash_register_session_id);
+            [$refundMode, $creditedAmount] = $this->handBack($request, $sale, $refundAmount, $oldAmountPaid, $voidRequest);
         }
 
         $newPaymentStatus = match (true) {
@@ -523,9 +569,11 @@ class VoidRequestController extends Controller
         ]);
 
         $voidRequest->update([
-            'status'         => 'approved',
-            'reviewed_by_id' => auth()->id(),
-            'reviewed_at'    => now(),
+            'status'          => 'approved',
+            'reviewed_by_id'  => auth()->id(),
+            'reviewed_at'     => now(),
+            'refund_mode'     => $refundMode,
+            'credited_amount' => $creditedAmount,
         ]);
 
         DB::commit();
@@ -551,6 +599,7 @@ class VoidRequestController extends Controller
                 'new_total'         => $newTotal,
                 'collected_now'     => $collectedNow,
                 'refund_amount'     => $refundAmount,
+                'credited_amount'   => $creditedAmount,
             ],
             'ip_address'      => $request->ip(),
             'user_agent'      => $request->userAgent(),
@@ -559,6 +608,7 @@ class VoidRequestController extends Controller
         $difference = round($newItemPrice - $itemAmount, 2);
         $message = match (true) {
             $difference > 0.01  => 'Exchange approved. Collect ₱' . number_format(abs($difference), 2) . ' from the customer.',
+            $creditedAmount > 0.01 => 'Exchange approved.' . $this->creditNote($refundAmount, $creditedAmount),
             $difference < -0.01 => 'Exchange approved. Refund ₱' . number_format(abs($difference), 2) . ' to the customer.',
             default             => 'Exchange approved. No price difference.',
         };
@@ -568,6 +618,124 @@ class VoidRequestController extends Controller
             'message'    => $message,
             'difference' => $difference,
         ]);
+    }
+
+    /**
+     * Hand back money a sale has now overcollected. By default it's refunded in
+     * cash out of the acting register session; with refund_mode=credit (and a
+     * named customer), it's instead applied as a payment against that customer's
+     * other open invoices, and only whatever that can't absorb goes back as cash.
+     *
+     * Returns [refund_mode, credited_amount] to be stamped on the request.
+     */
+    private function handBack(Request $request, Sale $sale, float $refundAmount, float $oldAmountPaid, VoidRequest $voidRequest): array
+    {
+        if ($refundAmount <= 0.01) {
+            return [null, 0.0];
+        }
+
+        $credited = 0.0;
+
+        if ($request->input('refund_mode') === 'credit' && $sale->customer_id) {
+            $credited = $this->applyCreditToOpenInvoices($request, $sale, $refundAmount);
+        }
+
+        $cashRefund = round($refundAmount - $credited, 2);
+        $this->refundOldestFirst($sale, $cashRefund, $oldAmountPaid, $voidRequest->cash_register_session_id);
+
+        return [$credited > 0.01 ? 'credit' : 'cash', $credited];
+    }
+
+    /**
+     * Apply up to $amount as payments on the customer's other unpaid invoices,
+     * oldest due first. No money changes hands, so the payments carry no register
+     * session — keeping them out of every drawer's reconciliation and the daily
+     * reports — while still showing as credits on the customer's statement.
+     *
+     * Returns how much was actually applied.
+     */
+    private function applyCreditToOpenInvoices(Request $request, Sale $sourceSale, float $amount): float
+    {
+        $sourceInvoice = 'INV-' . str_pad((string) $sourceSale->id, 6, '0', STR_PAD_LEFT);
+
+        $openSales = Sale::where('customer_id', $sourceSale->customer_id)
+            ->where('id', '!=', $sourceSale->id)
+            ->where('is_voided', false)
+            ->where('payment_status', '!=', 'paid')
+            ->orderBy('due_date')
+            ->orderBy('date')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $remaining = $amount;
+
+        foreach ($openSales as $target) {
+            if ($remaining <= 0.01) {
+                break;
+            }
+
+            $take = round(min($remaining, $target->balance), 2);
+            if ($take <= 0.01) {
+                continue;
+            }
+
+            $newAmountPaid = round((float) $target->amount_paid + $take, 2);
+            $balanceAfter  = round((float) $target->total - $newAmountPaid, 2);
+            $isPaid        = $balanceAfter <= 0.01;
+
+            $target->update([
+                'amount_paid'    => $newAmountPaid,
+                'payment_status' => $isPaid ? 'paid' : 'partial',
+                'paid_date'      => $isPaid ? now()->toDateString() : $target->paid_date,
+            ]);
+
+            SalePayment::create([
+                'sale_id'                  => $target->id,
+                'amount'                   => $take,
+                'payment_method'           => 'return_credit',
+                'reference_number'         => $sourceInvoice,
+                'cash_register_session_id' => null,
+                'recorded_by_id'           => auth()->id(),
+                'balance_after'            => $balanceAfter,
+            ]);
+
+            AuditLog::create([
+                'user_id'         => auth()->id(),
+                'user_name'       => auth()->user()?->name,
+                'action'          => 'applied_return_credit',
+                'auditable_type'  => Sale::class,
+                'auditable_id'    => $target->id,
+                'auditable_label' => "Sale #{$target->id}",
+                'new_values'      => [
+                    'amount_credited' => $take,
+                    'from_sale_id'    => $sourceSale->id,
+                    'new_balance'     => $balanceAfter,
+                ],
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            $remaining = round($remaining - $take, 2);
+        }
+
+        return round($amount - $remaining, 2);
+    }
+
+    private function creditNote(float $refundAmount, float $creditedAmount): string
+    {
+        if ($creditedAmount <= 0.01) {
+            return '';
+        }
+
+        $note = ' ₱' . number_format($creditedAmount, 2) . " was deducted from the customer's unpaid balance.";
+        $cash = round($refundAmount - $creditedAmount, 2);
+
+        if ($cash > 0.01) {
+            $note .= ' Refund the remaining ₱' . number_format($cash, 2) . ' in cash.';
+        }
+
+        return $note;
     }
 
     /**
