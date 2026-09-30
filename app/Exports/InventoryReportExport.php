@@ -71,7 +71,9 @@ class InventoryReportExport
             return $this->getSummaryData();
         }
 
-        return $this->query()->get()->map(function (InventoryMovement $movement) {
+        $movements = $this->query()->get();
+
+        $rows = $movements->map(function (InventoryMovement $movement) {
             return [
                 'Date' => $movement->created_at?->format('Y-m-d H:i'),
                 'Product' => $movement->product?->name,
@@ -81,6 +83,23 @@ class InventoryReportExport
                 'Notes' => $movement->notes,
             ];
         });
+
+        foreach (['in' => 'TOTAL IN', 'out' => 'TOTAL OUT'] as $type => $label) {
+            if ($this->type && $this->type !== $type) {
+                continue;
+            }
+
+            $rows->push([
+                'Date' => $label,
+                'Product' => '',
+                'Type' => '',
+                'Quantity' => $movements->where('type', $type)->sum('quantity'),
+                'Reason' => '',
+                'Notes' => '',
+            ]);
+        }
+
+        return $rows;
     }
 
     /**
@@ -88,8 +107,9 @@ class InventoryReportExport
      */
     protected function getSummaryData(): Collection
     {
-        return $this->query()
-            ->get()
+        $movements = $this->query()->get();
+
+        $rows = $movements
             ->groupBy('product_id')
             ->map(function (Collection $movements) {
                 $totalIn = $movements->where('type', 'in')->sum('quantity');
@@ -105,6 +125,20 @@ class InventoryReportExport
             })
             ->sortBy('Product', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
+
+        $totalIn = $movements->where('type', 'in')->sum('quantity');
+        $totalOut = $movements->where('type', 'out')->sum('quantity');
+
+        // Grand total row
+        $rows->push([
+            'Product' => 'TOTAL',
+            'Total In' => $totalIn,
+            'Total Out' => $totalOut,
+            'Net (In - Out)' => $totalIn - $totalOut,
+            'No. of Movements' => $movements->count(),
+        ]);
+
+        return $rows;
     }
 
     public function getHeaders(): array

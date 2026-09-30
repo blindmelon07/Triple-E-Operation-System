@@ -13,6 +13,8 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -21,6 +23,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use UnitEnum;
 
 class InventoryReport extends Page implements HasTable
@@ -181,6 +184,16 @@ class InventoryReport extends Page implements HasTable
                     ->label('Quantity')
                     ->numeric()
                     ->sortable()
+                    ->summarize([
+                        Sum::make()
+                            ->label('Total In')
+                            ->numeric()
+                            ->query(fn (QueryBuilder $query): QueryBuilder => $query->where('type', 'in')),
+                        Sum::make()
+                            ->label('Total Out')
+                            ->numeric()
+                            ->query(fn (QueryBuilder $query): QueryBuilder => $query->where('type', 'out')),
+                    ])
                     ->visible($detailed),
                 TextColumn::make('reason')
                     ->label('Reason')
@@ -204,6 +217,7 @@ class InventoryReport extends Page implements HasTable
                     ->color('success')
                     ->weight('bold')
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('total_in', $direction))
+                    ->summarize(Sum::make()->label('Total In')->numeric())
                     ->visible($summary),
                 TextColumn::make('total_out')
                     ->label('Total Out')
@@ -212,17 +226,25 @@ class InventoryReport extends Page implements HasTable
                     ->color('danger')
                     ->weight('bold')
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('total_out', $direction))
+                    ->summarize(Sum::make()->label('Total Out')->numeric())
                     ->visible($summary),
                 TextColumn::make('net')
                     ->label('Net (In - Out)')
                     ->state(fn (Product $record): float => (float) $record->total_in - (float) $record->total_out)
                     ->numeric()
                     ->color(fn ($state): string => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray'))
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total Net')
+                            ->numeric()
+                            ->using(fn (QueryBuilder $query): float => (float) $query->sum('total_in') - (float) $query->sum('total_out')),
+                    )
                     ->visible($summary),
                 TextColumn::make('movements_count')
                     ->label('No. of Movements')
                     ->numeric()
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('movements_count', $direction))
+                    ->summarize(Sum::make()->label('Total')->numeric())
                     ->visible($summary),
                 TextColumn::make('inventory.quantity')
                     ->label('Current Stock')
