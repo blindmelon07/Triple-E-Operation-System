@@ -21,6 +21,7 @@
    - 3.9 [Reprinting a Past Receipt](#39-reprinting-a-past-receipt)
    - 3.10 [Creating a Quotation](#310-creating-a-quotation)
    - 3.11 [Closing the Cash Register](#311-closing-the-cash-register)
+   - 3.12 [Returns, Exchanges, and Voids](#312-returns-exchanges-and-voids)
 4. [Sales Management (Admin Panel)](#4-sales-management-admin-panel)
    - 4.1 [Viewing All Sales](#41-viewing-all-sales)
    - 4.2 [Understanding Payment Status](#42-understanding-payment-status)
@@ -264,6 +265,89 @@ At the end of your shift:
   - Full list of all sales processed in the session, including customer names, payment method, payment status, and amounts
 
 > Save or print the PDF report for your records. You can re-download it anytime from the admin panel.
+
+---
+
+### 3.12 Returns, Exchanges, and Voids
+
+When a customer brings an item back, you do **not** change the sale yourself. You send a **request**, and a manager approves or rejects it from their POS screen.
+
+All three actions start from the **Reprint** list (see [Section 3.9](#39-reprinting-a-past-receipt)). Each sale shows its items underneath, with small buttons next to each item.
+
+| Action | Use it when | Button | Which sales |
+|---|---|---|---|
+| **Exchange Item** | Customer swaps an item for a different product | Blue ⇄ arrows next to the item | Any sale, any date |
+| **Void Item** | Customer returns one item and takes nothing in exchange | Red × next to the item | Sales from your **current open register** only, with at least 2 items |
+| **Void (whole sale)** | The entire sale must be cancelled | Red **Void** button on the right | Sales from your **current open register** only |
+
+> Returned items are put back into stock automatically when the request is approved.
+
+---
+
+**Exchanging an item:**
+1. Open **Reprint** and find the sale by receipt number or customer name.
+2. Click the blue ⇄ button next to the item being returned.
+3. Search for the replacement product, set the **Quantity**, **Unit**, and **Unit price**, then click **+ Add to exchange**. Repeat if the customer takes more than one product.
+4. Check the box at the bottom:
+   - **Customer pays ₱X** — the new items cost more; collect the difference.
+   - **Refund customer ₱X** — the new items cost less; the customer gets money back.
+   - **No difference** — nothing to collect or refund.
+5. Enter a **Reason for exchange** and click **Request Exchange**.
+6. The **Waiting for Approval** screen appears. Keep it open until the manager responds.
+
+**Voiding one item:**
+1. Open **Reprint** and find the sale.
+2. Click the red × next to the item.
+3. Enter a **Reason for void** and click **Request Void**.
+4. Wait on the **Waiting for Approval** screen.
+
+---
+
+**When the manager approves — read the message before giving back any cash.**
+
+If the customer still owes money on **other unpaid invoices**, the manager can choose to **deduct** the refund from that balance instead of giving cash back. The approval message tells you which one happened:
+
+*Exchanges:*
+
+| Approval message says | What you do |
+|---|---|
+| *"Exchange approved! Refund ₱X to the customer."* (nothing about a deduction) | Give ₱X in cash from the drawer. |
+| *"Exchange approved! ₱X was deducted from the customer's unpaid balance — do not refund that in cash."* | Give **no** cash. Tell the customer their balance went down by ₱X. |
+| *"Exchange approved! Refund ₱Y to the customer. ₱X was deducted from the customer's unpaid balance…"* | Part of it was deducted. Give **only ₱Y** in cash. |
+| *"Exchange approved! Collect ₱X from the customer."* | The new items cost more. Collect ₱X. |
+| *"Exchange approved! No price difference."* | Nothing to collect or refund. |
+
+*Item voids:*
+
+| Approval message says | What you do |
+|---|---|
+| *"Item void approved! It has been removed from the sale."* | Refund what the customer paid for that item, in cash. If the sale was unpaid (credit terms), there is nothing to refund. |
+| *"…removed from the sale. ₱X was deducted from the customer's unpaid balance — do not refund that in cash."* | Refund what the customer paid for the item **minus ₱X**. If ₱X covers all of it, give no cash. |
+
+> **Why this matters:** a deducted amount never leaves the drawer. If you hand it out in cash anyway, your register will be short at closing.
+
+**If the manager rejects the request**, a **Void Rejected** screen shows the manager's reason. The sale stays unchanged. Do not give any refund.
+
+**If you need to stop waiting**, click **Cancel Request**. The request is withdrawn and nothing changes.
+
+---
+
+**For managers — approving a return with a deduction**
+
+1. Click the orange **Approvals** bell at the top of the POS (the red number shows how many requests are waiting).
+2. Review the request: items, reason, and who requested it.
+3. If the customer already paid for the returned item **and** owes money on other invoices, a box appears: **"Hand back ₱X by:"**
+   - **Deduct from customer's unpaid balance (₱Y)** — selected by default. The refund is applied as a payment to the customer's oldest unpaid invoices first. No cash leaves the drawer.
+   - **Refund in cash** — the cashier gives the money back from the drawer.
+4. If the refund is **larger** than what the customer owes, the extra is refunded in cash automatically. The box shows this as *"The remaining ₱Z will be refunded in cash."*
+5. Click **Approve**.
+
+**Where a deduction shows up afterwards:**
+- On the **customer's statement**, as a payment labelled *"Returned item credit from INV-XXXXXX"* (the receipt the item was returned from).
+- The invoices it was applied to show a lower balance, or change to **paid** if fully covered.
+- It is **not** counted in any register's cash totals or in the daily transaction report, because no cash changed hands.
+
+> The deduct option only appears for item voids and exchanges on sales with a named customer. Walk-in sales and whole-sale voids are always refunded in cash.
 
 ---
 
@@ -529,6 +613,12 @@ Use this report to identify customers who need to be followed up for payment.
 
 **Q: I can't find a customer when searching in the POS.**
 > Try searching with a different part of their name. If they are truly not in the system, use **Add New Customer** to create their profile on the spot.
+
+**Q: The customer returned an item but the approval said "do not refund that in cash". What do I tell them?**
+> The refund was deducted from what they still owe on other invoices. Tell them their unpaid balance went down by that amount. It will show on their next statement as *"Returned item credit"*. See [Section 3.12](#312-returns-exchanges-and-voids).
+
+**Q: I can't see the Void button (or the red × next to an item).**
+> Voids only work on sales from your **current open register**, and the red × only appears when the sale has more than one item. For an older sale, use **Exchange Item**, or ask a manager.
 
 **Q: A receipt printed incorrectly or I chose the wrong type.**
 > Use the **Reprint** section in the POS to reprint the receipt in the correct format (Delivery or Pick Up).

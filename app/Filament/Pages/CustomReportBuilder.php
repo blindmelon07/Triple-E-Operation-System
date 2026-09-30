@@ -371,7 +371,7 @@ class CustomReportBuilder extends Page
         }
 
         $supplierName = Supplier::find($this->supplierId)?->name ?? 'supplier';
-        $filename = 'statement-of-account-'.\Illuminate\Support\Str::slug($supplierName).'-'.now()->format('Y-m-d-His').'.csv';
+        $filename = 'accounts-payable-'.\Illuminate\Support\Str::slug($supplierName).'-'.now()->format('Y-m-d-His').'.csv';
 
         return (new CsvExportService)->export($headers, $rows, $filename);
     }
@@ -390,7 +390,7 @@ class CustomReportBuilder extends Page
             'preparedBy' => auth()->user()?->name,
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'statement-of-account-'.\Illuminate\Support\Str::slug($supplier->name).'-'.now()->format('Y-m-d-His').'.pdf';
+        $filename = 'accounts-payable-'.\Illuminate\Support\Str::slug($supplier->name).'-'.now()->format('Y-m-d-His').'.pdf';
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();

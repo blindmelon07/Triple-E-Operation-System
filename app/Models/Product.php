@@ -52,6 +52,11 @@ class Product extends Model
         return $this->hasOne(Inventory::class);
     }
 
+    public function inventoryMovements(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
     public function unitPrices(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(ProductUnitPrice::class);

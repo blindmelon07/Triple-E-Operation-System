@@ -14,12 +14,12 @@
                     type="button"
                     wire:click="$set('reportMode', 'supplier_statement')"
                     class="px-4 py-2 text-sm font-medium rounded-lg {{ $reportMode === 'supplier_statement' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' }}"
-                >Supplier Statement of Account</button>
+                >Accounts Payable</button>
             </div>
         </div>
 
         @if($reportMode === 'supplier_statement')
-            {{-- Supplier Statement of Account --}}
+            {{-- Accounts Payable (supplier statement) --}}
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6 space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
@@ -47,7 +47,7 @@
                             wire:target="generateStatement"
                             class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-50"
                         >
-                            <span wire:loading.remove wire:target="generateStatement">Generate Statement</span>
+                            <span wire:loading.remove wire:target="generateStatement">Generate Accounts Payable</span>
                             <span wire:loading wire:target="generateStatement">Generating...</span>
                         </button>
                     </div>
