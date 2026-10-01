@@ -7,6 +7,7 @@ use App\Filament\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Resources\CashRegisterSessions\CashRegisterSessionResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Customers\CustomerResource;
+use App\Filament\Resources\DateChangeRequests\DateChangeRequestResource;
 use App\Filament\Resources\Deliveries\DeliveryResource;
 use App\Filament\Resources\Drivers\DriverResource;
 use App\Filament\Resources\EmployeeCompensations\EmployeeCompensationResource;
@@ -30,6 +31,7 @@ use App\Filament\Resources\Suppliers\SupplierResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Vehicles\VehicleResource;
 use App\Filament\Resources\ZkDevices\ZkDeviceResource;
+use App\Models\DateChangeRequest;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -505,6 +507,26 @@ class Home extends Page
                 'color'       => '#475569',
                 'bg'          => '#f1f5f9',
                 'border'      => '#cbd5e1',
+            ];
+        }
+
+        $canApproveDates = DateChangeRequest::canApprove($user);
+
+        if ($canApproveDates || $user->can('ViewAny:MaintenanceRecord')) {
+            $pendingDateChanges = $canApproveDates ? DateChangeRequest::pending()->count() : 0;
+
+            $cards[] = [
+                'title'       => 'Date Change Requests',
+                'description' => $canApproveDates
+                    ? ($pendingDateChanges > 0
+                        ? "{$pendingDateChanges} pending — review and approve record date changes"
+                        : 'Review and approve record date changes')
+                    : 'Track your requested record date changes',
+                'icon'        => 'heroicon-o-calendar-days',
+                'url'         => DateChangeRequestResource::getUrl(),
+                'color'       => '#d97706',
+                'bg'          => '#fffbeb',
+                'border'      => '#fde68a',
             ];
         }
 

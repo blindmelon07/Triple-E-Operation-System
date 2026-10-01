@@ -45,6 +45,9 @@ class AuditLogsTable
                         'rejected'          => 'danger',
                         'completed_sale'    => 'success',
                         'created_quotation' => 'info',
+                        'requested_date_change' => 'warning',
+                        'approved_date_change'  => 'success',
+                        'rejected_date_change'  => 'danger',
                         default             => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => str_replace('_', ' ', ucfirst($state))),
@@ -91,6 +94,9 @@ class AuditLogsTable
                         'rejected'          => 'Rejected',
                         'completed_sale'    => 'Completed Sale',
                         'created_quotation' => 'Created Quotation',
+                        'requested_date_change' => 'Requested Date Change',
+                        'approved_date_change'  => 'Approved Date Change',
+                        'rejected_date_change'  => 'Rejected Date Change',
                     ]),
 
                 SelectFilter::make('auditable_type')

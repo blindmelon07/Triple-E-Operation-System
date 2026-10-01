@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MaintenanceRecords\Schemas;
 
 use App\Enums\ProductUnit;
+use App\Models\DateChangeRequest;
 use App\Models\MaintenanceRecord;
 use App\Models\MaintenanceType;
 use App\Models\Vehicle;
@@ -35,7 +36,13 @@ class MaintenanceRecordForm
                             ->label('Date')
                             ->required()
                             ->default(now())
-                            ->maxDate(now()->addMonth()),
+                            ->maxDate(now()->addMonth())
+                            // Once saved, only admins may change the date directly; everyone
+                            // else goes through "Request Date Change" for admin approval.
+                            ->disabled(fn (string $operation) => $operation === 'edit' && ! DateChangeRequest::canApprove(auth()->user()))
+                            ->helperText(fn (string $operation) => $operation === 'edit' && ! DateChangeRequest::canApprove(auth()->user())
+                                ? 'Use "Request Date Change" to change this — it needs admin approval.'
+                                : null),
 
                         Select::make('supplier_id')
                             ->label('Supplier')

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class MaintenanceRecord extends Model
 {
@@ -78,6 +79,16 @@ class MaintenanceRecord extends Model
     public function items(): HasMany
     {
         return $this->hasMany(MaintenanceRecordItem::class);
+    }
+
+    /**
+     * The open date-change request awaiting admin approval, if any.
+     *
+     * @return MorphOne<DateChangeRequest, $this>
+     */
+    public function pendingDateChangeRequest(): MorphOne
+    {
+        return $this->morphOne(DateChangeRequest::class, 'record')->where('status', 'pending');
     }
 
     /**

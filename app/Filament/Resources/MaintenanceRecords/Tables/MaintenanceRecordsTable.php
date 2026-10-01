@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MaintenanceRecords\Tables;
 
+use App\Filament\Resources\MaintenanceRecords\Actions\RequestDateChangeAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,7 +19,7 @@ class MaintenanceRecordsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('items'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['items', 'pendingDateChangeRequest']))
             ->columns([
                 TextColumn::make('reference_number')
                     ->label('Reference')
@@ -29,6 +30,9 @@ class MaintenanceRecordsTable
                 TextColumn::make('maintenance_date')
                     ->label('Date')
                     ->date('M d, Y')
+                    ->description(fn ($record) => $record->pendingDateChangeRequest
+                        ? 'Pending change → '.$record->pendingDateChangeRequest->new_date->format('M d, Y')
+                        : null)
                     ->sortable(),
 
                 TextColumn::make('supplier.name')
@@ -163,6 +167,7 @@ class MaintenanceRecordsTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                RequestDateChangeAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MaintenanceRecords\Pages;
 
+use App\Filament\Resources\MaintenanceRecords\Actions\RequestDateChangeAction;
 use App\Filament\Resources\MaintenanceRecords\MaintenanceRecordResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -13,6 +14,7 @@ class EditMaintenanceRecord extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            RequestDateChangeAction::make(),
             DeleteAction::make(),
         ];
     }
