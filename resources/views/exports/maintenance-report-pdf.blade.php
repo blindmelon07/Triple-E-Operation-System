@@ -59,6 +59,11 @@
             font-weight: bold;
             background-color: #f7f7f7;
         }
+        .section-title {
+            color: #1e40af;
+            font-size: 12px;
+            margin: 20px 0 0;
+        }
         .footer-note {
             margin-top: 15px;
             font-size: 9px;
@@ -73,7 +78,7 @@
             <img src="{{ $logoDataUri }}" alt="Company Logo">
         @endif
         <p class="company-name">Tri-e Enterprises OPC</p>
-        <h1>Maintenance Report</h1>
+        <h1>Maintenance Report{{ ($perSupplier ?? false) ? ' — Per Supplier' : '' }}</h1>
         <p>
             @if($dateFrom || $dateTo)
                 Period: {{ $dateFrom ?: 'earliest' }} to {{ $dateTo ?: 'latest' }}
@@ -84,7 +89,73 @@
         <p>Generated: {{ $generatedAt }}</p>
     </div>
 
-    @if(empty($rows))
+    @if($perSupplier ?? false)
+        @if(empty($groups))
+            <p style="text-align:center; color:#999; margin-top: 20px;">No maintenance activity found for those filters.</p>
+        @else
+            <h3 class="section-title">Summary per Supplier</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Supplier</th>
+                        <th class="text-right">No. of Records</th>
+                        <th class="text-right">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($groups as $group)
+                        <tr>
+                            <td>{{ $group['supplier'] }}</td>
+                            <td class="text-right">{{ number_format($group['count']) }}</td>
+                            <td class="text-right">{{ number_format($group['subtotal'], 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td>Grand Total</td>
+                        <td class="text-right">{{ number_format(array_sum(array_column($groups, 'count'))) }}</td>
+                        <td class="text-right">{{ number_format($totals['amount'], 2) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            @foreach($groups as $group)
+                <h3 class="section-title">{{ $group['supplier'] }}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Vehicle</th>
+                            <th>SI /DR #</th>
+                            <th>PO#</th>
+                            <th class="text-right">Amount</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($group['rows'] as $r)
+                            <tr>
+                                <td>{{ $r['date'] }}</td>
+                                <td>{{ $r['vehicle'] }}</td>
+                                <td>{{ $r['si_number'] }}</td>
+                                <td>{{ $r['po_number'] }}</td>
+                                <td class="text-right">{{ number_format($r['amount'], 2) }}</td>
+                                <td class="text-right">{{ number_format($r['running_total'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td colspan="4">Subtotal — {{ $group['supplier'] }}</td>
+                            <td class="text-right">{{ number_format($group['subtotal'], 2) }}</td>
+                            <td class="text-right">{{ number_format($group['subtotal'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            @endforeach
+        @endif
+    @elseif(empty($rows))
         <p style="text-align:center; color:#999; margin-top: 20px;">No maintenance activity found for those filters.</p>
     @else
         <table>

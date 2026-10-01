@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\MaintenanceRecord;
+use App\Models\Supplier;
 use App\Models\Vehicle;
 use App\Services\CsvExportService;
 use App\Support\CompanyLogo;
@@ -17,7 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
- * Itemized maintenance-expense ledger over a date range — see
+ * Maintenance-expense ledger over a date range, either itemized or grouped
+ * per supplier with subtotals — see
  * App\Support\ReportBuilder\MaintenanceReportService for the query.
  */
 class MaintenanceReport extends Page
@@ -36,7 +39,12 @@ class MaintenanceReport extends Page
 
     protected string $view = 'filament.pages.maintenance-report';
 
+    /** 'itemized' = one ledger in entry order; 'per_supplier' = records grouped under each supplier with subtotals. */
+    public string $viewMode = 'itemized';
+
     public ?int $vehicleId = null;
+
+    public ?int $supplierId = null;
 
     public ?string $dateFrom = null;
 
@@ -48,6 +56,11 @@ class MaintenanceReport extends Page
      * @var array<int, array{date: string, supplier: string, si_number: string, po_number: string, amount: float, running_total: float}>
      */
     public array $rows = [];
+
+    /**
+     * @var array<int, array{supplier: string, count: int, subtotal: float, rows: array<int, array<string, mixed>>}>
+     */
+    public array $groups = [];
 
     /** @var array{amount: float} */
     public array $totals = [
@@ -63,6 +76,35 @@ class MaintenanceReport extends Page
             ->get()
             ->mapWithKeys(fn (Vehicle $v) => [$v->id => $v->display_name])
             ->all();
+    }
+
+    /**
+     * Only suppliers that actually appear on a maintenance record.
+     *
+     * @return array<int, string>
+     */
+    public function supplierOptions(): array
+    {
+        return Supplier::query()
+            ->whereIn('id', MaintenanceRecord::query()->whereNotNull('supplier_id')->select('supplier_id'))
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    public function isPerSupplier(): bool
+    {
+        return $this->viewMode === 'per_supplier';
+    }
+
+    public function updatedViewMode(): void
+    {
+        $this->generated = false;
+    }
+
+    public function updatedSupplierId(): void
+    {
+        $this->generated = false;
     }
 
     public function updatedVehicleId(): void
@@ -82,15 +124,29 @@ class MaintenanceReport extends Page
 
     public function generate(): void
     {
-        $result = (new MaintenanceReportService)->build($this->dateFrom, $this->dateTo, $this->vehicleId);
+        $service = new MaintenanceReportService;
 
-        $this->rows = $result['rows']->all();
+        if ($this->isPerSupplier()) {
+            $result = $service->buildPerSupplier($this->dateFrom, $this->dateTo, $this->vehicleId, $this->supplierId);
+            $this->groups = $result['groups'];
+            $this->rows = [];
+        } else {
+            $result = $service->build($this->dateFrom, $this->dateTo, $this->vehicleId, $this->supplierId);
+            $this->rows = $result['rows']->all();
+            $this->groups = [];
+        }
+
         $this->totals = $result['totals'];
         $this->generated = true;
 
-        if (empty($this->rows)) {
+        if (! $this->hasResults()) {
             Notification::make()->title('No maintenance activity found for those filters.')->warning()->send();
         }
+    }
+
+    public function hasResults(): bool
+    {
+        return $this->isPerSupplier() ? ! empty($this->groups) : ! empty($this->rows);
     }
 
     protected function getHeaderActions(): array
@@ -100,20 +156,24 @@ class MaintenanceReport extends Page
                 ->label('Export CSV')
                 ->icon(Heroicon::OutlinedTableCells)
                 ->color('success')
-                ->disabled(fn () => ! $this->generated || empty($this->rows))
+                ->disabled(fn () => ! $this->generated || ! $this->hasResults())
                 ->action(fn () => $this->exportCsv()),
 
             Action::make('exportPdf')
                 ->label('Export PDF')
                 ->icon(Heroicon::OutlinedDocumentArrowDown)
                 ->color('gray')
-                ->disabled(fn () => ! $this->generated || empty($this->rows))
+                ->disabled(fn () => ! $this->generated || ! $this->hasResults())
                 ->action(fn () => $this->exportPdf()),
         ];
     }
 
     public function exportCsv(): StreamedResponse
     {
+        if ($this->isPerSupplier()) {
+            return $this->exportPerSupplierCsv();
+        }
+
         $headers = ['Date', 'Supplier', 'SI /DR #', 'PO#', 'Amount', 'Total'];
 
         $rows = collect($this->rows)->map(fn (array $r) => [
@@ -133,6 +193,8 @@ class MaintenanceReport extends Page
     public function exportPdf(): StreamedResponse
     {
         $pdf = Pdf::loadView('exports.maintenance-report-pdf', [
+            'perSupplier' => $this->isPerSupplier(),
+            'groups' => $this->groups,
             'rows' => $this->rows,
             'totals' => $this->totals,
             'dateFrom' => $this->dateFrom,
@@ -141,12 +203,41 @@ class MaintenanceReport extends Page
             'logoDataUri' => CompanyLogo::dataUri(),
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'maintenance-report-'.now()->format('Y-m-d-His').'.pdf';
+        $filename = ($this->isPerSupplier() ? 'maintenance-report-per-supplier-' : 'maintenance-report-').now()->format('Y-m-d-His').'.pdf';
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
         }, $filename, [
             'Content-Type' => 'application/pdf',
         ]);
+    }
+
+    private function exportPerSupplierCsv(): StreamedResponse
+    {
+        $headers = ['Supplier', 'Date', 'Vehicle', 'SI /DR #', 'PO#', 'Amount', 'Total'];
+
+        $rows = collect();
+
+        foreach ($this->groups as $group) {
+            foreach ($group['rows'] as $r) {
+                $rows->push([
+                    $group['supplier'],
+                    $r['date'],
+                    $r['vehicle'],
+                    $r['si_number'],
+                    $r['po_number'],
+                    number_format($r['amount'], 2),
+                    number_format($r['running_total'], 2),
+                ]);
+            }
+
+            $rows->push([$group['supplier'].' Subtotal', '', '', '', '', number_format($group['subtotal'], 2), '']);
+        }
+
+        $rows->push(['Grand Total', '', '', '', '', number_format($this->totals['amount'], 2), '']);
+
+        $filename = 'maintenance-report-per-supplier-'.now()->format('Y-m-d-His').'.csv';
+
+        return (new CsvExportService)->export($headers, $rows, $filename);
     }
 }

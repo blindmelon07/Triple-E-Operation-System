@@ -3,7 +3,31 @@
     <div class="space-y-6">
         {{-- Filters --}}
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6 space-y-5">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">View</label>
+                <div class="flex gap-2">
+                    <button
+                        type="button"
+                        wire:click="$set('viewMode', 'itemized')"
+                        class="px-4 py-2 text-sm font-medium rounded-lg {{ $viewMode === 'itemized' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' }}"
+                    >Itemized</button>
+                    <button
+                        type="button"
+                        wire:click="$set('viewMode', 'per_supplier')"
+                        class="px-4 py-2 text-sm font-medium rounded-lg {{ $viewMode === 'per_supplier' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' }}"
+                    >Per Supplier</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier</label>
+                    <select wire:model.live="supplierId" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        <option value="">All Suppliers</option>
+                        @foreach($this->supplierOptions() as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vehicle</label>
                     <select wire:model.live="vehicleId" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500">
@@ -39,8 +63,79 @@
         {{-- Results --}}
         @if($generated)
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
-                @if(empty($rows))
+                @if(! $this->hasResults())
                     <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No maintenance activity found for those filters.</p>
+                @elseif($this->isPerSupplier())
+                    {{-- Per-supplier summary --}}
+                    <div class="overflow-x-auto mb-6">
+                        <table class="min-w-full text-sm border border-gray-200 dark:border-gray-700">
+                            <thead>
+                                <tr class="bg-blue-100 dark:bg-blue-900/40">
+                                    <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Supplier</th>
+                                    <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">No. of Records</th>
+                                    <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($groups as $group)
+                                    <tr class="border-b border-gray-100 dark:border-gray-800">
+                                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $group['supplier'] }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($group['count']) }}</td>
+                                        <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($group['subtotal'], 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
+                                    <td class="px-3 py-2 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">Grand Total</td>
+                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format(array_sum(array_column($groups, 'count'))) }}</td>
+                                    <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($totals['amount'], 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    {{-- Per-supplier detail --}}
+                    <div class="space-y-6">
+                        @foreach($groups as $group)
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ $group['supplier'] }}</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-sm border border-gray-200 dark:border-gray-700">
+                                        <thead>
+                                            <tr class="bg-blue-100 dark:bg-blue-900/40">
+                                                <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Date</th>
+                                                <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Vehicle</th>
+                                                <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">SI /DR #</th>
+                                                <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">PO#</th>
+                                                <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Amount</th>
+                                                <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($group['rows'] as $r)
+                                                <tr class="border-b border-gray-100 dark:border-gray-800">
+                                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['date'] }}</td>
+                                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['vehicle'] }}</td>
+                                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['si_number'] }}</td>
+                                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $r['po_number'] }}</td>
+                                                    <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($r['amount'], 2) }}</td>
+                                                    <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($r['running_total'], 2) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="bg-gray-50 dark:bg-gray-800 font-semibold">
+                                                <td class="px-3 py-2 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700" colspan="4">Subtotal — {{ $group['supplier'] }}</td>
+                                                <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($group['subtotal'], 2) }}</td>
+                                                <td class="px-3 py-2 text-right text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">{{ number_format($group['subtotal'], 2) }}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm border border-gray-200 dark:border-gray-700">
