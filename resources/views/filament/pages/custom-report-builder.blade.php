@@ -15,10 +15,104 @@
                     wire:click="$set('reportMode', 'supplier_statement')"
                     class="px-4 py-2 text-sm font-medium rounded-lg {{ $reportMode === 'supplier_statement' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' }}"
                 >Accounts Payable</button>
+                <button
+                    type="button"
+                    wire:click="$set('reportMode', 'fast_moving')"
+                    class="px-4 py-2 text-sm font-medium rounded-lg {{ $reportMode === 'fast_moving' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' }}"
+                >Fast Moving Items</button>
             </div>
         </div>
 
-        @if($reportMode === 'supplier_statement')
+        @if($reportMode === 'fast_moving')
+            {{-- Fast Moving Items --}}
+            <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6 space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Date</label>
+                        <input type="date" wire:model.live="fastDateFrom" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Date</label>
+                        <input type="date" wire:model.live="fastDateTo" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                        <select wire:model.live="fastCategoryId" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">All</option>
+                            @foreach($this->categoryOptions() as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Show Top</label>
+                        <select wire:model.live="fastLimit" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            @foreach($this->fastLimitOptions() as $limit)
+                                <option value="{{ $limit }}">{{ $limit }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button
+                            type="button"
+                            wire:click="generateFastMoving"
+                            wire:loading.attr="disabled"
+                            wire:target="generateFastMoving"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-50"
+                        >
+                            <span wire:loading.remove wire:target="generateFastMoving">Generate Report</span>
+                            <span wire:loading wire:target="generateFastMoving">Generating...</span>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Ranked by quantity sold (in each product's base unit). Voided sales and returned/exchanged items are excluded.</p>
+            </div>
+
+            @if($fastGenerated)
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6">
+                    @if(empty($fastRows))
+                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No items sold in the selected period.</p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-200 dark:border-gray-700">
+                                        <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">#</th>
+                                        <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Product</th>
+                                        <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Category</th>
+                                        <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Unit</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Qty Sold</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Transactions</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Sales Amount</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Avg / Day</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Stock on Hand</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Days of Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($fastRows as $row)
+                                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                                            <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $row['rank'] }}</td>
+                                            <td class="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{{ $row['name'] }}</td>
+                                            <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $row['category'] ?? '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $row['unit'] ?? '—' }}</td>
+                                            <td class="px-3 py-2 text-right font-semibold text-gray-800 dark:text-gray-200">{{ number_format($row['quantity_sold'], 2) }}</td>
+                                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($row['transactions']) }}</td>
+                                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($row['sales_amount'], 2) }}</td>
+                                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ $row['avg_daily'] !== null ? number_format($row['avg_daily'], 2) : '—' }}</td>
+                                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($row['current_stock'], 2) }}</td>
+                                            <td class="px-3 py-2 text-right {{ $row['days_of_stock'] !== null && $row['days_of_stock'] < 7 ? 'text-danger-600 dark:text-danger-400 font-semibold' : 'text-gray-600 dark:text-gray-400' }}">
+                                                {{ $row['days_of_stock'] !== null ? number_format($row['days_of_stock'], 1) : '—' }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            @endif
+        @elseif($reportMode === 'supplier_statement')
             {{-- Accounts Payable (supplier statement) --}}
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 p-6 space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">

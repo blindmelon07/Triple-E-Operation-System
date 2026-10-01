@@ -2,9 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Category;
 use App\Models\Supplier;
 use App\Services\CsvExportService;
 use App\Support\CompanyLogo;
+use App\Support\ReportBuilder\FastMovingItemsService;
 use App\Support\ReportBuilder\ReportModules;
 use App\Support\ReportBuilder\ReportQueryService;
 use App\Support\ReportBuilder\SupplierStatementService;
@@ -59,7 +61,7 @@ class CustomReportBuilder extends Page
      */
     private const PDF_ROW_LIMIT = 250;
 
-    /** 'data' = the generic column-picker builder below; 'supplier_statement' = the per-supplier, per-month statement of account. */
+    /** 'data' = the generic column-picker builder below; 'supplier_statement' = the per-supplier, per-month statement of account; 'fast_moving' = products ranked by quantity sold. */
     public string $reportMode = 'data';
 
     public ?int $supplierId = null;
@@ -72,6 +74,19 @@ class CustomReportBuilder extends Page
 
     /** @var array<int, array<string, mixed>> */
     public array $statementMonths = [];
+
+    public ?string $fastDateFrom = null;
+
+    public ?string $fastDateTo = null;
+
+    public ?int $fastCategoryId = null;
+
+    public int $fastLimit = 20;
+
+    public bool $fastGenerated = false;
+
+    /** @var array<int, array<string, mixed>> */
+    public array $fastRows = [];
 
     public ?string $module = null;
 
@@ -99,6 +114,14 @@ class CustomReportBuilder extends Page
 
     public int $perPage = 50;
 
+    public function mount(): void
+    {
+        // Fast-moving defaults to the last 30 days — an open-ended range has no
+        // sensible "per day" rate to compute.
+        $this->fastDateFrom = now()->subDays(29)->toDateString();
+        $this->fastDateTo = now()->toDateString();
+    }
+
     /**
      * @return array<string, string>
      */
@@ -119,6 +142,64 @@ class CustomReportBuilder extends Page
     {
         $this->statementGenerated = false;
         $this->generated = false;
+        $this->fastGenerated = false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function categoryOptions(): array
+    {
+        return Category::orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function fastLimitOptions(): array
+    {
+        return [10, 20, 50, 100];
+    }
+
+    public function updatedFastDateFrom(): void
+    {
+        $this->fastGenerated = false;
+    }
+
+    public function updatedFastDateTo(): void
+    {
+        $this->fastGenerated = false;
+    }
+
+    public function updatedFastCategoryId(): void
+    {
+        $this->fastGenerated = false;
+    }
+
+    public function updatedFastLimit(): void
+    {
+        $this->fastGenerated = false;
+    }
+
+    public function generateFastMoving(): void
+    {
+        if (! $this->fastDateFrom || ! $this->fastDateTo) {
+            Notification::make()->title('Pick both a From and To date.')->warning()->send();
+
+            return;
+        }
+
+        if ($this->fastDateFrom > $this->fastDateTo) {
+            Notification::make()->title('From date must be on or before To date.')->warning()->send();
+
+            return;
+        }
+
+        $limit = in_array($this->fastLimit, $this->fastLimitOptions(), true) ? $this->fastLimit : 20;
+
+        $this->fastRows = (new FastMovingItemsService)
+            ->build($this->fastDateFrom, $this->fastDateTo, $this->fastCategoryId ?: null, $limit);
+        $this->fastGenerated = true;
     }
 
     public function updatedSupplierId(): void
@@ -337,6 +418,22 @@ class CustomReportBuilder extends Page
                 ->disabled(fn () => ! $this->generated)
                 ->action(fn () => $this->exportPdf()),
 
+            Action::make('exportFastMovingCsv')
+                ->label('Export CSV')
+                ->icon(Heroicon::OutlinedTableCells)
+                ->color('success')
+                ->visible(fn () => $this->reportMode === 'fast_moving')
+                ->disabled(fn () => ! $this->fastGenerated)
+                ->action(fn () => $this->exportFastMovingCsv()),
+
+            Action::make('exportFastMovingPdf')
+                ->label('Export PDF')
+                ->icon(Heroicon::OutlinedDocumentArrowDown)
+                ->color('gray')
+                ->visible(fn () => $this->reportMode === 'fast_moving')
+                ->disabled(fn () => ! $this->fastGenerated)
+                ->action(fn () => $this->exportFastMovingPdf()),
+
             Action::make('exportStatementCsv')
                 ->label('Export CSV')
                 ->icon(Heroicon::OutlinedTableCells)
@@ -353,6 +450,68 @@ class CustomReportBuilder extends Page
                 ->disabled(fn () => ! $this->statementGenerated)
                 ->action(fn () => $this->exportStatementPdf()),
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function fastMovingHeaders(): array
+    {
+        return ['Rank', 'Product', 'Category', 'Unit', 'Qty Sold', 'Transactions', 'Sales Amount', 'Avg / Day', 'Stock on Hand', 'Days of Stock'];
+    }
+
+    /**
+     * @return array<int, array<int, mixed>>
+     */
+    private function fastMovingExportRows(): array
+    {
+        return array_map(fn (array $row) => [
+            $row['rank'],
+            $row['name'],
+            $row['category'] ?? '',
+            $row['unit'] ?? '',
+            number_format($row['quantity_sold'], 2),
+            $row['transactions'],
+            number_format($row['sales_amount'], 2),
+            $row['avg_daily'] !== null ? number_format($row['avg_daily'], 2) : '',
+            number_format($row['current_stock'], 2),
+            $row['days_of_stock'] !== null ? number_format($row['days_of_stock'], 1) : '',
+        ], $this->fastRows);
+    }
+
+    public function exportFastMovingCsv(): StreamedResponse
+    {
+        $filename = 'fast-moving-items-'.now()->format('Y-m-d-His').'.csv';
+
+        return (new CsvExportService)->export($this->fastMovingHeaders(), collect($this->fastMovingExportRows()), $filename);
+    }
+
+    public function exportFastMovingPdf(): StreamedResponse
+    {
+        $title = 'Fast Moving Items (Top '.$this->fastLimit.')';
+
+        if ($this->fastCategoryId && ($category = Category::find($this->fastCategoryId))) {
+            $title .= ' — '.$category->name;
+        }
+
+        $pdf = Pdf::loadView('exports.custom-report-pdf', [
+            'title' => $title,
+            'headers' => $this->fastMovingHeaders(),
+            'rows' => $this->fastMovingExportRows(),
+            'totalMatchCount' => count($this->fastRows),
+            'generatedAt' => now()->format('F d, Y h:i A'),
+            'dateFrom' => $this->fastDateFrom,
+            'dateTo' => $this->fastDateTo,
+            'logoDataUri' => CompanyLogo::dataUri(),
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'fast-moving-items-'.now()->format('Y-m-d-His').'.pdf';
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
     public function exportStatementCsv(): StreamedResponse
