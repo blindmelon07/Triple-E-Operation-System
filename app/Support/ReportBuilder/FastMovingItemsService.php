@@ -2,6 +2,7 @@
 
 namespace App\Support\ReportBuilder;
 
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\SaleItem;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,6 +27,8 @@ class FastMovingItemsService
      *     quantity_sold: float,
      *     transactions: int,
      *     sales_amount: float,
+     *     stock_in: float,
+     *     stock_out: float,
      *     current_stock: float,
      *     avg_daily: ?float,
      *     days_of_stock: ?float,
@@ -56,6 +59,19 @@ class FastMovingItemsService
             ->get()
             ->keyBy('id');
 
+        // Every stock movement in the window (purchases, adjustments, returns
+        // in; sales, exchanges out) — same base-unit ledger the Inventory
+        // In/Out report reads, so the two reports agree.
+        $movements = InventoryMovement::query()
+            ->whereIn('product_id', $products->keys())
+            ->when($dateFrom, fn (Builder $q, string $date) => $q->whereDate('created_at', '>=', $date))
+            ->when($dateTo, fn (Builder $q, string $date) => $q->whereDate('created_at', '<=', $date))
+            ->groupBy('product_id')
+            ->selectRaw("product_id, SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END) as total_in, SUM(CASE WHEN type = 'out' THEN quantity ELSE 0 END) as total_out")
+            ->toBase()
+            ->get()
+            ->keyBy('product_id');
+
         $days = ($dateFrom && $dateTo)
             ? Carbon::parse($dateFrom)->startOfDay()->diffInDays(Carbon::parse($dateTo)->startOfDay()) + 1
             : null;
@@ -73,7 +89,7 @@ class FastMovingItemsService
             $baseQuantities[$line->product_id] = ($baseQuantities[$line->product_id] ?? 0) + (float) $line->qty * $factor;
         }
 
-        $rows = collect($baseQuantities)->map(function (float $quantity, int $productId) use ($products, $byProduct, $days) {
+        $rows = collect($baseQuantities)->map(function (float $quantity, int $productId) use ($products, $byProduct, $movements, $days) {
             $product = $products->get($productId);
             $stock = (float) ($product->inventory?->quantity ?? 0);
             $avgDaily = $days ? $quantity / $days : null;
@@ -86,6 +102,8 @@ class FastMovingItemsService
                 'quantity_sold' => round($quantity, 2),
                 'transactions' => (int) ($byProduct->get($productId)?->transactions ?? 0),
                 'sales_amount' => round((float) ($byProduct->get($productId)?->amount ?? 0), 2),
+                'stock_in' => round((float) ($movements->get($productId)?->total_in ?? 0), 2),
+                'stock_out' => round((float) ($movements->get($productId)?->total_out ?? 0), 2),
                 'current_stock' => $stock,
                 'avg_daily' => $avgDaily !== null ? round($avgDaily, 2) : null,
                 'days_of_stock' => $avgDaily ? round(max($stock, 0) / $avgDaily, 1) : null,

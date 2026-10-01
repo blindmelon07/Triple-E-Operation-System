@@ -457,7 +457,7 @@ class CustomReportBuilder extends Page
      */
     private function fastMovingHeaders(): array
     {
-        return ['Rank', 'Product', 'Category', 'Unit', 'Qty Sold', 'Transactions', 'Sales Amount', 'Avg / Day', 'Stock on Hand', 'Days of Stock'];
+        return ['Rank', 'Product', 'Category', 'Unit', 'Qty Sold', 'Transactions', 'Sales Amount', 'Avg / Day', 'Stock In', 'Stock Out', 'Stock on Hand', 'Days of Stock'];
     }
 
     /**
@@ -474,6 +474,8 @@ class CustomReportBuilder extends Page
             $row['transactions'],
             number_format($row['sales_amount'], 2),
             $row['avg_daily'] !== null ? number_format($row['avg_daily'], 2) : '',
+            number_format($row['stock_in'], 2),
+            number_format($row['stock_out'], 2),
             number_format($row['current_stock'], 2),
             $row['days_of_stock'] !== null ? number_format($row['days_of_stock'], 1) : '',
         ], $this->fastRows);

@@ -65,7 +65,7 @@
                         </button>
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Ranked by quantity sold (in each product's base unit). Voided sales and returned/exchanged items are excluded.</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Ranked by quantity sold (in each product's base unit). Voided sales and returned/exchanged items are excluded. Stock In/Out are all inventory movements in the period (purchases, adjustments, returns, sales).</p>
             </div>
 
             @if($fastGenerated)
@@ -85,6 +85,8 @@
                                         <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Transactions</th>
                                         <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Sales Amount</th>
                                         <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Avg / Day</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Stock In</th>
+                                        <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Stock Out</th>
                                         <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Stock on Hand</th>
                                         <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">Days of Stock</th>
                                     </tr>
@@ -100,6 +102,8 @@
                                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($row['transactions']) }}</td>
                                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($row['sales_amount'], 2) }}</td>
                                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ $row['avg_daily'] !== null ? number_format($row['avg_daily'], 2) : '—' }}</td>
+                                            <td class="px-3 py-2 text-right text-success-600 dark:text-success-400">{{ number_format($row['stock_in'], 2) }}</td>
+                                            <td class="px-3 py-2 text-right text-danger-600 dark:text-danger-400">{{ number_format($row['stock_out'], 2) }}</td>
                                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{{ number_format($row['current_stock'], 2) }}</td>
                                             <td class="px-3 py-2 text-right {{ $row['days_of_stock'] !== null && $row['days_of_stock'] < 7 ? 'text-danger-600 dark:text-danger-400 font-semibold' : 'text-gray-600 dark:text-gray-400' }}">
                                                 {{ $row['days_of_stock'] !== null ? number_format($row['days_of_stock'], 1) : '—' }}

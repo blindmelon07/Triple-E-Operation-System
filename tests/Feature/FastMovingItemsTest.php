@@ -2,6 +2,7 @@
 
 use App\Filament\Pages\CustomReportBuilder;
 use App\Models\Category;
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ProductUnitPrice;
 use App\Models\Sale;
@@ -55,6 +56,20 @@ describe('FastMovingItemsService', function () {
             ->and($rows[0]['avg_daily'])->toBe(2.0)
             ->and($rows[1]['quantity_sold'])->toBe(30.0)
             ->and($rows[2]['quantity_sold'])->toBe(5.0);
+    });
+
+    it('reports stock in and out within the period', function () {
+        $nails = Product::factory()->create(['unit' => 'piece']);
+
+        sellItem($nails, 10, 2, now()->toDateString()); // observer logs a 10-piece "out"
+        InventoryMovement::create(['product_id' => $nails->id, 'type' => 'in', 'quantity' => 100, 'reason' => 'Purchase']);
+        InventoryMovement::create(['product_id' => $nails->id, 'type' => 'in', 'quantity' => 999, 'reason' => 'Purchase'])
+            ->forceFill(['created_at' => now()->subMonths(2)])->save(); // outside range
+
+        $rows = (new FastMovingItemsService)->build(now()->subDays(29)->toDateString(), now()->toDateString());
+
+        expect($rows[0]['stock_in'])->toBe(100.0)
+            ->and($rows[0]['stock_out'])->toBe(10.0);
     });
 
     it('filters by category and respects the limit', function () {
