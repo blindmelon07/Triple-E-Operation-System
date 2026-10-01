@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 /**
  * Builds an itemized maintenance-expense ledger over an optional date
  * range — one row per maintenance record (date, supplier, SI/DR #, PO #,
- * amount), with a running cumulative total down the table, in entry order.
+ * amount), with a running cumulative total down the table, oldest to newest.
  * buildPerSupplier() returns the same records grouped under each supplier,
  * with a running total and subtotal per supplier.
  */
@@ -26,6 +26,7 @@ class MaintenanceReportService
     public function build(?string $dateFrom = null, ?string $dateTo = null, ?int $vehicleId = null, ?int $supplierId = null): array
     {
         $records = $this->query($dateFrom, $dateTo, $vehicleId, $supplierId)
+            ->orderBy('maintenance_date')
             ->orderBy('id')
             ->get();
 
