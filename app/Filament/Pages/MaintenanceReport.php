@@ -39,7 +39,7 @@ class MaintenanceReport extends Page
 
     protected string $view = 'filament.pages.maintenance-report';
 
-    /** 'itemized' = one ledger in entry order; 'per_supplier' = records grouped under each supplier with subtotals. */
+    /** 'itemized' = one ledger in date order; 'per_supplier' = records grouped under each supplier with subtotals. */
     public string $viewMode = 'itemized';
 
     public ?int $vehicleId = null;
@@ -201,6 +201,7 @@ class MaintenanceReport extends Page
             'dateTo' => $this->dateTo,
             'generatedAt' => now()->format('F d, Y h:i A'),
             'logoDataUri' => CompanyLogo::dataUri(),
+            'preparedBy' => auth()->user()?->name,
         ])->setPaper('a4', 'portrait');
 
         $filename = ($this->isPerSupplier() ? 'maintenance-report-per-supplier-' : 'maintenance-report-').now()->format('Y-m-d-His').'.pdf';
