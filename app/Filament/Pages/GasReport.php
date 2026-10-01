@@ -142,6 +142,7 @@ class GasReport extends Page
             'dateTo' => $this->dateTo,
             'generatedAt' => now()->format('F d, Y h:i A'),
             'logoDataUri' => CompanyLogo::dataUri(),
+            'preparedBy' => auth()->user()?->name,
         ])->setPaper('a4', 'landscape');
 
         $filename = 'gas-report-'.now()->format('Y-m-d-His').'.pdf';
