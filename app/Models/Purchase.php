@@ -47,6 +47,13 @@ class Purchase extends Model
                 }
             }
         });
+
+        // purchase_items cascade on delete at the DB level, which skips
+        // PurchaseItem's deleted event — delete them through Eloquent first
+        // so received stock is taken back out of inventory and logged.
+        static::deleting(function (Purchase $purchase) {
+            $purchase->purchase_items()->get()->each->delete();
+        });
     }
 
     public function purchase_items(): HasMany
