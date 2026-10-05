@@ -96,6 +96,14 @@ class Employee extends Model
     }
 
     /**
+     * @return HasMany<CashAdvance, $this>
+     */
+    public function cashAdvances(): HasMany
+    {
+        return $this->hasMany(CashAdvance::class);
+    }
+
+    /**
      * @return HasMany<ZkAttendanceLog, $this>
      */
     public function zkAttendanceLogs(): HasMany

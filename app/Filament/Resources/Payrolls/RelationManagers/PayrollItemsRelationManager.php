@@ -160,6 +160,12 @@ class PayrollItemsRelationManager extends RelationManager
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('cash_advance_deduction')
+                    ->label('Cash Adv.')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('other_deduction')
                     ->label('Other Ded.')
                     ->money('PHP')
@@ -180,6 +186,7 @@ class PayrollItemsRelationManager extends RelationManager
                             + (float) $record->sss_deduction
                             + (float) $record->philhealth_deduction
                             + (float) $record->pagibig_deduction
+                            + (float) $record->cash_advance_deduction
                             + (float) $record->other_deduction;
 
                         $record->update([

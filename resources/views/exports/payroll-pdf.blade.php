@@ -207,6 +207,7 @@
                 <th class="amount">SSS</th>
                 <th class="amount">PhilHealth</th>
                 <th class="amount">Pag-IBIG</th>
+                <th class="amount">Cash Adv.</th>
                 <th class="amount">Other</th>
                 <th class="amount">Total Ded.</th>
                 <th class="amount">Net Pay</th>
@@ -228,6 +229,7 @@
                     <td class="amount deduction">₱{{ number_format((float) $item->sss_deduction, 2) }}</td>
                     <td class="amount deduction">₱{{ number_format((float) $item->philhealth_deduction, 2) }}</td>
                     <td class="amount deduction">₱{{ number_format((float) $item->pagibig_deduction, 2) }}</td>
+                    <td class="amount deduction">₱{{ number_format((float) $item->cash_advance_deduction, 2) }}</td>
                     <td class="amount deduction">₱{{ number_format((float) $item->other_deduction, 2) }}</td>
                     <td class="amount deduction">₱{{ number_format((float) $item->total_deductions, 2) }}</td>
                     <td class="amount net-pay">₱{{ number_format((float) $item->net_pay, 2) }}</td>
@@ -238,7 +240,7 @@
             <tr>
                 <td colspan="8">TOTAL</td>
                 <td class="amount">₱{{ number_format((float) $payroll->total_gross, 2) }}</td>
-                <td colspan="5"></td>
+                <td colspan="6"></td>
                 <td class="amount">₱{{ number_format((float) $payroll->total_deductions, 2) }}</td>
                 <td class="amount net-pay">₱{{ number_format((float) $payroll->total_net, 2) }}</td>
             </tr>

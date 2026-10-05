@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Filament\Resources\AuditLogs\AuditLogResource;
+use App\Filament\Resources\CashAdvances\CashAdvanceResource;
 use App\Filament\Resources\CashRegisterSessions\CashRegisterSessionResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Customers\CustomerResource;
@@ -276,6 +277,30 @@ class Home extends Page
                 'color'       => '#ec4899',
                 'bg'          => '#fdf2f8',
                 'border'      => '#fbcfe8',
+            ];
+        }
+
+        if ($isAdmin || $user->can('ViewAny:CashAdvance')) {
+            $cards[] = [
+                'title'       => 'Cash Advances',
+                'description' => 'Record employee cash advances and repayments',
+                'icon'        => 'heroicon-o-wallet',
+                'url'         => CashAdvanceResource::getUrl(),
+                'color'       => '#be185d',
+                'bg'          => '#fdf2f8',
+                'border'      => '#fbcfe8',
+            ];
+        }
+
+        if ($isAdmin || $user->can('View:CashAdvanceReport')) {
+            $cards[] = [
+                'title'       => 'Cash Advance Monitoring',
+                'description' => 'Balances and deduction history per employee',
+                'icon'        => 'heroicon-o-document-chart-bar',
+                'url'         => CashAdvanceReport::getUrl(),
+                'color'       => '#9d174d',
+                'bg'          => '#fdf2f8',
+                'border'      => '#f9a8d4',
             ];
         }
 

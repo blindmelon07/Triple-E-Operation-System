@@ -6,6 +6,7 @@ use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PayrollItem extends Model
 {
@@ -29,6 +30,7 @@ class PayrollItem extends Model
         'sss_deduction',
         'philhealth_deduction',
         'pagibig_deduction',
+        'cash_advance_deduction',
         'other_deduction',
         'other_deduction_description',
         'total_deductions',
@@ -53,6 +55,7 @@ class PayrollItem extends Model
             'sss_deduction' => 'decimal:2',
             'philhealth_deduction' => 'decimal:2',
             'pagibig_deduction' => 'decimal:2',
+            'cash_advance_deduction' => 'decimal:2',
             'other_deduction' => 'decimal:2',
             'total_deductions' => 'decimal:2',
             'net_pay' => 'decimal:2',
@@ -73,5 +76,13 @@ class PayrollItem extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /**
+     * @return HasMany<CashAdvancePayment, $this>
+     */
+    public function cashAdvancePayments(): HasMany
+    {
+        return $this->hasMany(CashAdvancePayment::class);
     }
 }

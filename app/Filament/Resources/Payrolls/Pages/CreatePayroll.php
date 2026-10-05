@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Payrolls\Pages;
 use App\Enums\AttendanceStatus;
 use App\Filament\Resources\Payrolls\PayrollResource;
 use App\Models\Attendance;
+use App\Models\CashAdvance;
+use App\Models\CashAdvancePayment;
 use App\Models\EmployeeCompensation;
 use App\Models\GovernmentContribution;
 use App\Models\LeaveRequest;
@@ -174,9 +176,33 @@ class CreatePayroll extends CreateRecord
             }
 
             $totalItemDeductions = $lateDeduction + $sssDeduction + $philhealthDeduction + $pagibigDeduction;
+
+            // Cash advance installments, oldest advance first. Each advance
+            // contributes min(its per-payroll installment, its balance), and
+            // the combined deduction is capped at what's left of net pay so a
+            // short cutoff never produces a negative payslip — whatever
+            // isn't deducted simply stays on the balance for next payroll.
+            $availableForCa = max(0, round($grossPay - $totalItemDeductions, 2));
+            $caDeductions = [];
+            foreach (CashAdvance::outstandingFor($employeeId) as $advance) {
+                if ($availableForCa <= 0) {
+                    break;
+                }
+
+                $balance = round((float) $advance->amount - (float) $advance->paid_amount, 2);
+                $installment = min((float) $advance->deduction_per_payroll, $balance, $availableForCa);
+
+                if ($installment > 0) {
+                    $caDeductions[$advance->id] = $installment;
+                    $availableForCa = round($availableForCa - $installment, 2);
+                }
+            }
+            $cashAdvanceDeduction = round(array_sum($caDeductions), 2);
+
+            $totalItemDeductions += $cashAdvanceDeduction;
             $netPay = $grossPay - $totalItemDeductions;
 
-            PayrollItem::create([
+            $item = PayrollItem::create([
                 'payroll_id' => $payroll->id,
                 'employee_id' => $employeeId,
                 'daily_rate' => $comp->daily_rate,
@@ -193,10 +219,22 @@ class CreatePayroll extends CreateRecord
                 'sss_deduction' => $sssDeduction,
                 'philhealth_deduction' => $philhealthDeduction,
                 'pagibig_deduction' => $pagibigDeduction,
+                'cash_advance_deduction' => $cashAdvanceDeduction,
                 'other_deduction' => 0,
                 'total_deductions' => $totalItemDeductions,
                 'net_pay' => $netPay,
             ]);
+
+            foreach ($caDeductions as $cashAdvanceId => $amount) {
+                CashAdvancePayment::create([
+                    'cash_advance_id' => $cashAdvanceId,
+                    'payroll_item_id' => $item->id,
+                    'user_id' => Auth::id(),
+                    'payment_date' => $periodEnd->toDateString(),
+                    'amount' => $amount,
+                    'notes' => "Payroll {$payroll->payroll_number}",
+                ]);
+            }
 
             $totalGross += $grossPay;
             $totalDeductions += $totalItemDeductions;
