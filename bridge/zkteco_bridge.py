@@ -8,7 +8,9 @@ its own). This script:
   1. Connects to the device over the LAN (TCP port 4370 by default).
   2. Reads its punch logs.
   3. Sends any punches not sent before to the TOS app's HTTPS API.
-  4. Remembers what it already sent (bridge_state.json) so re-runs don't
+  4. Sends the device's enrolled users (PIN + name) whenever that list
+     changes, so the app can create/link Employees automatically.
+  5. Remembers what it already sent (bridge_state.json) so re-runs don't
      resubmit old punches. The server also de-duplicates by
      device+PIN+timestamp, so it's safe even if this file is lost.
 
@@ -21,6 +23,7 @@ Requirements (install once):
     pip install pyzk requests
 """
 
+import hashlib
 import json
 import logging
 import sys
@@ -119,6 +122,35 @@ def device_read_due(config: dict, state: dict) -> bool:
     return datetime.now() - datetime.fromisoformat(last_read) >= interval
 
 
+def sync_users(config: dict, state: dict, users) -> None:
+    """Send the device's user list to the app, but only when it changed."""
+    payload = sorted(
+        ({"pin": str(u.user_id).strip(), "name": (u.name or "").strip()} for u in users if str(u.user_id).strip()),
+        key=lambda u: u["pin"],
+    )
+    digest = hashlib.sha256(json.dumps(payload).encode("utf-8")).hexdigest()
+
+    if digest == state.get("users_hash"):
+        return
+
+    try:
+        response = requests.post(
+            config["api_url"].rsplit("/", 1)[0] + "/users",
+            json={"users": payload},
+            headers={"Authorization": f"Bearer {config['api_token']}", "Accept": "application/json"},
+            timeout=config.get("request_timeout_seconds", 15),
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        # Not fatal: punches still get uploaded, and the next run retries.
+        log.warning("Could not send the device user list: %s", exc)
+        return
+
+    log.info("Sent %d device user(s): %s", len(payload), response.json())
+    state["users_hash"] = digest
+    save_state(state)
+
+
 def post_lines(config: dict, lines: list) -> dict:
     response = requests.post(
         config["api_url"],
@@ -130,7 +162,8 @@ def post_lines(config: dict, lines: list) -> dict:
     return response.json()
 
 
-def fetch_punches(config: dict):
+def fetch_from_device(config: dict):
+    """Returns (users, attendance_records) read in one connection."""
     zk = ZK(
         config["device_ip"],
         port=config.get("device_port", 4370),
@@ -144,8 +177,9 @@ def fetch_punches(config: dict):
     try:
         conn = zk.connect()
         conn.disable_device()  # pause the device's keypad while we read, avoids write races
+        users = conn.get_users()
         records = conn.get_attendance()
-        return records
+        return users, records
     finally:
         if conn is not None:
             try:
@@ -181,15 +215,19 @@ def main() -> None:
     log.info("Connecting to device at %s:%s ...", config["device_ip"], config.get("device_port", 4370))
 
     try:
-        records = fetch_punches(config)
+        users, records = fetch_from_device(config)
     except Exception:
         log.exception("Could not read attendance from the device. Is it powered on and reachable on the LAN?")
         sys.exit(1)
 
-    log.info("Device returned %d total log entries.", len(records))
+    log.info("Device returned %d user(s) and %d total log entries.", len(users), len(records))
 
     state["last_device_read_at"] = datetime.now().isoformat(timespec="seconds")
     save_state(state)
+
+    # Before the punches, so a newly enrolled person already has an
+    # Employee when their first punches arrive.
+    sync_users(config, state, users)
 
     new_records = [
         r for r in records

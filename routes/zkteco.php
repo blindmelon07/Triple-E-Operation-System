@@ -40,4 +40,5 @@ Route::middleware('throttle:120,1')->group(function () {
 Route::middleware('throttle:30,1')->group(function () {
     Route::post('/api/zkteco/attendance', [ZkBridgeController::class, 'store']);
     Route::get('/api/zkteco/sync-status', [ZkBridgeController::class, 'syncStatus']);
+    Route::post('/api/zkteco/users', [ZkBridgeController::class, 'users']);
 });

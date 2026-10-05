@@ -140,6 +140,51 @@ class ZkAttendanceService
     }
 
     /**
+     * Make sure every user enrolled on a device has an Employee with their
+     * PIN, so punches map to someone without manual setup. An employee who
+     * already has a PIN is never touched (a manual mapping wins); otherwise
+     * a PIN-less employee with exactly the same name gets the PIN, and only
+     * if there's none is a new device-only Employee created. Setting the PIN
+     * fires Employee's reconcile hook, so earlier punches get folded in too.
+     *
+     * @param  array<int, array{pin: string, name: ?string}>  $deviceUsers
+     * @return array{created: int, linked: int, unchanged: int}
+     */
+    public function syncDeviceUsers(array $deviceUsers): array
+    {
+        $result = ['created' => 0, 'linked' => 0, 'unchanged' => 0];
+
+        foreach ($deviceUsers as $deviceUser) {
+            $pin = trim((string) $deviceUser['pin']);
+            $name = trim((string) ($deviceUser['name'] ?? '')) ?: "Device User {$pin}";
+
+            if ($pin === '' || Employee::where('biometric_pin', $pin)->exists()) {
+                $result['unchanged']++;
+
+                continue;
+            }
+
+            $sameName = Employee::whereNull('biometric_pin')
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])
+                ->get();
+
+            if ($sameName->count() === 1) {
+                $sameName->first()->update(['biometric_pin' => $pin]);
+                $result['linked']++;
+            } else {
+                Employee::create(['name' => $name, 'biometric_pin' => $pin, 'is_active' => true]);
+                $result['created']++;
+            }
+        }
+
+        if ($result['created'] || $result['linked']) {
+            Log::info('ZKTeco: synced device users', $result);
+        }
+
+        return $result;
+    }
+
+    /**
      * Run reconcileUnmappedPunches() for every employee with a PIN that has
      * stranded punches waiting. Returns how many punches got linked.
      */

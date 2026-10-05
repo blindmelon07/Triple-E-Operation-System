@@ -86,6 +86,32 @@ class ZkBridgeController extends Controller
         ]);
     }
 
+    /**
+     * Receives the device's enrolled user list (PIN + name) from the bridge
+     * and creates/links the matching Employees.
+     */
+    public function users(Request $request): JsonResponse
+    {
+        $device = $this->authenticate($request);
+
+        if ($device instanceof JsonResponse) {
+            return $device;
+        }
+
+        $validated = $request->validate([
+            'users' => ['present', 'array', 'max:5000'],
+            'users.*.pin' => ['required', 'string', 'max:50'],
+            'users.*.name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $device->markSeen($request->ip());
+
+        return response()->json([
+            'message' => 'OK',
+            ...$this->attendanceService->syncDeviceUsers($validated['users']),
+        ]);
+    }
+
     protected function authenticate(Request $request): ZkDevice|JsonResponse
     {
         $token = $request->bearerToken();
