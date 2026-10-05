@@ -44,7 +44,7 @@ DEFAULT_CONFIG = {
     "device_port": 4370,
     "device_password": 0,
     "force_udp": False,
-    "api_url": "https://yourdomain.com/api/zkteco/attendance",
+    "api_url": "https://tri-e.online/api/zkteco/attendance",
     "api_token": "PASTE_THE_TOKEN_FROM_BIOMETRIC_DEVICES_PAGE_HERE",
     "request_timeout_seconds": 15,
 }

@@ -5,7 +5,18 @@ TOS app is hosted online (Hostinger). This script bridges the two: it runs
 on a Windows PC on the **same local network as the device**, pulls its punch
 logs over the LAN, and pushes them to the app over HTTPS.
 
-## One-time setup
+## Quick setup (recommended)
+
+1. Copy this whole `bridge` folder to the store PC (e.g. `C:\TOS-Bridge`).
+   Don't copy `bridge_state.json` / `bridge.log` from another PC.
+2. Double-click **`install.bat`**. It installs Python if needed, installs
+   the dependencies, asks for the device IP and the Bridge API Token,
+   runs a test sync, and schedules the sync every 5 minutes.
+3. To stop the automatic sync, run **`uninstall.bat`**.
+
+The manual steps below do the same thing by hand.
+
+## One-time setup (manual)
 
 1. **Register the device in TOS first.**
    Log in to the app → **Biometric Devices** → Register Device.
