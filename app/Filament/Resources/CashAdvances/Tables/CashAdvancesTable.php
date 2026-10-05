@@ -35,6 +35,12 @@ class CashAdvancesTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('type')
+                    ->label('Type')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => ucfirst($state))
+                    ->color(fn (string $state) => $state === CashAdvance::TYPE_EMERGENCY ? 'danger' : 'gray'),
+
                 TextColumn::make('purpose')
                     ->label('Purpose')
                     ->limit(30)
