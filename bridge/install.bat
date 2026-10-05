@@ -5,7 +5,9 @@ REM   1. makes sure Python is installed
 REM   2. installs the script's dependencies
 REM   3. asks for the device IP + API token and saves them to bridge_config.json
 REM   4. runs one test sync
-REM   5. schedules the sync to run every 5 minutes (Windows Task Scheduler)
+REM   5. schedules the bridge to run every minute (Windows Task Scheduler);
+REM      it reads the device every 5 minutes, or right away when someone
+REM      presses "Sync Attendance" in the TOS app
 REM Safe to run again any time (e.g. to change the token or IP).
 
 cd /d "%~dp0"
@@ -69,13 +71,13 @@ if not "%TEST_RESULT%"=="0" (
 )
 
 REM --- 5. Schedule -----------------------------------------------------------
-REM pythonw.exe runs without opening a console window every 5 minutes.
+REM pythonw.exe runs without opening a console window every minute.
 set "PYW=%PY:python.exe=pythonw.exe%"
 if not exist "%PYW%" set "PYW=%PY%"
 
 echo.
-echo Scheduling "%TASK_NAME%" every 5 minutes...
-schtasks /Create /F /TN "%TASK_NAME%" /SC MINUTE /MO 5 /TR "\"%PYW%\" \"%~dp0zkteco_bridge.py\"" >nul
+echo Scheduling "%TASK_NAME%" every minute...
+schtasks /Create /F /TN "%TASK_NAME%" /SC MINUTE /MO 1 /TR "\"%PYW%\" \"%~dp0zkteco_bridge.py\"" >nul
 if errorlevel 1 (
     echo [ERROR] Could not create the scheduled task. Right-click install.bat ^> Run as administrator.
     pause
@@ -84,8 +86,9 @@ if errorlevel 1 (
 
 echo.
 echo ============================================
-echo   Done! Attendance will sync every 5 minutes
-echo   while this PC is on and logged in.
+echo   Done! Attendance will sync every 5 minutes,
+echo   or within a minute of pressing "Sync Attendance"
+echo   in the TOS app, while this PC is on and logged in.
 echo   Log file: %~dp0bridge.log
 echo ============================================
 pause

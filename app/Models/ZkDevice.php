@@ -19,6 +19,7 @@ class ZkDevice extends Model
         'is_active',
         'last_seen_at',
         'last_seen_ip',
+        'sync_requested_at',
     ];
 
     protected static function booted(): void
@@ -33,6 +34,7 @@ class ZkDevice extends Model
         return [
             'is_active' => 'boolean',
             'last_seen_at' => 'datetime',
+            'sync_requested_at' => 'datetime',
         ];
     }
 

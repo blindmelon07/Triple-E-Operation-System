@@ -12,8 +12,10 @@ its own). This script:
      resubmit old punches. The server also de-duplicates by
      device+PIN+timestamp, so it's safe even if this file is lost.
 
-Intended to run on a schedule (every 2-5 minutes) via Windows Task
-Scheduler -- see README.md in this folder for setup steps.
+Intended to run every minute via Windows Task Scheduler (install.bat sets
+this up). Each run is cheap: it reads the device only when
+sync_interval_minutes has passed since the last read, or when someone
+pressed "Sync Attendance" in the TOS app (checked via /sync-status).
 
 Requirements (install once):
     pip install pyzk requests
@@ -22,7 +24,7 @@ Requirements (install once):
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
@@ -47,6 +49,7 @@ DEFAULT_CONFIG = {
     "api_url": "https://tri-e.online/api/zkteco/attendance",
     "api_token": "PASTE_THE_TOKEN_FROM_BIOMETRIC_DEVICES_PAGE_HERE",
     "request_timeout_seconds": 15,
+    "sync_interval_minutes": 5,
 }
 
 logging.basicConfig(
@@ -89,6 +92,44 @@ def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
 
 
+def sync_status_url(config: dict) -> str:
+    return config.get("sync_status_url") or config["api_url"].rsplit("/", 1)[0] + "/sync-status"
+
+
+def sync_requested(config: dict) -> bool:
+    """Ask the app whether someone pressed "Sync Attendance" since our last upload."""
+    try:
+        response = requests.get(
+            sync_status_url(config),
+            headers={"Authorization": f"Bearer {config['api_token']}", "Accept": "application/json"},
+            timeout=config.get("request_timeout_seconds", 15),
+        )
+        response.raise_for_status()
+        return bool(response.json().get("sync_requested"))
+    except (requests.RequestException, ValueError) as exc:
+        log.warning("Could not check for a sync request: %s", exc)
+        return False
+
+
+def device_read_due(config: dict, state: dict) -> bool:
+    last_read = state.get("last_device_read_at")
+    if not last_read:
+        return True
+    interval = timedelta(minutes=config.get("sync_interval_minutes", 5))
+    return datetime.now() - datetime.fromisoformat(last_read) >= interval
+
+
+def post_lines(config: dict, lines: list) -> dict:
+    response = requests.post(
+        config["api_url"],
+        json={"lines": lines},
+        headers={"Authorization": f"Bearer {config['api_token']}", "Accept": "application/json"},
+        timeout=config.get("request_timeout_seconds", 15),
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def fetch_punches(config: dict):
     zk = ZK(
         config["device_ip"],
@@ -127,6 +168,13 @@ def main() -> None:
     config = load_config()
     state = load_state()
 
+    forced = False
+    if not device_read_due(config, state):
+        forced = sync_requested(config)
+        if not forced:
+            return  # quiet minute: not due yet and nobody pressed Sync
+        log.info("Sync requested from the TOS app.")
+
     last_synced = state.get("last_synced_timestamp")
     last_synced_dt = datetime.fromisoformat(last_synced) if last_synced else None
 
@@ -140,13 +188,24 @@ def main() -> None:
 
     log.info("Device returned %d total log entries.", len(records))
 
+    state["last_device_read_at"] = datetime.now().isoformat(timespec="seconds")
+    save_state(state)
+
     new_records = [
         r for r in records
         if last_synced_dt is None or r.timestamp > last_synced_dt
     ]
 
     if not new_records:
-        log.info("Nothing new since last sync (%s). Done.", last_synced or "never")
+        log.info("Nothing new since last sync (%s).", last_synced or "never")
+        if forced:
+            # An upload is what clears the app's sync request, so send an
+            # empty batch to acknowledge it even when there's nothing new.
+            try:
+                post_lines(config, [])
+            except requests.RequestException:
+                log.exception("Failed to acknowledge the sync request.")
+                sys.exit(1)
         return
 
     new_records.sort(key=lambda r: r.timestamp)
@@ -168,13 +227,7 @@ def main() -> None:
         )
 
         try:
-            response = requests.post(
-                config["api_url"],
-                json={"lines": lines},
-                headers={"Authorization": f"Bearer {config['api_token']}"},
-                timeout=config.get("request_timeout_seconds", 15),
-            )
-            response.raise_for_status()
+            result = post_lines(config, lines)
         except requests.RequestException:
             log.exception(
                 "Failed to reach the TOS app on batch %d/%d. Will retry from here on next "
@@ -183,7 +236,6 @@ def main() -> None:
             )
             sys.exit(1)
 
-        result = response.json()
         log.info("Server accepted: %s", result)
 
         # Only advance the watermark after a confirmed successful upload.

@@ -22,26 +22,30 @@ class ZkBridgeController extends Controller
 {
     public function __construct(protected ZkAttendanceService $attendanceService) {}
 
+    /**
+     * Polled by the bridge every minute: tells it whether someone pressed
+     * "Sync Attendance" in the app since its last upload.
+     */
+    public function syncStatus(Request $request): JsonResponse
+    {
+        $device = $this->authenticate($request);
+
+        if ($device instanceof JsonResponse) {
+            return $device;
+        }
+
+        return response()->json(['sync_requested' => $device->sync_requested_at !== null]);
+    }
+
     public function store(Request $request): JsonResponse
     {
-        $token = $request->bearerToken();
+        $device = $this->authenticate($request);
 
-        if (! $token) {
-            return response()->json(['message' => 'Missing bearer token.'], 401);
+        if ($device instanceof JsonResponse) {
+            return $device;
         }
 
-        $device = ZkDevice::where('api_token', $token)->first();
-
-        if (! $device) {
-            Log::warning('ZKTeco bridge: unknown token used', ['ip' => $request->ip()]);
-
-            return response()->json(['message' => 'Invalid token.'], 401);
-        }
-
-        if (! $device->is_active) {
-            return response()->json(['message' => 'Device is not active.'], 403);
-        }
-
+        $device->sync_requested_at = null;
         $device->markSeen($request->ip());
 
         $lines = $request->input('lines', []);
@@ -80,5 +84,28 @@ class ZkBridgeController extends Controller
             'processed' => $processed,
             'skipped' => $skipped,
         ]);
+    }
+
+    protected function authenticate(Request $request): ZkDevice|JsonResponse
+    {
+        $token = $request->bearerToken();
+
+        if (! $token) {
+            return response()->json(['message' => 'Missing bearer token.'], 401);
+        }
+
+        $device = ZkDevice::where('api_token', $token)->first();
+
+        if (! $device) {
+            Log::warning('ZKTeco bridge: unknown token used', ['ip' => $request->ip()]);
+
+            return response()->json(['message' => 'Invalid token.'], 401);
+        }
+
+        if (! $device->is_active) {
+            return response()->json(['message' => 'Device is not active.'], 403);
+        }
+
+        return $device;
     }
 }

@@ -37,4 +37,7 @@ Route::middleware('throttle:120,1')->group(function () {
 | the SN whitelist the direct-push /iclock routes rely on.
 |
 */
-Route::middleware('throttle:30,1')->post('/api/zkteco/attendance', [ZkBridgeController::class, 'store']);
+Route::middleware('throttle:30,1')->group(function () {
+    Route::post('/api/zkteco/attendance', [ZkBridgeController::class, 'store']);
+    Route::get('/api/zkteco/sync-status', [ZkBridgeController::class, 'syncStatus']);
+});

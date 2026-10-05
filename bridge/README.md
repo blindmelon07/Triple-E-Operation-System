@@ -11,7 +11,9 @@ logs over the LAN, and pushes them to the app over HTTPS.
    Don't copy `bridge_state.json` / `bridge.log` from another PC.
 2. Double-click **`install.bat`**. It installs Python if needed, installs
    the dependencies, asks for the device IP and the Bridge API Token,
-   runs a test sync, and schedules the sync every 5 minutes.
+   runs a test sync, and schedules the bridge to run every minute. It reads
+   the device every 5 minutes, or within a minute of someone pressing
+   **Sync Attendance** on the Attendances page in TOS.
 3. To stop the automatic sync, run **`uninstall.bat`**.
 
 The manual steps below do the same thing by hand.
@@ -56,7 +58,7 @@ The manual steps below do the same thing by hand.
    Check `bridge.log` in this folder for the result. If it says
    "Server accepted", check the Attendance page in TOS — punches should
    already appear against employees who have a **Biometric PIN** set on
-   their user record (Users → edit employee → Biometric PIN = the number
+   their employee record (Employees → edit employee → Biometric PIN = the number
    they enrolled with on the device keypad).
 
 ## Run it automatically (Windows Task Scheduler)
@@ -66,7 +68,7 @@ The manual steps below do the same thing by hand.
 2. **General tab**: name it e.g. "ZKTeco Attendance Sync". Check
    "Run whether user is logged on or not".
 3. **Triggers tab**: New → *Daily*, recur every 1 day, then check
-   "Repeat task every" → **5 minutes**, for a duration of **1 day**.
+   "Repeat task every" → **1 minute**, for a duration of **1 day**.
 4. **Actions tab**: New → Action "Start a program" →
    Program/script: the full path to `run_bridge.bat` in this folder.
    Start in: this folder's path.

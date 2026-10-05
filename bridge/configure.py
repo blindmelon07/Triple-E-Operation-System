@@ -17,11 +17,12 @@ DEFAULT_CONFIG = {
     "api_url": "https://tri-e.online/api/zkteco/attendance",
     "api_token": "PASTE_THE_TOKEN_FROM_BIOMETRIC_DEVICES_PAGE_HERE",
     "request_timeout_seconds": 15,
+    "sync_interval_minutes": 5,
 }
 
 
 def ask(label: str, current: str) -> str:
-    answer = input(f"{label} [{current}]: ").strip().lstrip("﻿")
+    answer = input(f"{label} [{current}]: ").strip().lstrip("\ufeff")
     return answer or current
 
 

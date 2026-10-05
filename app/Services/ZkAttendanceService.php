@@ -140,6 +140,28 @@ class ZkAttendanceService
     }
 
     /**
+     * Run reconcileUnmappedPunches() for every employee with a PIN that has
+     * stranded punches waiting. Returns how many punches got linked.
+     */
+    public function reconcileAllUnmappedPunches(): int
+    {
+        $pins = ZkAttendanceLog::whereNull('employee_id')->distinct()->pluck('pin');
+
+        if ($pins->isEmpty()) {
+            return 0;
+        }
+
+        $linked = 0;
+
+        foreach (Employee::whereIn('biometric_pin', $pins)->get() as $employee) {
+            $linked += ZkAttendanceLog::whereNull('employee_id')->where('pin', $employee->biometric_pin)->count();
+            $this->reconcileUnmappedPunches($employee);
+        }
+
+        return $linked;
+    }
+
+    /**
      * Recompute the day's Attendance row for an employee from all of that
      * day's raw logs. How time_in/time_out/total_hours are derived depends
      * on the employee's AttendanceLogMode:
