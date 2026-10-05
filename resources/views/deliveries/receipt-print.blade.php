@@ -126,7 +126,7 @@
             </div>
             <div class="receipt-meta">
                 <div class="title">DELIVERY RECEIPT</div>
-                <div class="meta-row">DR-{{ str_pad($delivery->id, 6, '0', STR_PAD_LEFT) }}</div>
+                <div class="meta-row">DR-{{ $delivery->dr_number ?: str_pad($delivery->id, 6, '0', STR_PAD_LEFT) }}</div>
                 <div class="meta-row">Date: {{ $delivery->created_at->format('Y-m-d') }}</div>
                 <div class="meta-row">Page: 1</div>
             </div>

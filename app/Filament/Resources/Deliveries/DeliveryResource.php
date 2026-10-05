@@ -60,6 +60,12 @@ class DeliveryResource extends Resource
                     ])->columns(3),
                 Section::make('Delivery Details')
                     ->schema([
+                        TextInput::make('dr_number')
+                            ->label('DR #')
+                            ->maxLength(50)
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('Auto, e.g. '.now()->timezone('Asia/Manila')->format('md-Hi'))
+                            ->helperText('Optional. Type the printed DR number, or leave blank to auto-generate from the month, day and time.'),
                         TextInput::make('delivery_address')
                             ->maxLength(255),
                         TextInput::make('distance_km')
@@ -102,6 +108,9 @@ class DeliveryResource extends Resource
                         TextEntry::make('sale.id')
                             ->label('Order #')
                             ->formatStateUsing(fn ($state) => "#{$state}"),
+                        TextEntry::make('dr_number')
+                            ->label('DR #')
+                            ->placeholder('Not recorded'),
                         TextEntry::make('delivery_address')
                             ->label('Delivery Address'),
                         TextEntry::make('driver.name')
@@ -154,6 +163,11 @@ class DeliveryResource extends Resource
                     ->label('Order #')
                     ->formatStateUsing(fn ($state) => "#{$state}")
                     ->sortable(),
+                TextColumn::make('dr_number')
+                    ->label('DR #')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
                 TextColumn::make('sale.customer.name')
                     ->label('Customer')
                     ->searchable()
