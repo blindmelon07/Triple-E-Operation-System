@@ -32,6 +32,11 @@ class ListAttendances extends ListRecords
                     // assigned to an employee get folded into Attendance now.
                     $linked = $attendanceService->reconcileAllUnmappedPunches();
 
+                    // Re-apply the current punch rules to the last month of
+                    // device-sourced days, so a rule fix shows up right away
+                    // instead of only when each employee punches again.
+                    $attendanceService->recalculateBiometricAttendance(now()->subDays(31));
+
                     $body = $requested > 0
                         ? "Asked {$requested} device(s) to send their latest punches. They should appear within about a minute — refresh this page then."
                         : 'No active biometric devices are registered.';

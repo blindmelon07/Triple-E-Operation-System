@@ -260,20 +260,16 @@ class ZkAttendanceService
         if ($logMode === AttendanceLogMode::Four) {
             // Punch order decides the meaning, not the device's IN/OUT key
             // state (staff rarely press those keys on a face terminal):
-            //   1 punch  -> in
-            //   2 punches -> in, out (no break taken)
-            //   3 punches -> in, break out, break in (not yet out)
+            //   1 punch   -> in
+            //   2 punches -> in, break out (on break)
+            //   3 punches -> in, break out, break in (back, not yet out)
             //   4+        -> in, break out, break in, ..., out (last)
+            // The day stays open (no total hours) until the 4th punch.
             $timeIn = $punches[0];
             $count = count($punches);
-
-            if ($count === 2) {
-                $timeOut = $punches[1];
-            } else {
-                $breakOut = $punches[1] ?? null;
-                $breakIn = $punches[2] ?? null;
-                $timeOut = $count >= 4 ? $punches[$count - 1] : null;
-            }
+            $breakOut = $punches[1] ?? null;
+            $breakIn = $punches[2] ?? null;
+            $timeOut = $count >= 4 ? $punches[$count - 1] : null;
         } else {
             // Two logs/day: plain first-punch/last-punch, no break deduction.
             $timeIn = $punches[0];
@@ -306,11 +302,12 @@ class ZkAttendanceService
      * e.g. after the folding rules change. Manually managed days are left
      * alone (foldIntoAttendance skips them). Returns the number of days.
      */
-    public function recalculateBiometricAttendance(): int
+    public function recalculateBiometricAttendance(?Carbon $since = null): int
     {
         $days = 0;
 
         Attendance::where('remarks', self::BIOMETRIC_REMARK)
+            ->when($since, fn ($query) => $query->whereDate('date', '>=', $since->toDateString()))
             ->with('employee')
             ->chunkById(200, function ($attendances) use (&$days) {
                 foreach ($attendances as $attendance) {
