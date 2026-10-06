@@ -11,12 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Attendance extends Model
 {
-    use HasFactory, Auditable;
+    use Auditable, HasFactory;
 
     protected $fillable = [
         'employee_id',
         'date',
         'time_in',
+        'break_out',
+        'break_in',
         'time_out',
         'total_hours',
         'status',
@@ -69,5 +71,22 @@ class Attendance extends Model
         }
 
         return round($in->diffInMinutes($out, true) / 60, 2);
+    }
+
+    /**
+     * Worked hours for a 4-log day: time in to time out, minus the break
+     * when both break punches exist.
+     */
+    public static function calculateWorkedHours(?string $timeIn, ?string $breakOut, ?string $breakIn, ?string $timeOut): ?float
+    {
+        $gross = static::calculateTotalHours($timeIn, $timeOut);
+
+        if ($gross === null) {
+            return null;
+        }
+
+        $break = static::calculateTotalHours($breakOut, $breakIn) ?? 0;
+
+        return max(0, round($gross - $break, 2));
     }
 }

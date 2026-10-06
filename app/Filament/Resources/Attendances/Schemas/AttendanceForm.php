@@ -20,6 +20,17 @@ class AttendanceForm
 {
     public static function configure(Schema $schema): Schema
     {
+        // Worked hours = time in to time out, minus the break when both
+        // break times are filled in.
+        $recalculate = function (Get $get, Set $set): void {
+            $set('total_hours', Attendance::calculateWorkedHours(
+                $get('time_in'),
+                $get('break_out'),
+                $get('break_in'),
+                $get('time_out'),
+            ));
+        };
+
         return $schema
             ->components([
                 Section::make('Attendance Details')
@@ -41,25 +52,25 @@ class AttendanceForm
                             ->label('Time In')
                             ->seconds(false)
                             ->live()
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                $hours = Attendance::calculateTotalHours(
-                                    $get('time_in'),
-                                    $get('time_out')
-                                );
-                                $set('total_hours', $hours);
-                            }),
+                            ->afterStateUpdated($recalculate),
+
+                        TimePicker::make('break_out')
+                            ->label('Break Out')
+                            ->seconds(false)
+                            ->live()
+                            ->afterStateUpdated($recalculate),
+
+                        TimePicker::make('break_in')
+                            ->label('Break In')
+                            ->seconds(false)
+                            ->live()
+                            ->afterStateUpdated($recalculate),
 
                         TimePicker::make('time_out')
                             ->label('Time Out')
                             ->seconds(false)
                             ->live()
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                $hours = Attendance::calculateTotalHours(
-                                    $get('time_in'),
-                                    $get('time_out')
-                                );
-                                $set('total_hours', $hours);
-                            }),
+                            ->afterStateUpdated($recalculate),
 
                         TextInput::make('total_hours')
                             ->label('Total Hours')

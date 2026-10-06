@@ -21,16 +21,10 @@ use Illuminate\Support\Facades\Log;
 class ZkAttendanceService
 {
     /**
-     * Standard ZKTeco ATTLOG status codes (column 3). Devices vary slightly,
-     * but this is the near-universal convention.
+     * Punches by the same person closer together than this are one scan
+     * registered twice, and only the first is used.
      */
-    protected const STATUS_CHECK_IN = 0;
-
-    protected const STATUS_CHECK_OUT = 1;
-
-    protected const STATUS_BREAK_OUT = 2;
-
-    protected const STATUS_BREAK_IN = 3;
+    protected const DUPLICATE_PUNCH_MINUTES = 2;
 
     /**
      * Remarks value used to mark an Attendance row as device-sourced, so we
@@ -172,7 +166,12 @@ class ZkAttendanceService
                 $sameName->first()->update(['biometric_pin' => $pin]);
                 $result['linked']++;
             } else {
-                Employee::create(['name' => $name, 'biometric_pin' => $pin, 'is_active' => true]);
+                Employee::create([
+                    'name' => $name,
+                    'biometric_pin' => $pin,
+                    'attendance_log_mode' => AttendanceLogMode::Four,
+                    'is_active' => true,
+                ]);
                 $result['created']++;
             }
         }
@@ -212,9 +211,8 @@ class ZkAttendanceService
      * on the employee's AttendanceLogMode:
      *  - Two:  first punch of the day = time_in, last = time_out. No break
      *          is subtracted (the employee isn't expected to punch for one).
-     *  - Four: earliest check-in punch = time_in, latest check-out punch =
-     *          time_out, and any break-out/break-in pair in between is
-     *          excluded from total_hours instead of counted as worked time.
+     *  - Four: punches in order are time_in, break_out, break_in, time_out;
+     *          the break is excluded from total_hours.
      *
      * Never touches an Attendance row an admin created/edited by hand (i.e.
      * one that doesn't carry our own BIOMETRIC_REMARK marker) — a stray or
@@ -245,34 +243,56 @@ class ZkAttendanceService
             return null;
         }
 
-        $logMode = $employee->attendance_log_mode ?? AttendanceLogMode::Two;
+        // A face/finger scan is often registered twice in a row; only the
+        // first of a burst counts, otherwise a double scan at time-in would
+        // be taken as the break-out punch.
+        $punches = [];
+        foreach ($dayLogs as $log) {
+            $last = end($punches);
+            if ($last === false || $last->diffInMinutes($log->punched_at, true) >= self::DUPLICATE_PUNCH_MINUTES) {
+                $punches[] = $log->punched_at;
+            }
+        }
+
+        $breakOut = $breakIn = null;
+        $logMode = $employee->attendance_log_mode ?? AttendanceLogMode::Four;
 
         if ($logMode === AttendanceLogMode::Four) {
-            $checkIn = $dayLogs->firstWhere('status', self::STATUS_CHECK_IN);
-            $checkOut = $dayLogs->where('status', self::STATUS_CHECK_OUT)->last();
+            // Punch order decides the meaning, not the device's IN/OUT key
+            // state (staff rarely press those keys on a face terminal):
+            //   1 punch  -> in
+            //   2 punches -> in, out (no break taken)
+            //   3 punches -> in, break out, break in (not yet out)
+            //   4+        -> in, break out, break in, ..., out (last)
+            $timeIn = $punches[0];
+            $count = count($punches);
 
-            $timeIn = ($checkIn ?? $dayLogs->first())->punched_at;
-            $timeOut = $dayLogs->count() > 1
-                ? ($checkOut ?? $dayLogs->last())->punched_at
-                : null;
-
-            $totalHours = $timeOut
-                ? $this->calculateWorkedHours($timeIn, $timeOut, $dayLogs)
-                : null;
+            if ($count === 2) {
+                $timeOut = $punches[1];
+            } else {
+                $breakOut = $punches[1] ?? null;
+                $breakIn = $punches[2] ?? null;
+                $timeOut = $count >= 4 ? $punches[$count - 1] : null;
+            }
         } else {
             // Two logs/day: plain first-punch/last-punch, no break deduction.
-            $timeIn = $dayLogs->first()->punched_at;
-            $timeOut = $dayLogs->count() > 1 ? $dayLogs->last()->punched_at : null;
-
-            $totalHours = $timeOut
-                ? Attendance::calculateTotalHours($timeIn->format('H:i:s'), $timeOut->format('H:i:s'))
-                : null;
+            $timeIn = $punches[0];
+            $timeOut = count($punches) > 1 ? end($punches) : null;
         }
+
+        $totalHours = Attendance::calculateWorkedHours(
+            $timeIn->format('H:i:s'),
+            $breakOut?->format('H:i:s'),
+            $breakIn?->format('H:i:s'),
+            $timeOut?->format('H:i:s'),
+        );
 
         return Attendance::updateOrCreate(
             ['employee_id' => $employee->id, 'date' => $date],
             [
                 'time_in' => $timeIn->format('H:i:s'),
+                'break_out' => $breakOut?->format('H:i:s'),
+                'break_in' => $breakIn?->format('H:i:s'),
                 'time_out' => $timeOut?->format('H:i:s'),
                 'total_hours' => $totalHours,
                 'status' => $this->resolveStatus($timeIn, $totalHours),
@@ -282,34 +302,26 @@ class ZkAttendanceService
     }
 
     /**
-     * total time between time_in and time_out, minus any complete
-     * break-out -> break-in intervals logged in between.
-     *
-     * @param  \Illuminate\Support\Collection<int, ZkAttendanceLog>  $dayLogs
+     * Re-derive every device-sourced Attendance day from its raw punches,
+     * e.g. after the folding rules change. Manually managed days are left
+     * alone (foldIntoAttendance skips them). Returns the number of days.
      */
-    protected function calculateWorkedHours(Carbon $timeIn, Carbon $timeOut, $dayLogs): ?float
+    public function recalculateBiometricAttendance(): int
     {
-        $grossHours = Attendance::calculateTotalHours($timeIn->format('H:i:s'), $timeOut->format('H:i:s'));
+        $days = 0;
 
-        if ($grossHours === null) {
-            return null;
-        }
+        Attendance::where('remarks', self::BIOMETRIC_REMARK)
+            ->with('employee')
+            ->chunkById(200, function ($attendances) use (&$days) {
+                foreach ($attendances as $attendance) {
+                    if ($attendance->employee) {
+                        $this->foldIntoAttendance($attendance->employee, Carbon::parse($attendance->date->toDateString().' 12:00:00'));
+                        $days++;
+                    }
+                }
+            });
 
-        $breakMinutes = 0;
-        $breakStartedAt = null;
-
-        foreach ($dayLogs as $log) {
-            if ($log->status === self::STATUS_BREAK_OUT) {
-                $breakStartedAt = $log->punched_at;
-            } elseif ($log->status === self::STATUS_BREAK_IN && $breakStartedAt) {
-                $breakMinutes += $breakStartedAt->diffInMinutes($log->punched_at, true);
-                $breakStartedAt = null;
-            }
-        }
-
-        return $breakMinutes > 0
-            ? max(0, round($grossHours - ($breakMinutes / 60), 2))
-            : $grossHours;
+        return $days;
     }
 
     protected function resolveStatus(Carbon $timeIn, ?float $totalHours): string

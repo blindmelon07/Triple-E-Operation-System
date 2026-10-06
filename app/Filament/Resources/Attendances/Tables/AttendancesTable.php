@@ -34,6 +34,18 @@ class AttendancesTable
                     ->time('h:i A')
                     ->sortable(),
 
+                TextColumn::make('break_out')
+                    ->label('Break Out')
+                    ->time('h:i A')
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                TextColumn::make('break_in')
+                    ->label('Break In')
+                    ->time('h:i A')
+                    ->placeholder('—')
+                    ->toggleable(),
+
                 TextColumn::make('time_out')
                     ->label('Time Out')
                     ->time('h:i A')

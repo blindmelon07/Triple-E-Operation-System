@@ -14,7 +14,7 @@ class EditAttendance extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         if (! empty($data['time_in']) && ! empty($data['time_out'])) {
-            $data['total_hours'] = Attendance::calculateTotalHours($data['time_in'], $data['time_out']);
+            $data['total_hours'] = Attendance::calculateWorkedHours($data['time_in'], $data['break_out'] ?? null, $data['break_in'] ?? null, $data['time_out']);
         }
 
         return $data;

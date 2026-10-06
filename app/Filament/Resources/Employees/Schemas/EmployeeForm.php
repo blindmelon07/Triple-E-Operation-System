@@ -32,7 +32,7 @@ class EmployeeForm
                         AttendanceLogMode::Two->value => AttendanceLogMode::Two->getLabel(),
                         AttendanceLogMode::Four->value => AttendanceLogMode::Four->getLabel(),
                     ])
-                    ->default(AttendanceLogMode::Two->value)
+                    ->default(AttendanceLogMode::Four->value)
                     ->required()
                     ->helperText('How many times this employee punches the biometric device per day. 4 logs subtracts the middle break interval from worked hours; 2 logs does not.'),
                 Toggle::make('is_active')

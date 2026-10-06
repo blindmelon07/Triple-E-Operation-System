@@ -24,7 +24,7 @@ class CreateAttendance extends CreateRecord
 
         // Ensure total_hours is calculated
         if (! empty($data['time_in']) && ! empty($data['time_out']) && empty($data['total_hours'])) {
-            $data['total_hours'] = Attendance::calculateTotalHours($data['time_in'], $data['time_out']);
+            $data['total_hours'] = Attendance::calculateWorkedHours($data['time_in'], $data['break_out'] ?? null, $data['break_in'] ?? null, $data['time_out']);
         }
 
         return $data;
