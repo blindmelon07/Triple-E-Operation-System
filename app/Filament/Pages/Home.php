@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Filament\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Resources\CashAdvances\CashAdvanceResource;
+use App\Filament\Resources\Incentives\IncentiveResource;
 use App\Filament\Resources\CashRegisterSessions\CashRegisterSessionResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Customers\CustomerResource;
@@ -289,6 +290,18 @@ class Home extends Page
                 'color'       => '#be185d',
                 'bg'          => '#fdf2f8',
                 'border'      => '#fbcfe8',
+            ];
+        }
+
+        if ($isAdmin || $user->can('ViewAny:Incentive')) {
+            $cards[] = [
+                'title'       => 'Sales Incentives',
+                'description' => 'Sales rep incentives, paid via payroll or released separately',
+                'icon'        => 'heroicon-o-gift',
+                'url'         => IncentiveResource::getUrl(),
+                'color'       => '#a21caf',
+                'bg'          => '#fdf4ff',
+                'border'      => '#f5d0fe',
             ];
         }
 

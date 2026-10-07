@@ -160,6 +160,12 @@ class PayrollItemsRelationManager extends RelationManager
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('incentive')
+                    ->label('Incentive')
+                    ->money('PHP')
+                    ->alignEnd()
+                    ->toggleable(),
+
                 TextColumn::make('cash_advance_deduction')
                     ->label('Cash Adv.')
                     ->money('PHP')
@@ -180,6 +186,7 @@ class PayrollItemsRelationManager extends RelationManager
                         $grossPay = ((float) $record->daily_rate * (float) $record->days_worked)
                             + (float) $record->overtime_pay
                             + (float) $record->bonus
+                            + (float) $record->incentive
                             + (float) $record->allowance;
 
                         $totalDeductions = (float) $record->late_deduction

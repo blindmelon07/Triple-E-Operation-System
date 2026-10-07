@@ -9,6 +9,7 @@ use App\Models\CashAdvance;
 use App\Models\CashAdvancePayment;
 use App\Models\EmployeeCompensation;
 use App\Models\GovernmentContribution;
+use App\Models\Incentive;
 use App\Models\LeaveRequest;
 use App\Models\Payroll;
 use App\Models\PayrollItem;
@@ -127,7 +128,16 @@ class CreatePayroll extends CreateRecord
             // Calculate gross pay
             $basePay = (float) $comp->daily_rate * $daysWorked;
             $allowance = (float) $comp->allowance;
-            $grossPay = $basePay + $allowance;
+
+            // Sales incentives set to "Add to payroll", dated on or before the
+            // end of this cut-off and not already in a live payroll.
+            $incentives = Incentive::awaitingPayroll()
+                ->where('employee_id', $employeeId)
+                ->whereDate('date', '<=', $periodEnd)
+                ->get();
+            $incentiveTotal = round((float) $incentives->sum('amount'), 2);
+
+            $grossPay = $basePay + $allowance + $incentiveTotal;
 
             // Calculate late deduction
             $lateDeduction = 0;
@@ -212,6 +222,7 @@ class CreatePayroll extends CreateRecord
                 'overtime_pay' => 0,
                 'bonus' => 0,
                 'allowance' => $allowance,
+                'incentive' => $incentiveTotal,
                 'gross_pay' => $grossPay,
                 'late_count' => $lateCount,
                 'late_minutes' => $lateMinutes,
@@ -224,6 +235,10 @@ class CreatePayroll extends CreateRecord
                 'total_deductions' => $totalItemDeductions,
                 'net_pay' => $netPay,
             ]);
+
+            if ($incentives->isNotEmpty()) {
+                Incentive::whereKey($incentives->modelKeys())->update(['payroll_item_id' => $item->id]);
+            }
 
             foreach ($caDeductions as $cashAdvanceId => $amount) {
                 CashAdvancePayment::create([

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PayrollItem extends Model
 {
-    use HasFactory, Auditable;
+    use Auditable, HasFactory;
 
     protected $fillable = [
         'payroll_id',
@@ -22,6 +22,7 @@ class PayrollItem extends Model
         'overtime_pay',
         'bonus',
         'bonus_description',
+        'incentive',
         'allowance',
         'gross_pay',
         'late_count',
@@ -56,6 +57,7 @@ class PayrollItem extends Model
             'philhealth_deduction' => 'decimal:2',
             'pagibig_deduction' => 'decimal:2',
             'cash_advance_deduction' => 'decimal:2',
+            'incentive' => 'decimal:2',
             'other_deduction' => 'decimal:2',
             'total_deductions' => 'decimal:2',
             'net_pay' => 'decimal:2',
@@ -84,5 +86,13 @@ class PayrollItem extends Model
     public function cashAdvancePayments(): HasMany
     {
         return $this->hasMany(CashAdvancePayment::class);
+    }
+
+    /**
+     * @return HasMany<Incentive, $this>
+     */
+    public function incentives(): HasMany
+    {
+        return $this->hasMany(Incentive::class);
     }
 }

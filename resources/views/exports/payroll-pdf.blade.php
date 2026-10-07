@@ -201,6 +201,7 @@
                 <th class="amount">OT Hrs</th>
                 <th class="amount">OT Pay</th>
                 <th class="amount">Bonus</th>
+                <th class="amount">Incentive</th>
                 <th class="amount">Allowance</th>
                 <th class="amount">Gross</th>
                 <th class="amount">Late</th>
@@ -223,6 +224,7 @@
                     <td class="amount">{{ number_format((float) $item->overtime_hours, 2) }}</td>
                     <td class="amount">₱{{ number_format((float) $item->overtime_pay, 2) }}</td>
                     <td class="amount">₱{{ number_format((float) $item->bonus, 2) }}</td>
+                    <td class="amount">₱{{ number_format((float) $item->incentive, 2) }}</td>
                     <td class="amount">₱{{ number_format((float) $item->allowance, 2) }}</td>
                     <td class="amount">₱{{ number_format((float) $item->gross_pay, 2) }}</td>
                     <td class="amount deduction">₱{{ number_format((float) $item->late_deduction, 2) }}</td>
@@ -238,7 +240,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="8">TOTAL</td>
+                <td colspan="9">TOTAL</td>
                 <td class="amount">₱{{ number_format((float) $payroll->total_gross, 2) }}</td>
                 <td colspan="6"></td>
                 <td class="amount">₱{{ number_format((float) $payroll->total_deductions, 2) }}</td>
