@@ -59,6 +59,16 @@ class CustomersTable
                     ->modalHeading('Generate Statement of Account')
                     ->modalSubmitActionLabel('Generate PDF')
                     ->schema([
+                        DatePicker::make('soa_billing_date')
+                            ->label('Billing Date')
+                            ->native(false)
+                            ->default(now())
+                            ->required(),
+                        TextInput::make('soa_number')
+                            ->label('SOA No.')
+                            ->maxLength(50)
+                            ->default(fn ($record) => $record->suggestSoaNumber())
+                            ->helperText('Saved to the customer and shown on the SOA Summary report.'),
                         DatePicker::make('date_from')
                             ->label('From')
                             ->native(false),
@@ -86,6 +96,11 @@ class CustomersTable
                             ->default(fn ($record) => $record->email),
                     ])
                     ->action(function ($record, array $data) {
+                        $record->update([
+                            'soa_number'       => $data['soa_number'] ?: null,
+                            'soa_billing_date' => $data['soa_billing_date'],
+                        ]);
+
                         if ($data['email_to_customer'] ?? false) {
                             $pdf = (new ReportExportService)->buildCustomerStatementPdf(
                                 $record,

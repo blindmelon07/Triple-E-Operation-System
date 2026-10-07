@@ -498,6 +498,18 @@ class Home extends Page
             ];
         }
 
+        if ($isAdmin || $user->can('View:ArSummaryReport')) {
+            $cards[] = [
+                'title'       => 'SOA Summary',
+                'description' => 'Receivables per customer with SOA no. and status',
+                'icon'        => 'heroicon-o-document-currency-dollar',
+                'url'         => ArSummaryReport::getUrl(),
+                'color'       => '#b91c1c',
+                'bg'          => '#fef2f2',
+                'border'      => '#fecaca',
+            ];
+        }
+
         if ($isAdmin || $user->can('View:DriverKpiDashboard')) {
             $cards[] = [
                 'title'       => 'Driver KPI',

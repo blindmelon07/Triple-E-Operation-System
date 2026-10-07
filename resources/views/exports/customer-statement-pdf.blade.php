@@ -222,6 +222,12 @@
             </td>
             <td style="width:40%">
                 <div class="customer-box">
+                    @if($customer->soa_number)
+                        <div class="line"><strong>SOA No.:</strong> {{ $customer->soa_number }}</div>
+                    @endif
+                    @if($customer->soa_billing_date)
+                        <div class="line"><strong>Billing Date:</strong> {{ $customer->soa_billing_date->format('F d, Y') }}</div>
+                    @endif
                     <div class="line"><strong>Payment Terms:</strong> {{ $customer->payment_term_days === 0 ? 'COD' : 'Net '.$customer->payment_term_days.' days' }}</div>
                     @if($customer->contact_person)
                         <div class="line"><strong>Contact Person:</strong> {{ $customer->contact_person }}</div>
