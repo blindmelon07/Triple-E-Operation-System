@@ -10,6 +10,7 @@ class SalePayment extends Model
     protected $fillable = [
         'sale_id',
         'amount',
+        'withholding_amount',
         'payment_method',
         'reference_number',
         'cash_register_session_id',
@@ -21,6 +22,7 @@ class SalePayment extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'withholding_amount' => 'decimal:2',
             'balance_after' => 'decimal:2',
         ];
     }

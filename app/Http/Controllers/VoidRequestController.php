@@ -209,7 +209,7 @@ class VoidRequestController extends Controller
             // paid in full, or a credit sale whose down payment covered the total, adds
             // straight to its creation session with no ledger row — recover that amount
             // as whatever's left of amount_paid after accounting for logged payments.
-            $unloggedInitial = round((float) $sale->amount_paid - (float) $loggedPayments->sum('amount'), 2);
+            $unloggedInitial = round((float) $sale->amount_paid - (float) $loggedPayments->sum('amount') - (float) $loggedPayments->sum('withholding_amount'), 2);
             if ($unloggedInitial > 0.01 && $sale->cash_register_session_id) {
                 $creationSession = CashRegisterSession::find($sale->cash_register_session_id);
                 if ($creationSession) {
@@ -761,7 +761,7 @@ class VoidRequestController extends Controller
         }
 
         $loggedPayments  = SalePayment::where('sale_id', $sale->id)->orderBy('created_at')->get();
-        $unloggedInitial = round($oldAmountPaid - (float) $loggedPayments->sum('amount'), 2);
+        $unloggedInitial = round($oldAmountPaid - (float) $loggedPayments->sum('amount') - (float) $loggedPayments->sum('withholding_amount'), 2);
         $remaining       = $refundAmount;
 
         if ($remaining > 0.01 && $unloggedInitial > 0.01) {

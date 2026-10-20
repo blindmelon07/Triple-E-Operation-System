@@ -403,7 +403,7 @@ class ReportExportService
             // Money collected at sale creation only gets a sale_payments row when it
             // was a partial down payment on a credit sale; a fully-paid sale (credit
             // or not) has no such row, so recover it from what's left of amount_paid.
-            $unlogged = round((float) $sale->amount_paid - (float) $loggedForSale->sum('amount'), 2);
+            $unlogged = round((float) $sale->amount_paid - (float) $loggedForSale->sum('amount') - (float) $loggedForSale->sum('withholding_amount'), 2);
             if ($unlogged > 0.01) {
                 $entries->push([
                     'date'   => $sale->date,
@@ -424,6 +424,16 @@ class ReportExportService
                     'debit'  => 0.0,
                     'credit' => (float) $payment->amount,
                 ]);
+
+                if ((float) $payment->withholding_amount > 0) {
+                    $entries->push([
+                        'date'   => $payment->created_at,
+                        'label'  => "Tax Withheld — {$invoiceNumber}",
+                        'detail' => 'BIR 2307',
+                        'debit'  => 0.0,
+                        'credit' => (float) $payment->withholding_amount,
+                    ]);
+                }
             }
         }
 

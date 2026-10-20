@@ -2242,18 +2242,62 @@
                                     </div>
                                 </div>
                                 <template x-if="selectedSettleInvoices[invoice.id]">
-                                    <div class="w-32" @click.stop>
-                                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount to pay</label>
-                                        <div class="relative">
-                                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">₱</span>
-                                            <input
-                                                type="number"
-                                                x-model.number="selectedSettleInvoices[invoice.id].amount"
-                                                step="0.01"
-                                                min="0.01"
-                                                :max="invoice.balance"
-                                                class="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-white"
-                                            >
+                                    <div class="w-44 space-y-2" @click.stop>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Less withholding tax</label>
+                                            <div class="flex items-center gap-1 mb-1">
+                                                <div class="relative w-16">
+                                                    <input
+                                                        type="number"
+                                                        x-model.number="selectedSettleInvoices[invoice.id].rate"
+                                                        @input="applySettleWithholding(invoice, selectedSettleInvoices[invoice.id].rate)"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max="100"
+                                                        placeholder="0"
+                                                        title="Rate applied to the net-of-VAT balance"
+                                                        class="w-full pl-2 pr-5 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-white"
+                                                    >
+                                                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-xs">%</span>
+                                                </div>
+                                                <template x-for="rate in [1, 2, 5]" :key="rate">
+                                                    <button
+                                                        type="button"
+                                                        @click="applySettleWithholding(invoice, rate)"
+                                                        class="text-[10px] px-1.5 py-1 rounded"
+                                                        :class="selectedSettleInvoices[invoice.id].rate === rate
+                                                            ? 'bg-teal-600 text-white'
+                                                            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-teal-100 dark:hover:bg-teal-800'"
+                                                        x-text="rate + '%'"
+                                                    ></button>
+                                                </template>
+                                            </div>
+                                            <div class="relative">
+                                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">₱</span>
+                                                <input
+                                                    type="number"
+                                                    x-model.number="selectedSettleInvoices[invoice.id].withholding"
+                                                    @input="selectedSettleInvoices[invoice.id].rate = ''; syncSettleCash(invoice)"
+                                                    step="0.01"
+                                                    min="0"
+                                                    :max="invoice.balance"
+                                                    class="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-white"
+                                                >
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount to pay</label>
+                                            <div class="relative">
+                                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">₱</span>
+                                                <input
+                                                    type="number"
+                                                    x-model.number="selectedSettleInvoices[invoice.id].amount"
+                                                    step="0.01"
+                                                    min="0"
+                                                    :max="invoice.balance"
+                                                    class="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-white"
+                                                >
+                                            </div>
                                         </div>
                                     </div>
                                 </template>
@@ -2266,6 +2310,11 @@
             <!-- Footer -->
             <div class="p-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
                 <div x-show="settleError" class="text-sm text-red-600 dark:text-red-400" x-text="settleError"></div>
+
+                <div x-show="settleWithholdingTotal > 0" class="flex items-center justify-between px-3 text-sm text-gray-600 dark:text-gray-400">
+                    <span>Less: Tax withheld (2307)</span>
+                    <span x-text="'₱' + settleWithholdingTotal.toFixed(2)"></span>
+                </div>
 
                 <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total to Collect</span>
@@ -2343,7 +2392,7 @@
                     <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 text-sm">
                         <div>
                             <span class="font-medium text-gray-900 dark:text-white" x-text="'Invoice #' + String(result.sale_id).padStart(6, '0')"></span>
-                            <span class="text-gray-500 dark:text-gray-400" x-text="' — ₱' + result.amount.toFixed(2)"></span>
+                            <span class="text-gray-500 dark:text-gray-400" x-text="' — ₱' + result.amount.toFixed(2) + (result.withholding > 0 ? ' (+₱' + result.withholding.toFixed(2) + ' withheld)' : '')"></span>
                         </div>
                         <button
                             @click="window.open(result.print_url, '_blank'); if (!printedReceiptIndices.includes(index)) printedReceiptIndices.push(index)"
@@ -3817,6 +3866,27 @@
                     return Object.values(this.selectedSettleInvoices).reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
                 },
 
+                get settleWithholdingTotal() {
+                    return Object.values(this.selectedSettleInvoices).reduce((sum, i) => sum + (parseFloat(i.withholding) || 0), 0);
+                },
+
+                // EWT is computed on the net-of-VAT amount (balance / 1.12).
+                applySettleWithholding(invoice, rate) {
+                    const sel = this.selectedSettleInvoices[invoice.id];
+                    if (!sel) return;
+                    const pct = parseFloat(rate) || 0;
+                    sel.rate = rate;
+                    sel.withholding = Math.round(invoice.balance / 1.12 * pct) / 100;
+                    this.syncSettleCash(invoice);
+                },
+
+                syncSettleCash(invoice) {
+                    const sel = this.selectedSettleInvoices[invoice.id];
+                    if (!sel) return;
+                    const withheld = parseFloat(sel.withholding) || 0;
+                    sel.amount = Math.max(0, Math.round((invoice.balance - withheld) * 100) / 100);
+                },
+
                 openSettleModal() {
                     if (!this.registerOpen) {
                         alert('Please open your register before settling invoices.');
@@ -3865,21 +3935,22 @@
                     if (this.selectedSettleInvoices[invoice.id]) {
                         delete this.selectedSettleInvoices[invoice.id];
                     } else {
-                        this.selectedSettleInvoices[invoice.id] = { amount: invoice.balance };
+                        this.selectedSettleInvoices[invoice.id] = { amount: invoice.balance, withholding: 0, rate: '' };
                     }
                 },
 
                 async submitSettlement() {
                     const payments = Object.entries(this.selectedSettleInvoices).map(([saleId, v]) => ({
                         sale_id: parseInt(saleId),
-                        amount: parseFloat(v.amount)
+                        amount: parseFloat(v.amount) || 0,
+                        withholding: parseFloat(v.withholding) || 0
                     }));
 
                     if (payments.length === 0) {
                         this.settleError = 'Select at least one invoice to settle.';
                         return;
                     }
-                    if (payments.some(p => !p.amount || p.amount <= 0)) {
+                    if (payments.some(p => p.amount < 0 || p.withholding < 0 || (p.amount + p.withholding) <= 0)) {
                         this.settleError = 'Enter a valid amount for each selected invoice.';
                         return;
                     }
@@ -3909,7 +3980,7 @@
                         if (data.success) {
                             const collected = this.settleTotal;
                             this.registerTotalSales += collected;
-                            this.registerTotalTransactions += payments.length;
+                            this.registerTotalTransactions += payments.filter(p => p.amount > 0).length;
                             if (this.settlePaymentMethod === 'cash') {
                                 this.registerTotalCashSales += collected;
                             }

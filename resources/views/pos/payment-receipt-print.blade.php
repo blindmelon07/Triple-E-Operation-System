@@ -405,7 +405,8 @@
 
     @php
         $sale = $payment->sale;
-        $previousBalance = (float) $sale->total - ((float) $sale->amount_paid - (float) $payment->amount);
+        $withholding = (float) $payment->withholding_amount;
+        $previousBalance = (float) $payment->balance_after + (float) $payment->amount + $withholding;
         $isFullySettled = (float) $payment->balance_after <= 0.001;
     @endphp
 
@@ -473,6 +474,12 @@
                             <span class="label">Previous Balance</span>
                             <span class="value">₱{{ number_format($previousBalance, 2) }}</span>
                         </div>
+                        @if($withholding > 0)
+                            <div class="summary-row">
+                                <span class="label">Less: Tax Withheld (2307)</span>
+                                <span class="value">₱{{ number_format($withholding, 2) }}</span>
+                            </div>
+                        @endif
                         <div class="summary-row paid-today">
                             <span class="label">Amount Paid Today</span>
                             <span class="value">₱{{ number_format($payment->amount, 2) }}</span>

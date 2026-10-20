@@ -52,7 +52,8 @@ class InvoiceSettlementController extends Controller
             'reference_number'         => 'nullable|string|max:100',
             'payments'                 => 'required|array|min:1',
             'payments.*.sale_id'       => 'required|distinct|exists:sales,id',
-            'payments.*.amount'        => 'required|numeric|min:0.01',
+            'payments.*.amount'        => 'required|numeric|min:0',
+            'payments.*.withholding'   => 'nullable|numeric|min:0',
         ]);
 
         $session = CashRegisterSession::where('id', $validated['cash_register_session_id'])
@@ -86,19 +87,25 @@ class InvoiceSettlementController extends Controller
                     throw new \Exception("Invoice #{$sale->id} is already fully paid.");
                 }
 
-                $amount = (float) $paymentInput['amount'];
+                $amount = round((float) $paymentInput['amount'], 2);
+                $withholding = round((float) ($paymentInput['withholding'] ?? 0), 2);
+                $applied = $amount + $withholding;
                 $balance = $sale->balance;
 
-                if ($amount > $balance + 0.001) {
-                    throw new \Exception('Payment of ₱'.number_format($amount, 2)." exceeds the balance of ₱".number_format($balance, 2)." for Invoice #{$sale->id}.");
+                if ($applied < 0.01) {
+                    throw new \Exception("Enter a payment or withheld amount for Invoice #{$sale->id}.");
+                }
+                if ($applied > $balance + 0.001) {
+                    throw new \Exception('Payment of ₱'.number_format($applied, 2)." exceeds the balance of ₱".number_format($balance, 2)." for Invoice #{$sale->id}.");
                 }
 
-                $newAmountPaid = (float) $sale->amount_paid + $amount;
+                // Withheld tax settles the invoice too, but only $amount is real money.
+                $newAmountPaid = (float) $sale->amount_paid + $applied;
                 $balanceAfter = (float) $sale->total - $newAmountPaid;
 
                 $sale->update([
                     'amount_paid'    => $newAmountPaid,
-                    'payment_status' => $newAmountPaid >= (float) $sale->total ? 'paid' : 'partial',
+                    'payment_status' => $newAmountPaid >= (float) $sale->total - 0.001 ? 'paid' : 'partial',
                     'payment_method' => $validated['payment_method'],
                     'paid_date'      => now()->toDateString(),
                 ]);
@@ -106,6 +113,7 @@ class InvoiceSettlementController extends Controller
                 $payment = SalePayment::create([
                     'sale_id'                  => $sale->id,
                     'amount'                   => $amount,
+                    'withholding_amount'       => $withholding,
                     'payment_method'           => $validated['payment_method'],
                     'reference_number'         => $validated['reference_number'] ?? null,
                     'cash_register_session_id' => $session->id,
@@ -115,8 +123,10 @@ class InvoiceSettlementController extends Controller
 
                 // Only the amount actually collected now counts toward the register —
                 // never the invoice's original total, since credit-term sales were
-                // never added to any session at creation.
-                $session->addSale($amount, $isCash);
+                // never added to any session at creation. Withheld tax is excluded.
+                if ($amount > 0) {
+                    $session->addSale($amount, $isCash);
+                }
 
                 AuditLog::create([
                     'user_id'         => auth()->id(),
@@ -127,6 +137,7 @@ class InvoiceSettlementController extends Controller
                     'auditable_label' => "Sale #{$sale->id}",
                     'new_values'      => [
                         'amount_paid_now'          => $amount,
+                        'withholding_amount'       => $withholding,
                         'payment_method'           => $validated['payment_method'],
                         'new_balance'              => $balanceAfter,
                         'cash_register_session_id' => $session->id,
@@ -137,8 +148,9 @@ class InvoiceSettlementController extends Controller
 
                 $results[] = [
                     'sale_id'   => $sale->id,
-                    'amount'    => $amount,
-                    'balance'   => $balanceAfter,
+                    'amount'      => $amount,
+                    'withholding' => $withholding,
+                    'balance'     => $balanceAfter,
                     'print_url' => route('pos.print-payment-receipt', $payment->id),
                 ];
             }
