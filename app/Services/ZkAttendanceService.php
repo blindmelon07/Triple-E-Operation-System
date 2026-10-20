@@ -150,7 +150,8 @@ class ZkAttendanceService
 
         foreach ($deviceUsers as $deviceUser) {
             $pin = trim((string) $deviceUser['pin']);
-            $name = trim((string) ($deviceUser['name'] ?? '')) ?: "Device User {$pin}";
+            // Devices store names as "First,Last" — treat commas as spaces.
+            $name = $this->normalizeName((string) ($deviceUser['name'] ?? '')) ?: "Device User {$pin}";
 
             if ($pin === '' || Employee::where('biometric_pin', $pin)->exists()) {
                 $result['unchanged']++;
@@ -159,8 +160,8 @@ class ZkAttendanceService
             }
 
             $sameName = Employee::whereNull('biometric_pin')
-                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])
-                ->get();
+                ->get()
+                ->filter(fn (Employee $e) => mb_strtolower($this->normalizeName($e->name)) === mb_strtolower($name));
 
             if ($sameName->count() === 1) {
                 $sameName->first()->update(['biometric_pin' => $pin]);
@@ -335,6 +336,11 @@ class ZkAttendanceService
         }
 
         return AttendanceStatus::Present->value;
+    }
+
+    protected function normalizeName(string $name): string
+    {
+        return trim(preg_replace('/[\s,]+/u', ' ', $name));
     }
 
     protected function parseTimestamp(string $value): ?Carbon
