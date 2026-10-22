@@ -58,6 +58,10 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Timestamps are stored as Asia/Manila wall-clock time on a UTC MySQL server.
+            // A MySQL running in another zone (e.g. a local +08:00 copy) shifts them on
+            // read, so set DB_TIMEZONE=+00:00 there to match production.
+            'timezone' => env('DB_TIMEZONE'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

@@ -1,24 +1,45 @@
 {
-    "name": "Tri-E POS",
-    "short_name": "Tri-E POS",
-    "description": "Point of Sale System for Tri-E",
-    "start_url": "/pos",
+    "id": "/",
+    "name": "Tri-E Enterprises",
+    "short_name": "Tri-E",
+    "description": "Point of Sale and business management for Tri-E Enterprises",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#1f2937",
-    "theme_color": "#1f2937",
+    "background_color": "#ffffff",
+    "theme_color": "#1e40af",
     "orientation": "any",
     "icons": [
         {
             "src": "/images/icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
             "src": "/images/icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/images/icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "POS",
+            "url": "/pos",
+            "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }]
         }
     ],
     "categories": ["business", "finance"],

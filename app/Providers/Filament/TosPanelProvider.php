@@ -12,6 +12,7 @@ use App\Filament\Pages\Home;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\View\PanelsRenderHook;
 use Filament\Support\Colors\Color;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -39,6 +40,7 @@ class TosPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->viteTheme('resources/css/filament/tos/theme.css')
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('partials.pwa')->render())
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
