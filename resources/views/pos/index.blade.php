@@ -86,6 +86,8 @@
                     <div class="flex items-center gap-2 sm:gap-4">
                         <span class="hidden sm:block text-sm text-gray-600 dark:text-gray-400" x-text="currentDateTime"></span>
 
+                        @include('partials.pwa-install-button')
+
                         <!-- Register Status -->
                         <template x-if="registerOpen">
                             <div class="hidden sm:flex items-center gap-2">

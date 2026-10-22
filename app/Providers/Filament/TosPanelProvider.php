@@ -41,6 +41,7 @@ class TosPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/tos/theme.css')
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('partials.pwa')->render())
+            ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn (): string => view('partials.pwa-install-button')->render())
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
