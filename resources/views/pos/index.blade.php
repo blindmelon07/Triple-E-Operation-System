@@ -2895,11 +2895,11 @@
                         </div>
                     </template>
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">Total Sales</span>
+                        <span class="text-gray-600 dark:text-gray-400">Total Collections</span>
                         <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalSales.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">Total Cash Sales</span>
+                        <span class="text-gray-600 dark:text-gray-400">Cash Collected</span>
                         <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalCashSales.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
                     </div>
                     <div class="flex justify-between text-sm">
@@ -2927,6 +2927,21 @@
                         >
                     </div>
                 </div>
+
+                <!-- Empty-drawer warning: closing at ₱0 while cash is expected -->
+                <template x-if="!(closingAmountInput > 0) && registerExpectedCash > 0">
+                    <div class="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30">
+                        <p class="text-sm font-medium text-red-700 dark:text-red-300">
+                            Actual Cash Count is ₱0.00, but
+                            <span x-text="'₱' + registerExpectedCash.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                            should be in the drawer. Count the cash and enter the amount above.
+                        </p>
+                        <label class="mt-2 flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+                            <input type="checkbox" x-model="confirmEmptyDrawer" class="rounded border-red-300">
+                            I counted it and the drawer is really empty
+                        </label>
+                    </div>
+                </template>
 
                 <!-- Discrepancy Display -->
                 <template x-if="closingAmountInput > 0">
@@ -3119,6 +3134,7 @@
                 openingAmountInput: 0,
                 closingAmountInput: 0,
                 closingNotes: '',
+                confirmEmptyDrawer: false,
                 addCashForm: { amount: '', reason: '' },
                 isOpeningRegister: false,
                 isClosingRegister: false,
@@ -3288,6 +3304,7 @@
                 openCloseRegisterModal() {
                     this.closingAmountInput = 0;
                     this.closingNotes = '';
+                    this.confirmEmptyDrawer = false;
                     this.registerError = '';
                     this.showCloseRegisterModal = true;
                 },
@@ -3295,6 +3312,11 @@
                 async closeRegisterSession() {
                     if (this.closingAmountInput < 0) {
                         this.registerError = 'Closing amount cannot be negative';
+                        return;
+                    }
+
+                    if (!(this.closingAmountInput > 0) && this.registerExpectedCash > 0 && !this.confirmEmptyDrawer) {
+                        this.registerError = 'Enter the actual cash count, or tick the box confirming the drawer is empty.';
                         return;
                     }
 
@@ -3311,7 +3333,8 @@
                             },
                             body: JSON.stringify({
                                 closing_amount: parseFloat(this.closingAmountInput) || 0,
-                                notes: this.closingNotes || null
+                                notes: this.closingNotes || null,
+                                confirm_empty_drawer: this.confirmEmptyDrawer
                             })
                         });
 

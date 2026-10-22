@@ -269,6 +269,7 @@ class POSController extends Controller
         $validated = $request->validate([
             'closing_amount' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
+            'confirm_empty_drawer' => 'sometimes|boolean',
         ]);
 
         $session = CashRegisterSession::open()
@@ -279,6 +280,15 @@ class POSController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'No open register session found.',
+            ], 422);
+        }
+
+        // Closing at ₱0 when cash is expected almost always means the drawer wasn't
+        // counted, and it records the whole expected amount as a shortage.
+        if ((float) $validated['closing_amount'] == 0 && $session->calculateExpected() > 0 && ! ($validated['confirm_empty_drawer'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Closing amount is ₱0.00 but ₱' . number_format($session->calculateExpected(), 2) . ' cash is expected. Count the drawer, or confirm it is really empty.',
             ], 422);
         }
 
@@ -315,14 +325,6 @@ class POSController extends Controller
     {
         $session->load('user');
 
-        $sales = Sale::with(['customer', 'sale_items'])
-            ->withCount(['sale_items' => fn ($q) => $q->active()])
-            ->where('cash_register_session_id', $session->id)
-            ->where('is_voided', false)
-            ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
-            ->orderBy('date')
-            ->get();
-
         // Payments collected against pre-existing (often much older) invoices via the POS
         // "Settle Invoice" flow aren't new Sale records tied to this session — they're logged
         // separately so the itemized list reconciles with $session->total_sales above.
@@ -332,7 +334,20 @@ class POSController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $pdf = Pdf::loadView('pos.register-sales-report', compact('session', 'sales', 'settlements'))
+        // A sale rung up with terms and settled later in this same session already shows
+        // under Other Payments — listing it here too would show the same money twice.
+        $sales = Sale::with(['customer', 'sale_items'])
+            ->withCount(['sale_items' => fn ($q) => $q->active()])
+            ->where('cash_register_session_id', $session->id)
+            ->where('is_voided', false)
+            ->where(fn($q) => $q->where('payment_method', '!=', 'charge')->orWhere('payment_status', 'paid'))
+            ->whereNotIn('id', $settlements->pluck('sale_id')->unique())
+            ->orderBy('date')
+            ->get();
+
+        $nonCashCollected = (float) $session->total_sales - (float) $session->total_cash_sales;
+
+        $pdf = Pdf::loadView('pos.register-sales-report', compact('session', 'sales', 'settlements', 'nonCashCollected'))
             ->setPaper('a4', 'portrait');
 
         $filename = 'register-report-' . ($session->closed_at?->format('Y-m-d') ?? now()->format('Y-m-d')) . '-session-' . $session->id . '.pdf';

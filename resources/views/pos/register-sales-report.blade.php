@@ -138,24 +138,30 @@
             </td>
             <td>
                 <div class="summary-card highlight">
-                    <div class="label">Total Sales</div>
+                    <div class="label">Total Collections</div>
                     <div class="value">₱{{ number_format($session->total_sales, 2) }}</div>
                 </div>
             </td>
             <td>
                 <div class="summary-card">
-                    <div class="label">Cash Sales</div>
+                    <div class="label">Cash Collected</div>
                     <div class="value">₱{{ number_format($session->total_cash_sales, 2) }}</div>
                 </div>
             </td>
+            <td>
+                <div class="summary-card">
+                    <div class="label">Non-Cash (Bank, GCash, etc.)</div>
+                    <div class="value">₱{{ number_format($nonCashCollected, 2) }}</div>
+                </div>
+            </td>
+        </tr>
+        <tr>
             <td>
                 <div class="summary-card">
                     <div class="label">Transactions</div>
                     <div class="value">{{ $session->total_transactions }}</div>
                 </div>
             </td>
-        </tr>
-        <tr>
             <td>
                 <div class="summary-card">
                     <div class="label">Expected Cash</div>
@@ -164,11 +170,11 @@
             </td>
             <td>
                 <div class="summary-card">
-                    <div class="label">Closing Amount</div>
+                    <div class="label">Closing Amount (Counted)</div>
                     <div class="value">₱{{ number_format($session->closing_amount, 2) }}</div>
                 </div>
             </td>
-            <td colspan="2">
+            <td>
                 @php $disc = (float) $session->discrepancy; @endphp
                 <div class="summary-card {{ $disc < 0 ? 'danger' : ($disc > 0 ? 'success' : '') }}">
                     <div class="label">Discrepancy</div>
@@ -187,6 +193,10 @@
         </tr>
         @endif
     </table>
+    <p style="font-size:7.5px; color:#64748b; margin:-8px 0 12px 8px;">
+        Total Collections is all money received in this session, including payments on older invoices, and does not include unpaid credit sales.
+        For sales made on a given day, see the Sales Report.
+    </p>
 
     {{-- Sales List --}}
     <div class="section-title">Sales Transactions ({{ $sales->count() }} records)</div>
