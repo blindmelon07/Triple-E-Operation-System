@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\CashRegisterSessions\Tables;
 
 use App\Enums\CashRegisterStatus;
+use App\Filament\Resources\CashRegisterSessions\ClosingCorrectionActions;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -50,6 +53,14 @@ class CashRegisterSessionsTable
                         (float) $record->discrepancy > 0 => 'warning',
                         default => 'success',
                     }),
+                // Counts pending requests only, so the badge clears once reviewed.
+                TextColumn::make('closing_corrections_count')
+                    ->label('Correction')
+                    ->counts(['closingCorrections' => fn ($q) => $q->pending()])
+                    ->formatStateUsing(fn ($state) => $state > 0 ? 'Pending' : null)
+                    ->badge()
+                    ->color('warning')
+                    ->placeholder('-'),
                 TextColumn::make('overrideApprover.name')
                     ->label('₱0 Close Approved By')
                     ->placeholder('-')
@@ -73,9 +84,13 @@ class CashRegisterSessionsTable
                 SelectFilter::make('user_id')
                     ->relationship('user', 'name')
                     ->label('Cashier'),
+                Filter::make('pending_correction')
+                    ->label('Pending closing correction')
+                    ->query(fn ($query) => $query->whereHas('closingCorrections', fn ($q) => $q->pending())),
             ])
             ->recordActions([
                 ViewAction::make(),
+                ActionGroup::make(ClosingCorrectionActions::all()),
             ])
             ->toolbarActions([]);
     }

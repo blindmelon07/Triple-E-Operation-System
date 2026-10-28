@@ -123,6 +123,49 @@ class CashRegisterSession extends Model
         ]);
     }
 
+    public function closingCorrections(): HasMany
+    {
+        return $this->hasMany(ClosingCorrection::class);
+    }
+
+    public function pendingClosingCorrection(): ?ClosingCorrection
+    {
+        return $this->closingCorrections()->pending()->latest()->first();
+    }
+
+    /**
+     * Ask to fix the closing amount of this closed session. A manager's own
+     * request is approved on the spot; anyone else's waits for a manager.
+     */
+    public function requestClosingCorrection(User $requester, float $correctedAmount, string $reason): ClosingCorrection
+    {
+        $correction = $this->closingCorrections()->create([
+            'requested_by_id' => $requester->id,
+            'original_closing_amount' => (float) $this->closing_amount,
+            'corrected_amount' => $correctedAmount,
+            'reason' => $reason,
+            'status' => 'pending',
+        ]);
+
+        if ($requester->hasAnyRole(['admin', 'super_admin'])) {
+            $correction->approve($requester);
+        }
+
+        return $correction;
+    }
+
+    /**
+     * Replace the counted cash with a corrected amount. expected_amount was
+     * fixed when the session closed, so only the discrepancy is recomputed.
+     */
+    public function applyClosingCorrection(float $correctedAmount): void
+    {
+        $this->update([
+            'closing_amount' => $correctedAmount,
+            'discrepancy' => $correctedAmount - (float) $this->expected_amount,
+        ]);
+    }
+
     public function addSale(float $amount, bool $isCash): void
     {
         $this->increment('total_sales', $amount);

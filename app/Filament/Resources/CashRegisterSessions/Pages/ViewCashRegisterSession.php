@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CashRegisterSessions\Pages;
 
 use App\Filament\Resources\CashRegisterSessions\CashRegisterSessionResource;
+use App\Filament\Resources\CashRegisterSessions\ClosingCorrectionActions;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewCashRegisterSession extends ViewRecord
@@ -11,6 +12,6 @@ class ViewCashRegisterSession extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return ClosingCorrectionActions::all();
     }
 }

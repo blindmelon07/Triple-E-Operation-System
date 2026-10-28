@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CashRegisterSessionResource extends Resource
 {
@@ -44,6 +45,21 @@ class CashRegisterSessionResource extends Resource
             'index' => ListCashRegisterSessions::route('/'),
             'view' => ViewCashRegisterSession::route('/{record}'),
         ];
+    }
+
+    /**
+     * Cashiers are given access so they can request closing corrections, but
+     * should only see their own drawer counts; managers see every session.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (! auth()->user()?->hasAnyRole(['admin', 'super_admin'])) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query;
     }
 
     public static function canCreate(): bool
