@@ -12,11 +12,20 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Only MySQL/MariaDB has the ON UPDATE quirk (and MODIFY syntax); SQLite test DBs skip this.
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb'])) {
+            return;
+        }
+
         DB::statement('ALTER TABLE cash_register_sessions MODIFY opened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
     }
 
     public function down(): void
     {
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb'])) {
+            return;
+        }
+
         DB::statement('ALTER TABLE cash_register_sessions MODIFY opened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     }
 };

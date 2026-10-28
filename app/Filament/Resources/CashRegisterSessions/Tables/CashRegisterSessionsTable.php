@@ -50,6 +50,10 @@ class CashRegisterSessionsTable
                         (float) $record->discrepancy > 0 => 'warning',
                         default => 'success',
                     }),
+                TextColumn::make('overrideApprover.name')
+                    ->label('₱0 Close Approved By')
+                    ->placeholder('-')
+                    ->toggleable(),
                 TextColumn::make('total_sales')
                     ->label('Total Sales')
                     ->money('Php')

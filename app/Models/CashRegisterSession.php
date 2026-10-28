@@ -23,6 +23,8 @@ class CashRegisterSession extends Model
         'total_cash_sales',
         'total_transactions',
         'notes',
+        'override_approved_by',
+        'override_approved_at',
         'opened_at',
         'closed_at',
         'status',
@@ -40,6 +42,7 @@ class CashRegisterSession extends Model
             'total_transactions' => 'integer',
             'opened_at' => 'datetime',
             'closed_at' => 'datetime',
+            'override_approved_at' => 'datetime',
             'status' => CashRegisterStatus::class,
         ];
     }
@@ -47,6 +50,11 @@ class CashRegisterSession extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function overrideApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'override_approved_by');
     }
 
     public function sales(): HasMany
@@ -99,7 +107,7 @@ class CashRegisterSession extends Model
         ]);
     }
 
-    public function close(float $actualAmount, ?string $notes = null): void
+    public function close(float $actualAmount, ?string $notes = null, ?int $overrideApprovedBy = null): void
     {
         $expected = $this->calculateExpected();
 
@@ -108,6 +116,8 @@ class CashRegisterSession extends Model
             'expected_amount' => $expected,
             'discrepancy' => $actualAmount - $expected,
             'notes' => $notes,
+            'override_approved_by' => $overrideApprovedBy,
+            'override_approved_at' => $overrideApprovedBy ? now() : null,
             'closed_at' => now(),
             'status' => CashRegisterStatus::Closed,
         ]);

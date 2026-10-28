@@ -25,6 +25,8 @@ use Spatie\Permission\Models\Role;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class POSController extends Controller
 {
@@ -270,6 +272,8 @@ class POSController extends Controller
             'closing_amount' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
             'confirm_empty_drawer' => 'sometimes|boolean',
+            'manager_email' => 'nullable|string|max:255',
+            'manager_password' => 'nullable|string|max:255',
         ]);
 
         $session = CashRegisterSession::open()
@@ -285,14 +289,26 @@ class POSController extends Controller
 
         // Closing at ₱0 when cash is expected almost always means the drawer wasn't
         // counted, and it records the whole expected amount as a shortage.
-        if ((float) $validated['closing_amount'] == 0 && $session->calculateExpected() > 0 && ! ($validated['confirm_empty_drawer'] ?? false)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Closing amount is ₱0.00 but ₱' . number_format($session->calculateExpected(), 2) . ' cash is expected. Count the drawer, or confirm it is really empty.',
-            ], 422);
+        $overrideApprovedBy = null;
+
+        if ((float) $validated['closing_amount'] == 0 && $session->calculateExpected() > 0) {
+            if (! ($validated['confirm_empty_drawer'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Closing amount is ₱0.00 but ₱' . number_format($session->calculateExpected(), 2) . ' cash is expected. Count the drawer, or confirm it is really empty.',
+                ], 422);
+            }
+
+            $approver = $this->resolveCloseOverrideApprover($validated);
+
+            if ($approver instanceof \Illuminate\Http\JsonResponse) {
+                return $approver;
+            }
+
+            $overrideApprovedBy = $approver->id;
         }
 
-        $session->close($validated['closing_amount'], $validated['notes'] ?? null);
+        $session->close($validated['closing_amount'], $validated['notes'] ?? null, $overrideApprovedBy);
 
         AuditLog::create([
             'user_id' => auth()->id(),
@@ -308,6 +324,7 @@ class POSController extends Controller
                 'total_sales' => $session->total_sales,
                 'total_cash_sales' => $session->total_cash_sales,
                 'total_transactions' => $session->total_transactions,
+                'override_approved_by' => $overrideApprovedBy,
             ],
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
@@ -319,6 +336,56 @@ class POSController extends Controller
             'session' => $session->fresh(),
             'report_url' => route('pos.register.sales-report', $session->id),
         ]);
+    }
+
+    /**
+     * A ₱0 close while cash is expected has to be signed off by a manager on the
+     * spot. A manager closing their own register approves it themselves; anyone
+     * else needs a manager to enter their login. Returns the approving manager,
+     * or the error response to send back.
+     */
+    private function resolveCloseOverrideApprover(array $validated): User|\Illuminate\Http\JsonResponse
+    {
+        if (auth()->user()->hasAnyRole(['admin', 'super_admin'])) {
+            return auth()->user();
+        }
+
+        if (empty($validated['manager_email']) || empty($validated['manager_password'])) {
+            return response()->json([
+                'success' => false,
+                'requires_manager_approval' => true,
+                'message' => 'A manager must approve closing the register at ₱0.00.',
+            ], 422);
+        }
+
+        $throttleKey = 'close-override:' . auth()->id();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return response()->json([
+                'success' => false,
+                'requires_manager_approval' => true,
+                'message' => 'Too many failed approval attempts. Try again in ' . RateLimiter::availableIn($throttleKey) . ' seconds.',
+            ], 429);
+        }
+
+        $manager = User::where('email', $validated['manager_email'])->first();
+
+        if (! $manager
+            || ! Hash::check($validated['manager_password'], $manager->password)
+            || ! $manager->hasAnyRole(['admin', 'super_admin'])
+        ) {
+            RateLimiter::hit($throttleKey, 60);
+
+            return response()->json([
+                'success' => false,
+                'requires_manager_approval' => true,
+                'message' => 'Invalid manager credentials.',
+            ], 422);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        return $manager;
     }
 
     public function registerSalesReport(CashRegisterSession $session): \Illuminate\Http\Response
