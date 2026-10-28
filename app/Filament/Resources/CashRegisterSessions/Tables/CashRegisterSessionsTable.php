@@ -57,10 +57,9 @@ class CashRegisterSessionsTable
                 TextColumn::make('closing_corrections_count')
                     ->label('Correction')
                     ->counts(['closingCorrections' => fn ($q) => $q->pending()])
-                    ->formatStateUsing(fn ($state) => $state > 0 ? 'Pending' : null)
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('-'),
+                    ->formatStateUsing(fn ($state) => $state > 0 ? 'Pending' : '-')
+                    ->badge(fn ($state) => $state > 0)
+                    ->color(fn ($state) => $state > 0 ? 'warning' : 'gray'),
                 TextColumn::make('overrideApprover.name')
                     ->label('₱0 Close Approved By')
                     ->placeholder('-')
