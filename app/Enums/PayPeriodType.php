@@ -17,6 +17,20 @@ enum PayPeriodType: string
         };
     }
 
+    /**
+     * Longest period (in calendar days) one payroll of this type may cover.
+     * Government deductions are split per cut-off on this basis, so a longer
+     * range would under-deduct.
+     */
+    public function maxDays(): int
+    {
+        return match ($this) {
+            self::Daily => 1,
+            self::Weekly => 7,
+            self::SemiMonthly => 16,
+        };
+    }
+
     public function getColor(): string
     {
         return match ($this) {

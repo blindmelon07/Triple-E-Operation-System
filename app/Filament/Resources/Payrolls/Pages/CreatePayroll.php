@@ -2,18 +2,9 @@
 
 namespace App\Filament\Resources\Payrolls\Pages;
 
-use App\Enums\AttendanceStatus;
 use App\Filament\Resources\Payrolls\PayrollResource;
-use App\Models\Attendance;
-use App\Models\CashAdvance;
-use App\Models\CashAdvancePayment;
-use App\Models\EmployeeCompensation;
-use App\Models\GovernmentContribution;
-use App\Models\Incentive;
-use App\Models\LeaveRequest;
 use App\Models\Payroll;
-use App\Models\PayrollItem;
-use Carbon\Carbon;
+use App\Services\PayrollGenerator;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
@@ -36,237 +27,22 @@ class CreatePayroll extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $payroll = $this->record;
-        $periodStart = Carbon::parse($payroll->pay_period_start);
-        $periodEnd = Carbon::parse($payroll->pay_period_end);
+        $result = (new PayrollGenerator)->generate($this->record);
 
-        // Get all employees with matching pay period type
-        $compensations = EmployeeCompensation::where('pay_period', $payroll->pay_period_type)
-            ->with('employee')
-            ->get();
-
-        if ($compensations->isEmpty()) {
+        if ($result['employees'] === 0) {
             Notification::make()
                 ->title('No Employees Found')
-                ->body('No employees found with the selected pay period type.')
+                ->body('No employees found with the selected pay period type.'
+                    .($result['missing_compensation']->isNotEmpty()
+                        ? ' These employees have attendance but no compensation set up: '.$result['missing_compensation']->implode(', ').'.'
+                        : ''))
                 ->warning()
+                ->persistent()
                 ->send();
 
             return;
         }
 
-        $totalGross = 0;
-        $totalDeductions = 0;
-        $totalNet = 0;
-
-        foreach ($compensations as $comp) {
-            $employeeId = $comp->employee_id;
-            $daysOff = $comp->days_off ?? [];
-
-            // Calculate working days in the period (excluding employee's days off)
-            $workingDaysInPeriod = 0;
-            $currentDate = $periodStart->copy();
-            while ($currentDate->lte($periodEnd)) {
-                $dayName = strtolower($currentDate->format('l'));
-                if (! in_array($dayName, $daysOff)) {
-                    $workingDaysInPeriod++;
-                }
-                $currentDate->addDay();
-            }
-
-            // Query attendance records in the period (exclude days off)
-            $attendances = Attendance::where('employee_id', $employeeId)
-                ->whereBetween('date', [$periodStart, $periodEnd])
-                ->get()
-                ->filter(function ($attendance) use ($daysOff) {
-                    $dayName = strtolower(Carbon::parse($attendance->date)->format('l'));
-                    return ! in_array($dayName, $daysOff);
-                });
-
-            // Count days worked (present or late)
-            $daysWorked = $attendances->whereIn('status', [AttendanceStatus::Present, AttendanceStatus::Late])->count();
-
-            // Count half days as 0.5
-            $halfDays = $attendances->where('status', AttendanceStatus::HalfDay)->count();
-            $daysWorked += $halfDays * 0.5;
-
-            // Count approved paid leaves as worked days
-            $paidLeaveDays = LeaveRequest::where('employee_id', $employeeId)
-                ->where('status', 'approved')
-                ->whereHas('leaveType', fn ($q) => $q->where('is_paid', true))
-                ->where(function ($q) use ($periodStart, $periodEnd) {
-                    $q->whereBetween('start_date', [$periodStart, $periodEnd])
-                        ->orWhereBetween('end_date', [$periodStart, $periodEnd]);
-                })
-                ->sum('total_days');
-
-            $daysWorked += (float) $paidLeaveDays;
-
-            // Count absences (only on working days, excluding days off)
-            $daysAbsent = $attendances->where('status', AttendanceStatus::Absent)->count();
-
-            // Count late records and calculate late minutes
-            $lateRecords = $attendances->where('status', AttendanceStatus::Late);
-            $lateCount = $lateRecords->count();
-            $lateMinutes = 0;
-
-            foreach ($lateRecords as $record) {
-                if ($record->time_in) {
-                    $timeIn = Carbon::parse($record->time_in);
-                    $threshold = Carbon::parse('09:00:00');
-                    if ($timeIn->greaterThan($threshold)) {
-                        // Carbon 3 defaults diffInMinutes() to a signed
-                        // result (Carbon 2 was always absolute) — without
-                        // the explicit `true` here this comes back negative
-                        // whenever $timeIn is after $threshold, turning the
-                        // late deduction into a bonus.
-                        $lateMinutes += $timeIn->diffInMinutes($threshold, true);
-                    }
-                }
-            }
-
-            // Calculate gross pay
-            $basePay = (float) $comp->daily_rate * $daysWorked;
-            $allowance = (float) $comp->allowance;
-
-            // Sales incentives set to "Add to payroll", dated on or before the
-            // end of this cut-off and not already in a live payroll.
-            $incentives = Incentive::awaitingPayroll()
-                ->where('employee_id', $employeeId)
-                ->whereDate('date', '<=', $periodEnd)
-                ->get();
-            $incentiveTotal = round((float) $incentives->sum('amount'), 2);
-
-            $grossPay = $basePay + $allowance + $incentiveTotal;
-
-            // Calculate late deduction
-            $lateDeduction = 0;
-            if ($comp->late_deduction_type === 'per_minute') {
-                // daily_rate / 480 minutes (8 hrs) per minute
-                $ratePerMinute = (float) $comp->daily_rate / 480;
-                $lateDeduction = round($ratePerMinute * $lateMinutes, 2);
-            } else {
-                // Fixed amount per late occurrence
-                $lateDeduction = round((float) $comp->late_deduction_amount * $lateCount, 2);
-            }
-
-            // Calculate government deductions based on monthly equivalent (only if enabled per employee)
-            $monthlyEquivalent = $comp->getMonthlyEquivalent();
-
-            $sssDeduction = 0;
-            if ($comp->sss_enabled) {
-                $sssDeduction = GovernmentContribution::getSssDeduction($monthlyEquivalent);
-            }
-
-            $philhealthDeduction = 0;
-            if ($comp->philhealth_enabled) {
-                $philhealthDeduction = GovernmentContribution::getPhilhealthDeduction($monthlyEquivalent);
-                if ($monthlyEquivalent > 10000) {
-                    $philhealthDeduction = min(round($monthlyEquivalent * 0.025, 2), 2500);
-                }
-            }
-
-            $pagibigDeduction = 0;
-            if ($comp->pagibig_enabled) {
-                $pagibigDeduction = GovernmentContribution::getPagibigDeduction($monthlyEquivalent);
-            }
-
-            // For semi-monthly, gov deductions are split in half (deducted per cutoff)
-            if ($payroll->pay_period_type->value === 'semi_monthly') {
-                $sssDeduction = round($sssDeduction / 2, 2);
-                $philhealthDeduction = round($philhealthDeduction / 2, 2);
-                $pagibigDeduction = round($pagibigDeduction / 2, 2);
-            }
-
-            // For weekly, gov deductions spread across ~4 weeks
-            if ($payroll->pay_period_type->value === 'weekly') {
-                $sssDeduction = round($sssDeduction / 4, 2);
-                $philhealthDeduction = round($philhealthDeduction / 4, 2);
-                $pagibigDeduction = round($pagibigDeduction / 4, 2);
-            }
-
-            $totalItemDeductions = $lateDeduction + $sssDeduction + $philhealthDeduction + $pagibigDeduction;
-
-            // Cash advance installments, oldest advance first. Each advance
-            // contributes min(its per-payroll installment, its balance), and
-            // the combined deduction is capped at what's left of net pay so a
-            // short cutoff never produces a negative payslip — whatever
-            // isn't deducted simply stays on the balance for next payroll.
-            $availableForCa = max(0, round($grossPay - $totalItemDeductions, 2));
-            $caDeductions = [];
-            foreach (CashAdvance::outstandingFor($employeeId) as $advance) {
-                if ($availableForCa <= 0) {
-                    break;
-                }
-
-                $balance = round((float) $advance->amount - (float) $advance->paid_amount, 2);
-                $installment = min((float) $advance->deduction_per_payroll, $balance, $availableForCa);
-
-                if ($installment > 0) {
-                    $caDeductions[$advance->id] = $installment;
-                    $availableForCa = round($availableForCa - $installment, 2);
-                }
-            }
-            $cashAdvanceDeduction = round(array_sum($caDeductions), 2);
-
-            $totalItemDeductions += $cashAdvanceDeduction;
-            $netPay = $grossPay - $totalItemDeductions;
-
-            $item = PayrollItem::create([
-                'payroll_id' => $payroll->id,
-                'employee_id' => $employeeId,
-                'daily_rate' => $comp->daily_rate,
-                'days_worked' => $daysWorked,
-                'days_absent' => $daysAbsent,
-                'overtime_hours' => 0,
-                'overtime_pay' => 0,
-                'bonus' => 0,
-                'allowance' => $allowance,
-                'incentive' => $incentiveTotal,
-                'gross_pay' => $grossPay,
-                'late_count' => $lateCount,
-                'late_minutes' => $lateMinutes,
-                'late_deduction' => $lateDeduction,
-                'sss_deduction' => $sssDeduction,
-                'philhealth_deduction' => $philhealthDeduction,
-                'pagibig_deduction' => $pagibigDeduction,
-                'cash_advance_deduction' => $cashAdvanceDeduction,
-                'other_deduction' => 0,
-                'total_deductions' => $totalItemDeductions,
-                'net_pay' => $netPay,
-            ]);
-
-            if ($incentives->isNotEmpty()) {
-                Incentive::whereKey($incentives->modelKeys())->update(['payroll_item_id' => $item->id]);
-            }
-
-            foreach ($caDeductions as $cashAdvanceId => $amount) {
-                CashAdvancePayment::create([
-                    'cash_advance_id' => $cashAdvanceId,
-                    'payroll_item_id' => $item->id,
-                    'user_id' => Auth::id(),
-                    'payment_date' => $periodEnd->toDateString(),
-                    'amount' => $amount,
-                    'notes' => "Payroll {$payroll->payroll_number}",
-                ]);
-            }
-
-            $totalGross += $grossPay;
-            $totalDeductions += $totalItemDeductions;
-            $totalNet += $netPay;
-        }
-
-        // Update payroll totals
-        $payroll->update([
-            'total_gross' => $totalGross,
-            'total_deductions' => $totalDeductions,
-            'total_net' => $totalNet,
-        ]);
-
-        Notification::make()
-            ->title('Payroll Generated!')
-            ->body("Generated payroll for {$compensations->count()} employees. Total net: ₱" . number_format($totalNet, 2))
-            ->success()
-            ->send();
+        PayrollGenerator::notify('Payroll Generated!', $result);
     }
 }

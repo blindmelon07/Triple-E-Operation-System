@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Payrolls\Pages;
 use App\Enums\PayrollStatus;
 use App\Filament\Resources\Payrolls\PayrollResource;
 use App\Models\AuditLog;
+use App\Services\PayrollGenerator;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -25,6 +26,22 @@ class ViewPayroll extends ViewRecord
                 ->color('gray')
                 ->url(fn () => route('payroll.export-pdf', ['payroll' => $this->record]))
                 ->openUrlInNewTab(),
+
+            Action::make('regenerate')
+                ->label('Regenerate')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Regenerate Payroll')
+                ->modalDescription('Recalculate every payroll item from the latest attendance, leave, compensation, incentives and cash advances. Manual overtime, bonus and other deductions entered on the items will be cleared.')
+                ->hidden(fn () => $this->record->status !== PayrollStatus::Draft)
+                ->action(function () {
+                    $result = (new PayrollGenerator)->regenerate($this->record);
+
+                    PayrollGenerator::notify('Payroll Regenerated', $result);
+
+                    $this->redirect(PayrollResource::getUrl('view', ['record' => $this->record]));
+                }),
 
             Action::make('approve')
                 ->label('Approve Payroll')

@@ -32,8 +32,34 @@
             show(false);
         });
 
-        document.addEventListener('click', async (event) => {
-            if (! event.target.closest('[data-pwa-install]')) return;
+        // iOS instructions are an on-page panel, not alert(): Safari silently drops alerts
+        // once the user has chosen to block dialogs, which made the button look dead.
+        const showIosHelp = () => {
+            if (document.getElementById('pwa-ios-help')) return;
+
+            const overlay = document.createElement('div');
+            overlay.id = 'pwa-ios-help';
+            overlay.style.cssText = 'position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.5);';
+            overlay.innerHTML = `
+                <div style="max-width:360px; width:100%; padding:20px; border-radius:12px; background:#fff; color:#111827; font-family:system-ui,sans-serif; font-size:15px; line-height:1.5; box-shadow:0 10px 30px rgba(0,0,0,.3);">
+                    <div style="margin-bottom:12px; font-size:17px; font-weight:700;">Install Tri-E on your iPhone or iPad</div>
+                    <ol style="margin:0 0 16px; padding-left:20px;">
+                        <li>Open this page in <b>Safari</b></li>
+                        <li>Tap the <b>Share</b> button (square with an arrow &#x2191;)</li>
+                        <li>Scroll down and tap <b>Add to Home Screen</b></li>
+                        <li>Tap <b>Add</b></li>
+                    </ol>
+                    <button type="button" data-pwa-close style="width:100%; padding:10px; border:0; border-radius:8px; background:#1e40af; color:#fff; font-size:15px; font-weight:600; cursor:pointer;">OK</button>
+                </div>`;
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay || event.target.closest('[data-pwa-close]')) overlay.remove();
+            });
+            document.body.appendChild(overlay);
+        };
+
+        const install = async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
 
             if (deferredPrompt) {
                 deferredPrompt.prompt();
@@ -41,12 +67,22 @@
                 deferredPrompt = null;
                 refresh();
             } else if (ios) {
-                alert('To install Tri-E on your iPhone or iPad:\n\n1. Tap the Share button (square with an arrow) in Safari\n2. Tap "Add to Home Screen"\n3. Tap "Add"');
+                showIosHelp();
             }
+        };
+
+        // Bound directly to each button (not delegated from document) so Filament's
+        // user-menu/dropdown handlers can't swallow the tap first.
+        const bind = () => buttons().forEach((b) => {
+            if (b.dataset.pwaBound) return;
+            b.dataset.pwaBound = '1';
+            b.addEventListener('click', install);
         });
 
-        document.addEventListener('DOMContentLoaded', refresh);
+        const init = () => { bind(); refresh(); };
+
+        document.addEventListener('DOMContentLoaded', init);
         // Filament swaps page content without a full reload.
-        document.addEventListener('livewire:navigated', refresh);
+        document.addEventListener('livewire:navigated', init);
     })();
 </script>
