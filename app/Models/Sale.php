@@ -116,4 +116,76 @@ class Sale extends Model
             default => 'Over 90 Days',
         };
     }
+
+    /**
+     * Void the whole sale: put its stock back, take its money back off every
+     * register session that took it in, and mark it voided. Must run inside a
+     * DB transaction. Returns the amount reversed off the registers.
+     */
+    public function voidAndReverse(?string $reason, string $movementNote): float
+    {
+        $this->load('sale_items.product');
+
+        // Restore inventory. Skip any item already individually voided —
+        // its stock was already restored when that item-void was approved.
+        foreach ($this->sale_items as $item) {
+            if ($item->is_manual || ! $item->product_id || $item->is_voided) {
+                continue;
+            }
+
+            $baseQuantity = $item->quantity * $item->product->conversionFactorFor($item->unit);
+
+            $inventory = Inventory::where('product_id', $item->product_id)->first();
+            if ($inventory) {
+                $inventory->increment('quantity', $baseQuantity);
+            }
+
+            InventoryMovement::create([
+                'product_id'     => $item->product_id,
+                'type'           => 'in',
+                'quantity'       => $baseQuantity,
+                'reason'         => 'Void',
+                'reference_id'   => $this->id,
+                'reference_type' => self::class,
+                'notes'          => $movementNote,
+            ]);
+        }
+
+        // Reverse every register session this sale's money ever touched. Payments
+        // collected after creation (or a partial down payment logged at creation)
+        // are recorded in sale_payments, each stamped with the session it was
+        // added to — reverse those individually rather than assuming one session.
+        $loggedPayments = SalePayment::where('sale_id', $this->id)->get();
+        foreach ($loggedPayments as $payment) {
+            if ($payment->cash_register_session_id) {
+                $paymentSession = CashRegisterSession::find($payment->cash_register_session_id);
+                if ($paymentSession) {
+                    $paymentSession->reverseSale((float) $payment->amount, $payment->payment_method === 'cash');
+                }
+            }
+        }
+
+        // Money collected at sale creation is only logged as a sale_payments row
+        // when it was a partial down payment on a credit sale. A non-credit sale
+        // paid in full, or a credit sale whose down payment covered the total, adds
+        // straight to its creation session with no ledger row — recover that amount
+        // as whatever's left of amount_paid after accounting for logged payments.
+        $unloggedInitial = round((float) $this->amount_paid - (float) $loggedPayments->sum('amount') - (float) $loggedPayments->sum('withholding_amount'), 2);
+        if ($unloggedInitial > 0.01 && $this->cash_register_session_id) {
+            $creationSession = CashRegisterSession::find($this->cash_register_session_id);
+            if ($creationSession) {
+                $creationSession->reverseSale($unloggedInitial, $this->payment_method === 'cash');
+            }
+        }
+
+        $this->update([
+            'is_voided'      => true,
+            'voided_at'      => now(),
+            'void_reason'    => $reason,
+            'amount_paid'    => 0,
+            'payment_status' => 'unpaid',
+        ]);
+
+        return (float) $loggedPayments->sum('amount') + max(0, $unloggedInitial);
+    }
 }

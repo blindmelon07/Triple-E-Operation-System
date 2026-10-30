@@ -163,67 +163,7 @@ class VoidRequestController extends Controller
                 return response()->json(['success' => false, 'message' => 'Sale is already voided.'], 422);
             }
 
-            $sale->load('sale_items.product');
-
-            // Restore inventory. Skip any item already individually voided —
-            // its stock was already restored when that item-void was approved.
-            foreach ($sale->sale_items as $item) {
-                if ($item->is_manual || ! $item->product_id || $item->is_voided) {
-                    continue;
-                }
-
-                $baseQuantity = $item->quantity * $item->product->conversionFactorFor($item->unit);
-
-                $inventory = Inventory::where('product_id', $item->product_id)->first();
-                if ($inventory) {
-                    $inventory->increment('quantity', $baseQuantity);
-                }
-
-                InventoryMovement::create([
-                    'product_id'     => $item->product_id,
-                    'type'           => 'in',
-                    'quantity'       => $baseQuantity,
-                    'reason'         => 'Void',
-                    'reference_id'   => $sale->id,
-                    'reference_type' => Sale::class,
-                    'notes'          => 'Sale voided via POS (manager approved)',
-                ]);
-            }
-
-            // Reverse every register session this sale's money ever touched. Payments
-            // collected after creation (or a partial down payment logged at creation)
-            // are recorded in sale_payments, each stamped with the session it was
-            // added to — reverse those individually rather than assuming one session.
-            $loggedPayments = SalePayment::where('sale_id', $sale->id)->get();
-            foreach ($loggedPayments as $payment) {
-                if ($payment->cash_register_session_id) {
-                    $paymentSession = CashRegisterSession::find($payment->cash_register_session_id);
-                    if ($paymentSession) {
-                        $paymentSession->reverseSale((float) $payment->amount, $payment->payment_method === 'cash');
-                    }
-                }
-            }
-
-            // Money collected at sale creation is only logged as a sale_payments row
-            // when it was a partial down payment on a credit sale. A non-credit sale
-            // paid in full, or a credit sale whose down payment covered the total, adds
-            // straight to its creation session with no ledger row — recover that amount
-            // as whatever's left of amount_paid after accounting for logged payments.
-            $unloggedInitial = round((float) $sale->amount_paid - (float) $loggedPayments->sum('amount') - (float) $loggedPayments->sum('withholding_amount'), 2);
-            if ($unloggedInitial > 0.01 && $sale->cash_register_session_id) {
-                $creationSession = CashRegisterSession::find($sale->cash_register_session_id);
-                if ($creationSession) {
-                    $creationSession->reverseSale($unloggedInitial, $sale->payment_method === 'cash');
-                }
-            }
-
-            $sale->update([
-                'is_voided'      => true,
-                'voided_at'      => now(),
-                'void_reason'    => $voidRequest->void_reason,
-                'amount_paid'    => 0,
-                'payment_status' => 'unpaid',
-            ]);
+            $paymentsReversed = $sale->voidAndReverse($voidRequest->void_reason, 'Sale voided via POS (manager approved)');
 
             $voidRequest->update([
                 'status'       => 'approved',
@@ -243,7 +183,7 @@ class VoidRequestController extends Controller
                 'new_values'      => [
                     'void_reason'      => $voidRequest->void_reason,
                     'total'            => $sale->total,
-                    'payments_reversed' => (float) $loggedPayments->sum('amount') + max(0, $unloggedInitial),
+                    'payments_reversed' => $paymentsReversed,
                 ],
                 'ip_address'      => $request->ip(),
                 'user_agent'      => $request->userAgent(),
@@ -827,6 +767,22 @@ class VoidRequestController extends Controller
         }
 
         $voidRequest->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by cashier']);
+
+        AuditLog::create([
+            'user_id'         => auth()->id(),
+            'user_name'       => auth()->user()?->name,
+            'action'          => 'cancelled_void_request',
+            'auditable_type'  => VoidRequest::class,
+            'auditable_id'    => $voidRequest->id,
+            'auditable_label' => "Void Request #{$voidRequest->id} for Sale #{$voidRequest->sale_id}",
+            'new_values'      => [
+                'type'         => $voidRequest->type ?? 'void',
+                'sale_item_id' => $voidRequest->sale_item_id,
+                'void_reason'  => $voidRequest->void_reason,
+            ],
+            'ip_address'      => request()->ip(),
+            'user_agent'      => request()->userAgent(),
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Void request cancelled.']);
     }

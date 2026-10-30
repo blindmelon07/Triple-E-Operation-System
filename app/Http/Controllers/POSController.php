@@ -1028,6 +1028,31 @@ class POSController extends Controller
         $sale->load(['customer', 'sale_items.product']);
         $type = $request->query('type', 'delivery');
 
+        // Any print after the first one is a reprint — worth seeing who keeps
+        // reprinting receipts, and when.
+        $timesPrinted = AuditLog::where('action', 'printed_receipt')
+            ->where('auditable_type', Sale::class)
+            ->where('auditable_id', $sale->id)
+            ->count();
+
+        AuditLog::create([
+            'user_id'         => auth()->id(),
+            'user_name'       => auth()->user()?->name,
+            'action'          => 'printed_receipt',
+            'auditable_type'  => Sale::class,
+            'auditable_id'    => $sale->id,
+            'auditable_label' => "Sale #{$sale->id}",
+            'new_values'      => [
+                'receipt_type' => $type,
+                'reprint'      => $timesPrinted > 0,
+                'print_number' => $timesPrinted + 1,
+                'total'        => $sale->total,
+                'is_voided'    => $sale->is_voided,
+            ],
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $request->userAgent(),
+        ]);
+
         return view('pos.receipt-print', compact('sale', 'type'));
     }
 
@@ -1078,6 +1103,25 @@ class POSController extends Controller
         }
     }
 
+    /**
+     * Record a cashier's void / item-void / exchange request — the manager's
+     * decision is logged separately when they approve or reject it.
+     */
+    private function logVoidRequest(Request $request, VoidRequest $voidRequest, string $action, array $details): void
+    {
+        AuditLog::create([
+            'user_id'         => auth()->id(),
+            'user_name'       => auth()->user()?->name,
+            'action'          => $action,
+            'auditable_type'  => VoidRequest::class,
+            'auditable_id'    => $voidRequest->id,
+            'auditable_label' => "Void Request #{$voidRequest->id} for Sale #{$voidRequest->sale_id}",
+            'new_values'      => ['void_reason' => $voidRequest->void_reason] + $details,
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $request->userAgent(),
+        ]);
+    }
+
     public function requestVoid(Request $request, Sale $sale): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
@@ -1111,6 +1155,10 @@ class POSController extends Controller
             'cash_register_session_id' => $session->id,
             'void_reason'              => $validated['void_reason'],
             'status'                   => 'pending',
+        ]);
+
+        $this->logVoidRequest($request, $voidRequest, 'requested_void', [
+            'total' => $sale->total,
         ]);
 
         // Notify all admins and super_admins via database notification
@@ -1172,6 +1220,12 @@ class POSController extends Controller
             'cash_register_session_id' => $session->id,
             'void_reason'              => $validated['void_reason'],
             'status'                   => 'pending',
+        ]);
+
+        $this->logVoidRequest($request, $voidRequest, 'requested_item_void', [
+            'item'  => $saleItem->product?->name ?? $saleItem->product_description,
+            'quantity' => $saleItem->quantity,
+            'price' => $saleItem->price,
         ]);
 
         $existingRoles = Role::whereIn('name', ['admin', 'super_admin'])->pluck('name')->toArray();
@@ -1283,6 +1337,13 @@ class POSController extends Controller
 
             return $voidRequest;
         });
+
+        $this->logVoidRequest($request, $voidRequest, 'requested_item_exchange', [
+            'item'         => $saleItem->product?->name ?? $saleItem->product_description,
+            'quantity'     => $saleItem->quantity,
+            'price'        => $saleItem->price,
+            'replacements' => $validated['replacements'],
+        ]);
 
         $existingRoles = Role::whereIn('name', ['admin', 'super_admin'])->pluck('name')->toArray();
         if (!empty($existingRoles)) {

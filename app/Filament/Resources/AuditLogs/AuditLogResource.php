@@ -63,9 +63,15 @@ class AuditLogResource extends Resource
                             $state ? class_basename($state) : '-'
                         ),
                     TextEntry::make('ip_address')
-                        ->label('IP Address'),
+                        ->label('IP Address')
+                        ->placeholder('-')
+                        ->copyable(),
+                    TextEntry::make('device')
+                        ->label('Device'),
                     TextEntry::make('user_agent')
-                        ->label('Browser'),
+                        ->label('Browser (raw)')
+                        ->placeholder('-')
+                        ->columnSpanFull(),
                     TextEntry::make('created_at')
                         ->label('Timestamp')
                         ->dateTime('M d, Y H:i:s'),

@@ -48,6 +48,12 @@ class AuditLogsTable
                         'requested_date_change' => 'warning',
                         'approved_date_change'  => 'success',
                         'rejected_date_change'  => 'danger',
+                        'login_failed'            => 'danger',
+                        'printed_receipt'         => 'gray',
+                        'requested_void'          => 'warning',
+                        'requested_item_void'     => 'warning',
+                        'requested_item_exchange' => 'warning',
+                        'cancelled_void_request'  => 'gray',
                         default             => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => str_replace('_', ' ', ucfirst($state))),
@@ -68,10 +74,18 @@ class AuditLogsTable
 
                 TextColumn::make('ip_address')
                     ->label('IP Address')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('-')
+                    ->searchable()
+                    ->copyable()
+                    ->toggleable(),
+
+                TextColumn::make('device')
+                    ->label('Device')
+                    ->tooltip(fn (AuditLog $record): ?string => $record->user_agent)
+                    ->toggleable(),
 
                 TextColumn::make('user_agent')
-                    ->label('Browser')
+                    ->label('Browser (raw)')
                     ->limit(50)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -97,6 +111,12 @@ class AuditLogsTable
                         'requested_date_change' => 'Requested Date Change',
                         'approved_date_change'  => 'Approved Date Change',
                         'rejected_date_change'  => 'Rejected Date Change',
+                        'login_failed'            => 'Failed Login',
+                        'printed_receipt'         => 'Printed / Reprinted Receipt',
+                        'requested_void'          => 'Requested Void',
+                        'requested_item_void'     => 'Requested Item Void',
+                        'requested_item_exchange' => 'Requested Item Exchange',
+                        'cancelled_void_request'  => 'Cancelled Void Request',
                     ]),
 
                 SelectFilter::make('auditable_type')
@@ -108,6 +128,17 @@ class AuditLogsTable
                         ->mapWithKeys(fn ($type) => [$type => class_basename($type)])
                         ->toArray()
                     ),
+
+                SelectFilter::make('ip_address')
+                    ->label('IP Address')
+                    ->options(fn () => AuditLog::query()
+                        ->whereNotNull('ip_address')
+                        ->distinct()
+                        ->orderBy('ip_address')
+                        ->pluck('ip_address', 'ip_address')
+                        ->toArray()
+                    )
+                    ->searchable(),
 
                 Filter::make('date_range')
                     ->form([

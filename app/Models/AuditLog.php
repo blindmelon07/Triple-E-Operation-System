@@ -46,4 +46,44 @@ class AuditLog extends Model
     {
         return $this->user?->name ?? $this->user_name ?? 'System';
     }
+
+    /**
+     * Readable device summary from the raw user agent, e.g. "Chrome · Windows · Desktop".
+     */
+    public function getDeviceAttribute(): string
+    {
+        $ua = (string) $this->user_agent;
+
+        if ($ua === '') {
+            return '-';
+        }
+
+        $browser = match (true) {
+            str_contains($ua, 'Edg/') => 'Edge',
+            str_contains($ua, 'OPR/') || str_contains($ua, 'Opera') => 'Opera',
+            str_contains($ua, 'SamsungBrowser') => 'Samsung Internet',
+            str_contains($ua, 'Firefox/') => 'Firefox',
+            str_contains($ua, 'Chrome/') || str_contains($ua, 'CriOS') => 'Chrome',
+            str_contains($ua, 'Safari/') => 'Safari',
+            str_contains($ua, 'Symfony') || str_contains($ua, 'curl') => 'Script',
+            default => 'Other browser',
+        };
+
+        $os = match (true) {
+            str_contains($ua, 'Windows') => 'Windows',
+            str_contains($ua, 'Android') => 'Android',
+            str_contains($ua, 'iPhone') || str_contains($ua, 'iPad') => 'iOS',
+            str_contains($ua, 'Mac OS') => 'macOS',
+            str_contains($ua, 'Linux') => 'Linux',
+            default => 'Unknown OS',
+        };
+
+        $type = match (true) {
+            str_contains($ua, 'iPad') || str_contains($ua, 'Tablet') => 'Tablet',
+            str_contains($ua, 'Mobile') || str_contains($ua, 'Android') => 'Mobile',
+            default => 'Desktop',
+        };
+
+        return "{$browser} · {$os} · {$type}";
+    }
 }
