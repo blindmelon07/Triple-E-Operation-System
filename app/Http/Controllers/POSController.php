@@ -24,6 +24,7 @@ use App\Support\DailyReportPaginator;
 use Spatie\Permission\Models\Role;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -714,7 +715,27 @@ class POSController extends Controller
             'down_payment_method' => 'nullable|string|in:cash,bank,gcash,paymaya,card,check',
             'cash_received' => 'nullable|numeric',
             'change' => 'nullable|numeric',
+            'sale_token' => 'nullable|string|max:100',
         ]);
+
+        // Reject duplicate submissions of the same checkout (double-click, retried request).
+        // The first request claims the token; later ones get the already-created sale back.
+        $tokenKey = !empty($validated['sale_token']) ? 'pos-sale:' . auth()->id() . ':' . $validated['sale_token'] : null;
+        if ($tokenKey && !Cache::add($tokenKey, 'pending', now()->addMinutes(30))) {
+            $existing = Cache::get($tokenKey);
+            if (is_numeric($existing)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Sale already completed',
+                    'sale_id' => (int) $existing,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'This sale is already being processed. Please wait.',
+            ], 409);
+        }
 
         try {
             DB::beginTransaction();
@@ -818,6 +839,10 @@ class POSController extends Controller
 
             DB::commit();
 
+            if ($tokenKey) {
+                Cache::put($tokenKey, $sale->id, now()->addMinutes(30));
+            }
+
             AuditLog::create([
                 'user_id'         => auth()->id(),
                 'user_name'       => auth()->user()?->name,
@@ -844,6 +869,11 @@ class POSController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            // Nothing was saved, so let the cashier retry this checkout.
+            if ($tokenKey && Cache::get($tokenKey) === 'pending') {
+                Cache::forget($tokenKey);
+            }
 
             return response()->json([
                 'success' => false,

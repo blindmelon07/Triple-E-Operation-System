@@ -835,10 +835,10 @@
                     </button>
                     <button
                         @click="confirmPayment()"
-                        :disabled="paymentMethod === 'cash' && change < 0"
+                        :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)"
                         class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition"
                     >
-                        Confirm Payment
+                        <span x-text="isProcessing ? 'Processing...' : 'Confirm Payment'"></span>
                     </button>
                 </div>
             </div>
@@ -3099,6 +3099,7 @@
                 isLoadingRecentSales: false,
                 selectedSaleForReprint: null,
                 isProcessing: false,
+                saleToken: null,
                 isCreatingQuotation: false,
                 isSavingCustomer: false,
                 customerError: '',
@@ -3812,7 +3813,16 @@
                 },
 
                 async confirmPayment() {
+                    // Guard against double-clicks: a second click before the first request
+                    // returns would otherwise record the same sale twice.
+                    if (this.isProcessing) return;
                     this.isProcessing = true;
+
+                    // One token per checkout — reused if this same sale is retried, so the
+                    // server can recognise and ignore a duplicate submission.
+                    if (!this.saleToken) {
+                        this.saleToken = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+                    }
 
                     try {
                         // If token is stale (419), refresh it first then retry once
@@ -3837,7 +3847,8 @@
                             down_payment: isCharge ? this.downPayment : 0,
                             down_payment_method: isCharge && this.downPayment > 0 ? this.downPaymentMethod : null,
                             cash_received: this.cashReceived,
-                            change: this.change
+                            change: this.change,
+                            sale_token: this.saleToken
                         };
 
                         let response = await fetch('/pos/complete-sale', {
@@ -3885,6 +3896,7 @@
 
                             this.lastSaleTotal = this.grandTotal;
                             this.lastSaleId = data.sale_id;
+                            this.saleToken = null;
                             this.showPaymentModal = false;
                             this.showSuccessModal = true;
                             this.cart = [];
