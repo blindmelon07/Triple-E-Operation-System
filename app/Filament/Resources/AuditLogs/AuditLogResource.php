@@ -6,12 +6,16 @@ use App\Filament\Resources\AuditLogs\Pages\ListAuditLogs;
 use App\Filament\Resources\AuditLogs\Pages\ViewAuditLog;
 use App\Filament\Resources\AuditLogs\Tables\AuditLogsTable;
 use App\Models\AuditLog;
+use App\Support\AuditLogPresenter;
 use BackedEnum;
-use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontFamily;
+use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -38,55 +42,55 @@ class AuditLogResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Audit Details')
+        return $schema->columns(1)->components([
+            Section::make()
                 ->schema([
-                    TextEntry::make('user_display_name')
-                        ->label('User'),
-                    TextEntry::make('action')
-                        ->label('Action')
-                        ->badge()
-                        ->color(fn (string $state): string => match ($state) {
-                            'created' => 'success',
-                            'updated' => 'info',
-                            'deleted' => 'danger',
-                            'login'   => 'primary',
-                            'logout'  => 'gray',
-                            default   => 'gray',
-                        })
-                        ->formatStateUsing(fn (string $state): string => ucfirst($state)),
-                    TextEntry::make('auditable_label')
-                        ->label('Record'),
-                    TextEntry::make('auditable_type')
-                        ->label('Model')
-                        ->formatStateUsing(fn (?string $state): string =>
-                            $state ? class_basename($state) : '-'
-                        ),
-                    TextEntry::make('ip_address')
-                        ->label('IP Address')
-                        ->placeholder('-')
-                        ->copyable(),
-                    TextEntry::make('device')
-                        ->label('Device'),
+                    ViewEntry::make('header')
+                        ->hiddenLabel()
+                        ->view('filament.infolists.audit-log-header'),
+                    Grid::make(['default' => 1, 'sm' => 3])
+                        ->schema([
+                            TextEntry::make('ip_address')
+                                ->label('IP Address')
+                                ->icon(Heroicon::OutlinedGlobeAlt)
+                                ->placeholder('-')
+                                ->copyable(),
+                            TextEntry::make('device')
+                                ->label('Device')
+                                ->icon(Heroicon::OutlinedComputerDesktop),
+                            TextEntry::make('auditable_id')
+                                ->label('Record ID')
+                                ->icon(Heroicon::OutlinedHashtag)
+                                ->placeholder('-'),
+                        ]),
+                ]),
+
+            Section::make(fn (AuditLog $record) => (new AuditLogPresenter($record))->mode() === 'update' ? 'What changed' : 'Details')
+                ->icon(Heroicon::OutlinedListBullet)
+                ->schema([
+                    ViewEntry::make('changes')
+                        ->hiddenLabel()
+                        ->view('filament.infolists.audit-log-changes'),
+                ])
+                ->visible(fn (AuditLog $record) => filled($record->old_values) || filled($record->new_values)),
+
+            Section::make('Technical details')
+                ->icon(Heroicon::OutlinedCodeBracket)
+                ->collapsed()
+                ->schema([
                     TextEntry::make('user_agent')
                         ->label('Browser (raw)')
                         ->placeholder('-')
-                        ->columnSpanFull(),
-                    TextEntry::make('created_at')
-                        ->label('Timestamp')
-                        ->dateTime('M d, Y H:i:s'),
-                ])->columns(2),
-
-            Section::make('Changes')
-                ->schema([
-                    KeyValueEntry::make('old_values')
-                        ->label('Old Values'),
-                    KeyValueEntry::make('new_values')
-                        ->label('New Values'),
-                ])->columns(2)
-                ->visible(fn ($record) =>
-                    $record->old_values !== null || $record->new_values !== null
-                ),
+                        ->fontFamily(FontFamily::Mono)
+                        ->size(TextSize::Small),
+                    TextEntry::make('action')
+                        ->label('Action key')
+                        ->fontFamily(FontFamily::Mono),
+                    TextEntry::make('auditable_type')
+                        ->label('Model class')
+                        ->placeholder('-')
+                        ->fontFamily(FontFamily::Mono),
+                ]),
         ]);
     }
 

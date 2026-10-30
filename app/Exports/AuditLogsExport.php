@@ -3,10 +3,8 @@
 namespace App\Exports;
 
 use App\Models\AuditLog;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
 
 class AuditLogsExport
@@ -55,92 +53,197 @@ class AuditLogsExport
             ]);
     }
 
+    protected const VOID_REQUESTS = ['requested_void', 'requested_item_void', 'requested_item_exchange', 'cancelled_void_request'];
+
+    protected const VOID_DECISIONS = ['approved_void_request', 'approved_item_void_request', 'approved_item_exchange_request', 'rejected_void_request'];
+
     /**
-     * One row per user per day: what kinds of things they did, when they
-     * started and stopped, and which IP addresses they worked from.
+     * One row per user per day: when they started and stopped, how much they
+     * sold, collected and spent, what the register did, which records they
+     * touched (by type), which records they deleted, and where they worked from.
+     *
+     * Built in PHP rather than SQL because the amounts live in the JSON
+     * new_values column.
      */
     protected function getSummaryData(): Collection
     {
-        $count = fn (string $alias, array $actions) => DB::raw("SUM(CASE WHEN action IN ('".implode("','", $actions)."') THEN 1 ELSE 0 END) as {$alias}");
+        $groups = [];
+        $total = $this->emptyTally();
 
-        $rows = $this->query()
-            ->select([
-                DB::raw('DATE(created_at) as day'),
-                'user_id',
-                DB::raw('MAX(user_name) as user_name'),
-                DB::raw('COUNT(*) as total'),
-                DB::raw('MIN(created_at) as first_at'),
-                DB::raw('MAX(created_at) as last_at'),
-            ])
-            ->addSelect([
-                $count('logins', ['login']),
-                $count('failed_logins', ['login_failed']),
-                $count('sales', ['completed_sale']),
-                $count('void_requests', ['requested_void', 'requested_item_void', 'requested_item_exchange', 'cancelled_void_request']),
-                $count('void_decisions', ['approved_void_request', 'approved_item_void_request', 'approved_item_exchange_request', 'rejected_void_request']),
-                $count('prints', ['printed_receipt']),
-                $count('created', ['created']),
-                $count('updated', ['updated']),
-                $count('deleted', ['deleted']),
-            ])
-            ->groupBy('day', 'user_id')
-            ->orderBy('day')
-            ->orderBy('user_name')
-            ->toBase()
-            ->get();
+        $this->query()
+            ->select(['id', 'user_id', 'user_name', 'action', 'auditable_type', 'auditable_label', 'new_values', 'ip_address', 'user_agent', 'created_at'])
+            ->with('user:id,name')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->lazy(1000)
+            ->each(function (AuditLog $log) use (&$groups, &$total) {
+                $day = $log->created_at->toDateString();
+                $key = $day.'|'.$log->user_id;
 
-        $userNames = User::whereIn('id', $rows->pluck('user_id')->filter())->pluck('name', 'id');
+                $groups[$key] ??= ['day' => $day, 'user' => $log->user_display_name] + $this->emptyTally();
 
-        // Distinct IPs per user per day, fetched separately to stay portable
-        // across MySQL and SQLite (GROUP_CONCAT syntax differs).
-        $ips = $this->query()
-            ->whereNotNull('ip_address')
-            ->select([DB::raw('DATE(created_at) as day'), 'user_id', 'ip_address'])
-            ->distinct()
-            ->toBase()
-            ->get()
-            ->groupBy(fn ($r) => $r->day.'|'.$r->user_id)
-            ->map(fn ($group) => $group->pluck('ip_address')->sort()->implode(', '));
+                $this->tally($groups[$key], $log);
+                $this->tally($total, $log);
+            });
 
-        $data = $rows->map(fn ($r) => [
-            'Date' => $r->day,
-            'User' => ($r->user_id ? $userNames[$r->user_id] ?? null : null) ?? $r->user_name ?? 'System',
-            'Total Actions' => (int) $r->total,
-            'Logins' => (int) $r->logins,
-            'Failed Logins' => (int) $r->failed_logins,
-            'Sales' => (int) $r->sales,
-            'Void/Exchange Requests' => (int) $r->void_requests,
-            'Void Approvals/Rejections' => (int) $r->void_decisions,
-            'Receipt Prints' => (int) $r->prints,
-            'Records Created' => (int) $r->created,
-            'Records Updated' => (int) $r->updated,
-            'Records Deleted' => (int) $r->deleted,
-            'First Activity' => substr((string) $r->first_at, 11, 8),
-            'Last Activity' => substr((string) $r->last_at, 11, 8),
-            'IP Addresses' => $ips[$r->day.'|'.$r->user_id] ?? '',
-        ]);
+        $data = collect($groups)
+            ->sortBy([['day', 'asc'], ['user', 'asc']])
+            ->map(fn (array $t) => $this->summaryRow($t['day'], $t['user'], $t))
+            ->values();
 
-        $sum = fn (string $key) => $data->sum($key);
-
-        $data->push([
-            'Date' => 'TOTAL',
-            'User' => '',
-            'Total Actions' => $sum('Total Actions'),
-            'Logins' => $sum('Logins'),
-            'Failed Logins' => $sum('Failed Logins'),
-            'Sales' => $sum('Sales'),
-            'Void/Exchange Requests' => $sum('Void/Exchange Requests'),
-            'Void Approvals/Rejections' => $sum('Void Approvals/Rejections'),
-            'Receipt Prints' => $sum('Receipt Prints'),
-            'Records Created' => $sum('Records Created'),
-            'Records Updated' => $sum('Records Updated'),
-            'Records Deleted' => $sum('Records Deleted'),
+        $data->push(array_merge($this->summaryRow('TOTAL', '', $total), [
             'First Activity' => '',
             'Last Activity' => '',
+            'Hours Active' => '',
+            'Deleted Records' => '',
             'IP Addresses' => '',
-        ]);
+            'Devices' => '',
+        ]));
 
         return $data;
+    }
+
+    protected function emptyTally(): array
+    {
+        return [
+            'first' => null, 'last' => null, 'total' => 0,
+            'logins' => 0, 'logouts' => 0, 'failed_logins' => 0,
+            'sales' => 0, 'sales_amount' => 0.0, 'sales_by_method' => [],
+            'payments' => 0, 'payments_amount' => 0.0,
+            'expenses' => 0, 'expenses_amount' => 0.0,
+            'register_opening' => 0.0, 'cash_added' => 0.0, 'register_closing' => 0.0, 'register_discrepancy' => 0.0,
+            'void_requests' => 0, 'void_decisions' => 0, 'prints' => 0,
+            'created' => [], 'updated' => [], 'deleted' => [], 'deleted_labels' => [],
+            'other' => [], 'ips' => [], 'devices' => [],
+        ];
+    }
+
+    protected function tally(array &$t, AuditLog $log): void
+    {
+        $new = $log->new_values ?? [];
+        $model = $log->auditable_type ? class_basename($log->auditable_type) : 'Other';
+        $amount = fn (string $key) => (float) ($new[$key] ?? 0);
+        $bump = function (string $bucket, string $key, int|float $by = 1) use (&$t) {
+            $t[$bucket][$key] = ($t[$bucket][$key] ?? 0) + $by;
+        };
+
+        $t['total']++;
+        $t['first'] ??= $log->created_at;
+        $t['last'] = $log->created_at;
+
+        if ($log->ip_address) {
+            $t['ips'][$log->ip_address] = true;
+        }
+        if ($log->user_agent) {
+            $t['devices'][$log->device] = true;
+        }
+
+        switch (true) {
+            case $log->action === 'login':
+                $t['logins']++;
+                break;
+            case $log->action === 'logout':
+                $t['logouts']++;
+                break;
+            case $log->action === 'login_failed':
+                $t['failed_logins']++;
+                break;
+            case $log->action === 'completed_sale':
+                $method = $new['payment_method'] ?? 'unknown';
+                $t['sales']++;
+                $t['sales_amount'] += $amount('total');
+                $t['sales_by_method'][$method]['count'] = ($t['sales_by_method'][$method]['count'] ?? 0) + 1;
+                $t['sales_by_method'][$method]['amount'] = ($t['sales_by_method'][$method]['amount'] ?? 0) + $amount('total');
+                break;
+            case $log->action === 'settled_invoice_payment':
+                $t['payments']++;
+                $t['payments_amount'] += $amount('amount_paid_now');
+                break;
+            case $log->action === 'opened_register':
+                $t['register_opening'] += $amount('opening_amount');
+                break;
+            case $log->action === 'added_cash_to_register':
+                $t['cash_added'] += $amount('amount');
+                break;
+            case $log->action === 'closed_register':
+                $t['register_closing'] += $amount('closing_amount');
+                $t['register_discrepancy'] += $amount('discrepancy');
+                break;
+            case in_array($log->action, self::VOID_REQUESTS, true):
+                $t['void_requests']++;
+                break;
+            case in_array($log->action, self::VOID_DECISIONS, true):
+                $t['void_decisions']++;
+                break;
+            case $log->action === 'printed_receipt':
+                $t['prints']++;
+                break;
+            case $log->action === 'created':
+                $bump('created', $model);
+                // Every expense gets a model "created" entry, but only POS
+                // expenses also get "created_expense" — so count them here.
+                if ($model === 'Expense') {
+                    $t['expenses']++;
+                    $t['expenses_amount'] += $amount('amount');
+                }
+                break;
+            case $log->action === 'updated':
+                $bump('updated', $model);
+                break;
+            case $log->action === 'deleted':
+                $bump('deleted', $model);
+                $t['deleted_labels'][] = $log->auditable_label ?: $model;
+                break;
+            case $log->action === 'created_expense':
+                break; // already counted via the model "created" entry
+            default:
+                $bump('other', str_replace('_', ' ', $log->action));
+        }
+    }
+
+    protected function summaryRow(string $date, string $user, array $t): array
+    {
+        $breakdown = fn (array $counts) => collect($counts)->sortDesc()->map(fn ($n, $k) => "{$k}: {$n}")->implode('; ');
+        $minutes = $t['first'] ? (int) $t['first']->diffInMinutes($t['last']) : 0;
+
+        return [
+            'Date' => $date,
+            'User' => $user,
+            'First Activity' => $t['first']?->format('H:i:s') ?? '',
+            'Last Activity' => $t['last']?->format('H:i:s') ?? '',
+            'Hours Active' => sprintf('%d:%02d', intdiv($minutes, 60), $minutes % 60),
+            'Total Actions' => $t['total'],
+            'Logins' => $t['logins'],
+            'Logouts' => $t['logouts'],
+            'Failed Logins' => $t['failed_logins'],
+            'Sales' => $t['sales'],
+            'Sales Amount' => round($t['sales_amount'], 2),
+            'Sales by Payment Method' => collect($t['sales_by_method'])
+                ->sortByDesc('amount')
+                ->map(fn (array $m, string $method) => "{$method}: {$m['count']} (".number_format($m['amount'], 2).')')
+                ->implode('; '),
+            'Payments Collected' => $t['payments'],
+            'Payments Collected Amount' => round($t['payments_amount'], 2),
+            'Expenses' => $t['expenses'],
+            'Expenses Amount' => round($t['expenses_amount'], 2),
+            'Register Opening' => round($t['register_opening'], 2),
+            'Cash Added to Register' => round($t['cash_added'], 2),
+            'Register Closing' => round($t['register_closing'], 2),
+            'Register Discrepancy' => round($t['register_discrepancy'], 2),
+            'Void/Exchange Requests' => $t['void_requests'],
+            'Void Approvals/Rejections' => $t['void_decisions'],
+            'Receipt Prints' => $t['prints'],
+            'Records Created' => array_sum($t['created']),
+            'Created by Type' => $breakdown($t['created']),
+            'Records Updated' => array_sum($t['updated']),
+            'Updated by Type' => $breakdown($t['updated']),
+            'Records Deleted' => array_sum($t['deleted']),
+            'Deleted by Type' => $breakdown($t['deleted']),
+            'Deleted Records' => implode(', ', $t['deleted_labels']),
+            'Other Actions' => $breakdown($t['other']),
+            'IP Addresses' => collect(array_keys($t['ips']))->sort()->implode(', '),
+            'Devices' => implode(', ', array_keys($t['devices'])),
+        ];
     }
 
     /**
@@ -179,7 +282,7 @@ class AuditLogsExport
     public function getHeaders(): array
     {
         if ($this->summary) {
-            return ['Date', 'User', 'Total Actions', 'Logins', 'Failed Logins', 'Sales', 'Void/Exchange Requests', 'Void Approvals/Rejections', 'Receipt Prints', 'Records Created', 'Records Updated', 'Records Deleted', 'First Activity', 'Last Activity', 'IP Addresses'];
+            return array_keys($this->summaryRow('', '', $this->emptyTally()));
         }
 
         return ['Timestamp', 'User', 'Action', 'Model', 'Record', 'Changes', 'IP Address', 'Device', 'Browser (raw)'];

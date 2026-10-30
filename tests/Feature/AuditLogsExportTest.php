@@ -54,6 +54,52 @@ it('summarises activity per user per day within the date range', function () {
         ->and($data->last()['Total Actions'])->toBe(6);
 });
 
+it('details amounts, register activity and which records were touched in the summary', function () {
+    $cashier = User::factory()->create(['name' => 'Cashier A']);
+
+    aleLog($cashier, 'opened_register', '2026-10-29 08:00:00', ['new_values' => ['opening_amount' => 1000]]);
+    aleLog($cashier, 'completed_sale', '2026-10-29 09:00:00', ['new_values' => ['total' => 500, 'payment_method' => 'cash']]);
+    aleLog($cashier, 'completed_sale', '2026-10-29 09:30:00', ['new_values' => ['total' => 6000, 'payment_method' => 'charge']]);
+    aleLog($cashier, 'settled_invoice_payment', '2026-10-29 10:00:00', ['new_values' => ['amount_paid_now' => 4350]]);
+    aleLog($cashier, 'created', '2026-10-29 11:00:00', [
+        'auditable_type' => 'App\\Models\\Expense',
+        'new_values' => ['amount' => '50.00'],
+    ]);
+    aleLog($cashier, 'created_expense', '2026-10-29 11:00:00', ['new_values' => ['amount' => '50.00']]);
+    aleLog($cashier, 'updated', '2026-10-29 11:30:00', ['auditable_type' => 'App\\Models\\Inventory']);
+    aleLog($cashier, 'deleted', '2026-10-29 12:00:00', ['auditable_type' => 'App\\Models\\Sale', 'auditable_label' => 'Sale #91']);
+    aleLog($cashier, 'added_cash_to_register', '2026-10-29 13:00:00', ['new_values' => ['amount' => '5700.00']]);
+    aleLog($cashier, 'closed_register', '2026-10-29 17:15:00', ['new_values' => ['closing_amount' => 7550, 'discrepancy' => '-20.00']]);
+    aleLog($cashier, 'created_quotation', '2026-10-29 17:20:00');
+
+    $data = (new AuditLogsExport(dateFrom: '2026-10-29', dateUntil: '2026-10-29', summary: true))->getData()->values();
+
+    expect($data->first())->toMatchArray([
+        'Hours Active' => '9:20',
+        'Sales' => 2,
+        'Sales Amount' => 6500.0,
+        'Sales by Payment Method' => 'charge: 1 (6,000.00); cash: 1 (500.00)',
+        'Payments Collected' => 1,
+        'Payments Collected Amount' => 4350.0,
+        'Expenses' => 1,
+        'Expenses Amount' => 50.0,
+        'Register Opening' => 1000.0,
+        'Cash Added to Register' => 5700.0,
+        'Register Closing' => 7550.0,
+        'Register Discrepancy' => -20.0,
+        'Created by Type' => 'Expense: 1',
+        'Updated by Type' => 'Inventory: 1',
+        'Records Deleted' => 1,
+        'Deleted by Type' => 'Sale: 1',
+        'Deleted Records' => 'Sale #91',
+        'Other Actions' => 'created quotation: 1',
+        'Devices' => 'Chrome · Windows · Desktop',
+    ]);
+
+    expect($data->last())->toMatchArray(['Date' => 'TOTAL', 'Sales Amount' => 6500.0, 'Deleted Records' => ''])
+        ->and((new AuditLogsExport(summary: true))->getHeaders())->toBe(array_keys($data->first()));
+});
+
 it('limits the export to one user', function () {
     $cashier = User::factory()->create();
     $other = User::factory()->create();
@@ -108,4 +154,42 @@ it('shows IP and device on the Audit Logs page and downloads the report', functi
         ])
         ->assertHasNoActionErrors()
         ->assertFileDownloaded();
+});
+
+it('shows readable before and after values on the audit log page', function () {
+    $admin = User::factory()->create(['name' => 'Admin C']);
+    $admin->givePermissionTo(collect(['View:AuditLog', 'ViewAny:AuditLog'])->map(fn ($name) => \Spatie\Permission\Models\Permission::findOrCreate($name)));
+    \Pest\Laravel\actingAs($admin);
+
+    $log = aleLog($admin, 'updated', '2026-10-29 08:00:00', [
+        'auditable_type' => 'App\Models\Sale',
+        'auditable_label' => 'Sale #47',
+        'old_values' => ['payment_status' => 'partial', 'amount_paid' => '65000.00', 'paid_date' => '2026-09-11T16:00:00.000000Z'],
+        'new_values' => ['payment_status' => 'paid', 'amount_paid' => 70154, 'paid_date' => '2026-10-10 00:00:00'],
+    ]);
+
+    \Livewire\Livewire::test(\App\Filament\Resources\AuditLogs\Pages\ViewAuditLog::class, ['record' => $log->getKey()])
+        ->assertSeeInOrder(['Updated', 'Sale #47', 'Admin C'])
+        ->assertSee('What changed')
+        ->assertSeeInOrder(['Amount Paid', '₱65,000.00', '₱70,154.00'])
+        ->assertSeeInOrder(['Paid Date', 'Sep 12, 2026', 'Oct 10, 2026'])
+        ->assertSee('Partial');
+});
+
+it('names related records instead of showing bare IDs for a created record', function () {
+    $admin = User::factory()->create(['name' => 'Admin C']);
+    $admin->givePermissionTo(collect(['View:AuditLog', 'ViewAny:AuditLog'])->map(fn ($name) => \Spatie\Permission\Models\Permission::findOrCreate($name)));
+    \Pest\Laravel\actingAs($admin);
+
+    $log = aleLog($admin, 'created', '2026-10-29 08:00:00', [
+        'auditable_type' => 'App\Models\Expense',
+        'auditable_label' => 'Expense EXP-1',
+        'new_values' => ['amount' => 100, 'user_id' => $admin->id, 'description' => null, 'created_at' => '2026-10-29 08:00:00'],
+    ]);
+
+    \Livewire\Livewire::test(\App\Filament\Resources\AuditLogs\Pages\ViewAuditLog::class, ['record' => $log->getKey()])
+        ->assertSee('Details')
+        ->assertSeeInOrder(['Amount', '₱100.00'])
+        ->assertSeeInOrder(['User', 'Admin C', '#'.$admin->id])
+        ->assertDontSee('Created At');
 });
