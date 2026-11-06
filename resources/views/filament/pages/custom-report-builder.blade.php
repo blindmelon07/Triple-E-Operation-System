@@ -166,6 +166,7 @@
                                             <th class="text-left px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">P.O #</th>
                                             <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total</th>
                                             <th class="text-right px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Total Amount</th>
+                                            <th class="text-center px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -178,6 +179,15 @@
                                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ $purchase->po_number ?: '—' }}</td>
                                                 <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($purchase->total, 2) }}</td>
                                                 <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">{{ number_format($runningTotal, 2) }}</td>
+                                                @php $payStatus = $purchase->payment_status ?: 'unpaid'; @endphp
+                                                <td class="px-3 py-2 text-center border border-gray-200 dark:border-gray-700">
+                                                    <span @class([
+                                                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold',
+                                                        'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' => $payStatus === 'paid',
+                                                        'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' => $payStatus === 'partial',
+                                                        'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' => $payStatus === 'unpaid',
+                                                    ])>{{ ucfirst($payStatus) }}</span>
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>

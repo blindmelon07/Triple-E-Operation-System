@@ -66,6 +66,21 @@
         .text-right {
             text-align: right;
         }
+        .text-center {
+            text-align: center;
+        }
+        .status-paid {
+            color: #15803d;
+            font-weight: bold;
+        }
+        .status-partial {
+            color: #b45309;
+            font-weight: bold;
+        }
+        .status-unpaid {
+            color: #b91c1c;
+            font-weight: bold;
+        }
         .signature-block {
             margin-top: 36px;
         }
@@ -131,6 +146,7 @@
                     <th>P.O #</th>
                     <th class="text-right">Total</th>
                     <th class="text-right">Total Amount</th>
+                    <th class="text-center">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -143,6 +159,8 @@
                         <td>{{ $purchase->po_number ?: '—' }}</td>
                         <td class="text-right">{{ number_format($purchase->total, 2) }}</td>
                         <td class="text-right">{{ number_format($runningTotal, 2) }}</td>
+                        @php $payStatus = $purchase->payment_status ?: 'unpaid'; @endphp
+                        <td class="text-center status-{{ $payStatus }}">{{ ucfirst($payStatus) }}</td>
                     </tr>
                 @endforeach
             </tbody>

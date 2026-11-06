@@ -23,7 +23,7 @@ class ExpenseCategorySeeder extends Seeder
             ['name' => 'Professional Services', 'description' => 'Legal, accounting, and consulting fees'],
             ['name' => 'Taxes & Licenses', 'description' => 'Government taxes, permits, and licenses'],
             ['name' => 'Bank Charges', 'description' => 'Bank fees, transaction charges, and interest'],
-            ['name' => 'Miscellaneous', 'description' => 'Other uncategorized expenses'],
+            ['name' => 'Miscellaneous', 'description' => 'Other uncategorized expenses', 'report_group' => 'miscellaneous'],
         ];
 
         foreach ($categories as $category) {

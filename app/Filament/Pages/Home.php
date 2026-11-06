@@ -23,6 +23,7 @@ use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
 use App\Filament\Resources\MaintenanceRecords\MaintenanceRecordResource;
 use App\Filament\Resources\MaintenanceRequests\MaintenanceRequestResource;
 use App\Filament\Resources\MaintenanceTypes\MaintenanceTypeResource;
+use App\Filament\Resources\MiscellaneousExpenses\MiscellaneousExpenseResource;
 use App\Filament\Resources\Payrolls\PayrollResource;
 use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\Purchases\PurchaseResource;
@@ -241,6 +242,18 @@ class Home extends Page
                 'color'       => '#ea580c',
                 'bg'          => '#fff7ed',
                 'border'      => '#fed7aa',
+            ];
+        }
+
+        if ($isAdmin || $user->can('ViewAny:MiscellaneousExpense')) {
+            $cards[] = [
+                'title'       => 'Miscellaneous Expenses',
+                'description' => 'Record tolls, parking, car wash and other expenses',
+                'icon'        => 'heroicon-o-receipt-percent',
+                'url'         => MiscellaneousExpenseResource::getUrl(),
+                'color'       => '#0891b2',
+                'bg'          => '#ecfeff',
+                'border'      => '#a5f3fc',
             ];
         }
 

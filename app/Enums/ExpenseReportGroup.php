@@ -9,6 +9,7 @@ enum ExpenseReportGroup: string
     case Logistics = 'logistics';
     case Utilities = 'utilities';
     case Payroll = 'payroll';
+    case Miscellaneous = 'miscellaneous';
     case Other = 'other';
 
     public function label(): string
@@ -19,6 +20,7 @@ enum ExpenseReportGroup: string
             self::Logistics => 'Logistics',
             self::Utilities => 'Utilities',
             self::Payroll => 'Payroll',
+            self::Miscellaneous => 'Miscellaneous',
             self::Other => 'Others',
         };
     }
@@ -36,6 +38,7 @@ enum ExpenseReportGroup: string
             self::Logistics,
             self::Utilities,
             self::Payroll,
+            self::Miscellaneous,
             self::Other,
         ];
     }

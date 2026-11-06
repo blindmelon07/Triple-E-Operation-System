@@ -518,7 +518,7 @@ class CustomReportBuilder extends Page
 
     public function exportStatementCsv(): StreamedResponse
     {
-        $headers = ['Month', 'Date', 'SI #', 'P.O #', 'Total', 'Total Amount'];
+        $headers = ['Month', 'Date', 'SI #', 'P.O #', 'Total', 'Total Amount', 'Status'];
 
         $rows = collect();
 
@@ -527,7 +527,7 @@ class CustomReportBuilder extends Page
 
             foreach ($month['purchases'] as $purchase) {
                 $runningTotal += (float) $purchase->total;
-                $rows->push([$month['label'], $purchase->date->format('Y-m-d'), $purchase->si_number ?: '', $purchase->po_number ?: '', number_format($purchase->total, 2), number_format($runningTotal, 2)]);
+                $rows->push([$month['label'], $purchase->date->format('Y-m-d'), $purchase->si_number ?: '', $purchase->po_number ?: '', number_format($purchase->total, 2), number_format($runningTotal, 2), ucfirst($purchase->payment_status ?: 'unpaid')]);
             }
         }
 
