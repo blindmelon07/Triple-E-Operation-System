@@ -79,7 +79,32 @@ class CashRegisterSession extends Model
 
     public function calculateExpected(): float
     {
-        return (float) $this->opening_amount + (float) $this->total_cash_sales + $this->totalAdjustments();
+        return (float) $this->opening_amount
+            + (float) $this->total_cash_sales
+            + $this->totalAdjustments()
+            - $this->totalCashExpenses();
+    }
+
+    /**
+     * Cash paid out of the drawer for expenses during this shift — expenses
+     * recorded by this session's cashier, paid in cash, while the register
+     * was open. Rejected expenses are left out (same rule as the Daily
+     * Transaction Report). Expenses aren't linked to a session directly, so
+     * the cashier + open/close time window is what ties them to this drawer.
+     */
+    public function totalCashExpenses(): float
+    {
+        if (! $this->opened_at) {
+            return 0.0;
+        }
+
+        return (float) Expense::query()
+            ->where('user_id', $this->user_id)
+            ->where('payment_method', 'cash')
+            ->where('status', '!=', 'rejected')
+            ->where('created_at', '>=', $this->opened_at)
+            ->when($this->closed_at, fn ($q) => $q->where('created_at', '<=', $this->closed_at))
+            ->sum('amount');
     }
 
     /**

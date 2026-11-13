@@ -192,6 +192,17 @@
             </td>
         </tr>
         @endif
+        @php($cashExpenses = $session->totalCashExpenses())
+        @if($cashExpenses > 0)
+        <tr>
+            <td colspan="4">
+                <div class="summary-card">
+                    <div class="label">Less: Cash Expenses</div>
+                    <div class="value">-₱{{ number_format($cashExpenses, 2) }}</div>
+                </div>
+            </td>
+        </tr>
+        @endif
     </table>
     <p style="font-size:7.5px; color:#64748b; margin:-8px 0 12px 8px;">
         Total Collections is all money received in this session, including payments on older invoices, and does not include unpaid credit sales.

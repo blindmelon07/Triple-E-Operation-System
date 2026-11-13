@@ -2900,6 +2900,12 @@
                         <span class="text-gray-600 dark:text-gray-400">Cash Collected</span>
                         <span class="font-medium text-gray-900 dark:text-white" x-text="'₱' + registerTotalCashSales.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
                     </div>
+                    <template x-if="registerTotalCashExpenses > 0">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Less: Cash Expenses</span>
+                            <span class="font-medium text-red-600 dark:text-red-400" x-text="'−₱' + registerTotalCashExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                        </div>
+                    </template>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600 dark:text-gray-400">Total Transactions</span>
                         <span class="font-medium text-gray-900 dark:text-white" x-text="registerTotalTransactions"></span>
@@ -3148,6 +3154,7 @@
                 registerTotalCashSales: @json($registerSession ? (float)$registerSession->total_cash_sales : 0),
                 registerTotalTransactions: @json($registerSession ? (int)$registerSession->total_transactions : 0),
                 registerTotalAdjustments: @json($registerSession ? (float)$registerTotalAdjustments : 0),
+                registerTotalCashExpenses: @json($registerSession ? (float)$registerTotalCashExpenses : 0),
                 showOpenRegisterModal: @json($registerSession === null),
                 showCloseRegisterModal: false,
                 showAddCashModal: false,
@@ -3227,7 +3234,7 @@
                 },
 
                 get registerExpectedCash() {
-                    return this.registerOpeningAmount + this.registerTotalCashSales + this.registerTotalAdjustments;
+                    return this.registerOpeningAmount + this.registerTotalCashSales + this.registerTotalAdjustments - this.registerTotalCashExpenses;
                 },
 
                 get registerDiscrepancy() {
@@ -3266,6 +3273,7 @@
                             this.registerTotalCashSales = 0;
                             this.registerTotalTransactions = 0;
                             this.registerTotalAdjustments = 0;
+                            this.registerTotalCashExpenses = 0;
                             this.showOpenRegisterModal = false;
                             this.openingAmountInput = 0;
                         } else {
@@ -3382,6 +3390,7 @@
                             this.registerTotalCashSales = 0;
                             this.registerTotalTransactions = 0;
                             this.registerTotalAdjustments = 0;
+                            this.registerTotalCashExpenses = 0;
                             this.showCloseRegisterModal = false;
                             this.showOpenRegisterModal = true;
 
@@ -3799,6 +3808,9 @@
 
                         if (data.success) {
                             this.showExpenseModal = false;
+                            if (data.total_cash_expenses !== undefined) {
+                                this.registerTotalCashExpenses = parseFloat(data.total_cash_expenses) || 0;
+                            }
                             this.notify(`Expense recorded (${data.expense.reference_number}) — ₱${parseFloat(data.expense.amount).toFixed(2)}`);
                         } else {
                             this.expenseError = data.message || 'Failed to record expense';

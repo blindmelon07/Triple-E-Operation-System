@@ -117,9 +117,10 @@ class POSController extends Controller
         $expenseCategories = ExpenseCategory::where('is_active', true)->orderBy('name')->get();
 
         $registerTotalAdjustments = $registerSession ? $registerSession->totalAdjustments() : 0;
+        $registerTotalCashExpenses = $registerSession ? $registerSession->totalCashExpenses() : 0;
 
         return view('pos.index', compact(
-            'products', 'customers', 'categories', 'registerSession', 'registerTotalAdjustments',
+            'products', 'customers', 'categories', 'registerSession', 'registerTotalAdjustments', 'registerTotalCashExpenses',
             'quotationCart', 'quotationId', 'quotationCustomerId', 'quotationDownPayment',
             'isManager', 'canSettleInvoices', 'canAddExpense', 'expenseCategories'
         ));
@@ -171,10 +172,13 @@ class POSController extends Controller
             'user_agent'      => $request->userAgent(),
         ]);
 
+        $session = CashRegisterSession::open()->forUser(auth()->id())->first();
+
         return response()->json([
             'success' => true,
             'message' => 'Expense recorded successfully',
             'expense' => $expense,
+            'total_cash_expenses' => $session ? $session->totalCashExpenses() : 0,
         ]);
     }
 
