@@ -275,11 +275,21 @@ class POSController extends Controller
     {
         $validated = $request->validate([
             'closing_amount' => 'required|numeric|min:0',
+            'cash_breakdown' => 'nullable|array',
+            'cash_breakdown.*' => 'nullable|integer|min:0|max:100000',
             'notes' => 'nullable|string|max:1000',
             'confirm_empty_drawer' => 'sometimes|boolean',
             'manager_email' => 'nullable|string|max:255',
             'manager_password' => 'nullable|string|max:255',
         ]);
+
+        // When the cashier counted by denomination, the closing amount is the
+        // total of that count, worked out here rather than trusted from the client.
+        $cashBreakdown = CashRegisterSession::normalizeCashBreakdown($validated['cash_breakdown'] ?? null);
+
+        if ($cashBreakdown !== null) {
+            $validated['closing_amount'] = CashRegisterSession::cashBreakdownTotal($cashBreakdown);
+        }
 
         $session = CashRegisterSession::open()
             ->forUser(auth()->id())
@@ -313,7 +323,7 @@ class POSController extends Controller
             $overrideApprovedBy = $approver->id;
         }
 
-        $session->close($validated['closing_amount'], $validated['notes'] ?? null, $overrideApprovedBy);
+        $session->close($validated['closing_amount'], $validated['notes'] ?? null, $overrideApprovedBy, $cashBreakdown);
 
         AuditLog::create([
             'user_id' => auth()->id(),
@@ -324,6 +334,7 @@ class POSController extends Controller
             'auditable_label' => "Register Session #{$session->id}",
             'new_values' => [
                 'closing_amount' => $validated['closing_amount'],
+                'cash_breakdown' => $cashBreakdown,
                 'expected_amount' => $session->expected_amount,
                 'discrepancy' => $session->discrepancy,
                 'total_sales' => $session->total_sales,

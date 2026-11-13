@@ -13,10 +13,17 @@ class CashRegisterSession extends Model
 {
     use HasFactory, Auditable;
 
+    /**
+     * Peso bills and coins the cashier counts when closing the register,
+     * largest first. Keys of cash_breakdown are these values as strings.
+     */
+    public const DENOMINATIONS = ['1000', '500', '200', '100', '50', '20', '10', '5', '1', '0.25'];
+
     protected $fillable = [
         'user_id',
         'opening_amount',
         'closing_amount',
+        'cash_breakdown',
         'expected_amount',
         'discrepancy',
         'total_sales',
@@ -35,6 +42,7 @@ class CashRegisterSession extends Model
         return [
             'opening_amount' => 'decimal:2',
             'closing_amount' => 'decimal:2',
+            'cash_breakdown' => 'array',
             'expected_amount' => 'decimal:2',
             'discrepancy' => 'decimal:2',
             'total_sales' => 'decimal:2',
@@ -132,12 +140,51 @@ class CashRegisterSession extends Model
         ]);
     }
 
-    public function close(float $actualAmount, ?string $notes = null, ?int $overrideApprovedBy = null): void
+    /**
+     * Keep only known denominations with a whole, positive piece count,
+     * in DENOMINATIONS order. Returns null when nothing was counted.
+     */
+    public static function normalizeCashBreakdown(?array $breakdown): ?array
+    {
+        if (! $breakdown) {
+            return null;
+        }
+
+        $clean = [];
+
+        foreach (self::DENOMINATIONS as $denomination) {
+            $count = (int) ($breakdown[$denomination] ?? 0);
+
+            if ($count > 0) {
+                $clean[$denomination] = $count;
+            }
+        }
+
+        return $clean ?: null;
+    }
+
+    /**
+     * Total peso value of a denomination count. Summed in centavos so
+     * 0.25 coins don't pick up float rounding errors.
+     */
+    public static function cashBreakdownTotal(?array $breakdown): float
+    {
+        $centavos = 0;
+
+        foreach ($breakdown ?? [] as $denomination => $count) {
+            $centavos += (int) round(((float) $denomination) * 100) * (int) $count;
+        }
+
+        return $centavos / 100;
+    }
+
+    public function close(float $actualAmount, ?string $notes = null, ?int $overrideApprovedBy = null, ?array $cashBreakdown = null): void
     {
         $expected = $this->calculateExpected();
 
         $this->update([
             'closing_amount' => $actualAmount,
+            'cash_breakdown' => $cashBreakdown,
             'expected_amount' => $expected,
             'discrepancy' => $actualAmount - $expected,
             'notes' => $notes,

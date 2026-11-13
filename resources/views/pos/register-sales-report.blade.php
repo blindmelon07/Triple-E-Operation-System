@@ -209,6 +209,34 @@
         For sales made on a given day, see the Sales Report.
     </p>
 
+    {{-- Cash Breakdown (denomination count entered at closing) --}}
+    @if(! empty($session->cash_breakdown))
+    <div class="section-title">Cash Breakdown</div>
+    <table class="sales-table" style="width:50%;">
+        <thead>
+            <tr>
+                <th>Denomination</th>
+                <th style="text-align:center">Pieces</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(\App\Models\CashRegisterSession::DENOMINATIONS as $denomination)
+                @php($pieces = (int) ($session->cash_breakdown[$denomination] ?? 0))
+                <tr>
+                    <td>₱{{ (float) $denomination < 1 ? number_format((float) $denomination, 2) : number_format((float) $denomination) }}</td>
+                    <td style="text-align:center">{{ $pieces }}</td>
+                    <td>₱{{ number_format(\App\Models\CashRegisterSession::cashBreakdownTotal([$denomination => $pieces]), 2) }}</td>
+                </tr>
+            @endforeach
+            <tr class="total-row">
+                <td colspan="2">Total Counted</td>
+                <td>₱{{ number_format(\App\Models\CashRegisterSession::cashBreakdownTotal($session->cash_breakdown), 2) }}</td>
+            </tr>
+        </tbody>
+    </table>
+    @endif
+
     {{-- Sales List --}}
     <div class="section-title">Sales Transactions ({{ $sales->count() }} records)</div>
     <table class="sales-table">

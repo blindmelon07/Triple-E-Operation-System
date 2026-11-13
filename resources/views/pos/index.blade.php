@@ -2873,7 +2873,7 @@
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
         @click.self="showCloseRegisterModal = false"
     >
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[95vh] overflow-y-auto">
             <div class="p-6">
                 <div class="text-center mb-6">
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white">Close Register</h3>
@@ -2916,19 +2916,46 @@
                     </div>
                 </div>
 
-                <!-- Actual Cash Count -->
+                <!-- Cash Breakdown: count each bill/coin; the total is the actual cash count -->
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Actual Cash Count</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
-                        <input
-                            type="number"
-                            x-model.number="closingAmountInput"
-                            step="0.01"
-                            min="0"
-                            class="w-full pl-8 pr-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0.00"
-                        >
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cash Breakdown</label>
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50 text-xs uppercase text-gray-500 dark:text-gray-400">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">Denomination</th>
+                                    <th class="px-3 py-2 text-center font-medium">Pieces</th>
+                                    <th class="px-3 py-2 text-right font-medium">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <template x-for="denomination in cashDenominations" :key="denomination">
+                                    <tr>
+                                        <td class="px-3 py-1 font-medium text-gray-900 dark:text-white" x-text="'₱' + formatDenomination(denomination)"></td>
+                                        <td class="px-3 py-1">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                inputmode="numeric"
+                                                x-model="cashCounts[denomination]"
+                                                @input="recalcCashCount()"
+                                                @focus="$event.target.select()"
+                                                class="w-24 mx-auto block px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="0"
+                                            >
+                                        </td>
+                                        <td class="px-3 py-1 text-right tabular-nums text-gray-700 dark:text-gray-300" x-text="'₱' + (cashLineCentavos(denomination) / 100).toLocaleString('en-PH', {minimumFractionDigits: 2})"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <td colspan="2" class="px-3 py-2 font-semibold text-gray-900 dark:text-white">Actual Cash Count</td>
+                                    <td class="px-3 py-2 text-right text-lg font-bold text-gray-900 dark:text-white tabular-nums" x-text="'₱' + (closingAmountInput || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
 
@@ -3160,6 +3187,8 @@
                 showAddCashModal: false,
                 openingAmountInput: 0,
                 closingAmountInput: 0,
+                cashDenominations: @json(\App\Models\CashRegisterSession::DENOMINATIONS),
+                cashCounts: {},
                 closingNotes: '',
                 confirmEmptyDrawer: false,
                 managerApprovalEmail: '',
@@ -3331,8 +3360,26 @@
                     }
                 },
 
+                // Peso value of one denomination line (count × bill/coin), in centavos
+                // so 0.25 coins don't drift.
+                cashLineCentavos(denomination) {
+                    const count = Math.max(0, parseInt(this.cashCounts[denomination]) || 0);
+                    return Math.round(parseFloat(denomination) * 100) * count;
+                },
+
+                formatDenomination(denomination) {
+                    const value = parseFloat(denomination);
+                    return value < 1 ? value.toFixed(2).replace(/^0/, '') : value.toLocaleString('en-PH');
+                },
+
+                recalcCashCount() {
+                    const centavos = this.cashDenominations.reduce((sum, d) => sum + this.cashLineCentavos(d), 0);
+                    this.closingAmountInput = centavos / 100;
+                },
+
                 openCloseRegisterModal() {
                     this.closingAmountInput = 0;
+                    this.cashCounts = Object.fromEntries(this.cashDenominations.map(d => [d, '']));
                     this.closingNotes = '';
                     this.confirmEmptyDrawer = false;
                     this.managerApprovalEmail = '';
@@ -3372,6 +3419,9 @@
                             },
                             body: JSON.stringify({
                                 closing_amount: parseFloat(this.closingAmountInput) || 0,
+                                cash_breakdown: Object.fromEntries(
+                                    this.cashDenominations.map(d => [d, Math.max(0, parseInt(this.cashCounts[d]) || 0)])
+                                ),
                                 notes: this.closingNotes || null,
                                 confirm_empty_drawer: this.confirmEmptyDrawer,
                                 manager_email: needsManagerApproval ? this.managerApprovalEmail : null,
