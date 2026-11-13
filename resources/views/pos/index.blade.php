@@ -3369,7 +3369,7 @@
 
                 formatDenomination(denomination) {
                     const value = parseFloat(denomination);
-                    return value < 1 ? value.toFixed(2).replace(/^0/, '') : value.toLocaleString('en-PH');
+                    return value < 1 ? value.toFixed(2) : value.toLocaleString('en-PH');
                 },
 
                 recalcCashCount() {
