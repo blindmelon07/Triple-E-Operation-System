@@ -58,6 +58,7 @@ class ReportModules
                     'payment_status' => 'Payment Status',
                     'total' => 'Total',
                     'delivery_fee' => 'Delivery Fee',
+                    'surcharge' => 'Surcharge (5%)',
                     'amount_paid' => 'Amount Paid',
                     'due_date' => 'Due Date',
                     'is_voided' => 'Voided',

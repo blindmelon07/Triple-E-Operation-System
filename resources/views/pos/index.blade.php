@@ -718,6 +718,10 @@
                             <span>Delivery Fee</span>
                             <span x-text="'₱' + deliveryFee.toFixed(2)"></span>
                         </div>
+                        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400" x-show="surchargeAmount > 0">
+                            <span>Surcharge (5%)</span>
+                            <span x-text="'₱' + surchargeAmount.toFixed(2)"></span>
+                        </div>
                         <div class="flex justify-between font-bold text-lg text-blue-600 dark:text-blue-400 border-t border-gray-200 dark:border-gray-600 pt-1.5">
                             <span>Grand Total</span>
                             <span x-text="'₱' + grandTotal.toFixed(2)"></span>
@@ -726,8 +730,9 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Method</label>
-                        <select 
+                        <select
                             x-model="paymentMethod"
+                            @change="refreshCashReceived()"
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                         >
                             <option value="cash">Cash</option>
@@ -737,6 +742,18 @@
                             <option value="gcash">GCash</option>
                             <option value="paymaya">PayMaya</option>
                         </select>
+                        <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                               :class="paymentMethod === 'card' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'">
+                            <input
+                                type="checkbox"
+                                :checked="paymentMethod === 'card' || addSurcharge"
+                                :disabled="paymentMethod === 'card'"
+                                @change="addSurcharge = $event.target.checked; refreshCashReceived()"
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            >
+                            <span>Add 5% surcharge</span>
+                            <span x-show="paymentMethod === 'card'" class="text-xs text-gray-500 dark:text-gray-400">(automatic for card)</span>
+                        </label>
                     </div>
 
                     <div x-show="paymentMethod === 'charge'" x-cloak>
@@ -3155,6 +3172,7 @@
                 downPayment: @json($quotationDownPayment ?: 0),
                 downPaymentMethod: 'cash',
                 deliveryFee: 0,
+                addSurcharge: false,
                 cashReceived: 0,
                 change: 0,
                 lastSaleTotal: 0,
@@ -3800,8 +3818,16 @@
                     this.change = this.cashReceived - this.grandTotal;
                 },
 
+                // Re-prefill cash received when the surcharge toggles so the amount
+                // tendered tracks the new grand total.
+                refreshCashReceived() {
+                    this.cashReceived = parseFloat(this.grandTotal.toFixed(2));
+                    this.calculateChange();
+                },
+
                 processPayment() {
                     this.deliveryFee = 0;
+                    this.addSurcharge = false;
                     this.downPayment = 0;
                     this.downPaymentMethod = 'cash';
                     this.showPaymentModal = true;
@@ -3903,6 +3929,7 @@
                             items: this.cart,
                             total: this.grandTotal,
                             delivery_fee: this.deliveryFee,
+                            surcharge: this.surchargeAmount,
                             payment_method: this.paymentMethod,
                             reference_number: (['card','gcash','paymaya'].includes(this.paymentMethod) || (isCharge && this.downPayment > 0 && ['card','gcash','paymaya','bank','check'].includes(this.downPaymentMethod))) ? this.referenceNumber : null,
                             payment_term_days: isCharge ? this.paymentTermDays : null,
@@ -3970,6 +3997,7 @@
                             this.downPayment = 0;
                             this.downPaymentMethod = 'cash';
                             this.deliveryFee = 0;
+                            this.addSurcharge = false;
                             this.cashReceived = 0;
                             this.change = 0;
                         } else {
@@ -4707,8 +4735,15 @@
                     return this.subtotal - this.discountAmount + this.tax;
                 },
 
+                // 5% surcharge on items + delivery: automatic for card, optional otherwise.
+                get surchargeAmount() {
+                    if (this.paymentMethod !== 'card' && !this.addSurcharge) return 0;
+                    const base = this.total + (parseFloat(this.deliveryFee) || 0);
+                    return Math.round(base * 0.05 * 100) / 100;
+                },
+
                 get grandTotal() {
-                    return this.total + (parseFloat(this.deliveryFee) || 0);
+                    return this.total + (parseFloat(this.deliveryFee) || 0) + this.surchargeAmount;
                 }
             }
         }

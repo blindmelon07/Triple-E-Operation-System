@@ -554,7 +554,7 @@
                 <div class="summary-box">
                     <div class="summary-row">
                         <span class="label">Subtotal</span>
-                        <span class="value">₱{{ number_format($sale->total - $sale->delivery_fee, 2) }}</span>
+                        <span class="value">₱{{ number_format($sale->total - $sale->delivery_fee - $sale->surcharge, 2) }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="label">Tax (0%)</span>
@@ -564,6 +564,12 @@
                     <div class="summary-row">
                         <span class="label">Delivery Fee</span>
                         <span class="value">₱{{ number_format($sale->delivery_fee, 2) }}</span>
+                    </div>
+                    @endif
+                    @if($sale->surcharge > 0)
+                    <div class="summary-row">
+                        <span class="label">Surcharge (5%)</span>
+                        <span class="value">₱{{ number_format($sale->surcharge, 2) }}</span>
                     </div>
                     @endif
                     <div class="summary-row total">
@@ -737,7 +743,7 @@
                 <div class="summary-box">
                     <div class="summary-row">
                         <span class="label">Subtotal</span>
-                        <span class="value">₱{{ number_format($sale->total - $sale->delivery_fee, 2) }}</span>
+                        <span class="value">₱{{ number_format($sale->total - $sale->delivery_fee - $sale->surcharge, 2) }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="label">Tax (0%)</span>
@@ -747,6 +753,12 @@
                     <div class="summary-row">
                         <span class="label">Delivery Fee</span>
                         <span class="value">₱{{ number_format($sale->delivery_fee, 2) }}</span>
+                    </div>
+                    @endif
+                    @if($sale->surcharge > 0)
+                    <div class="summary-row">
+                        <span class="label">Surcharge (5%)</span>
+                        <span class="value">₱{{ number_format($sale->surcharge, 2) }}</span>
                     </div>
                     @endif
                     <div class="summary-row total">
