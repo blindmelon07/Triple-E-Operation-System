@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FuelLogs\Schemas;
 
+use App\Filament\Resources\Vehicles\Schemas\VehicleSelect;
 use App\Models\FuelLog;
 use App\Models\Vehicle;
 use Filament\Forms\Components\DatePicker;
@@ -44,16 +45,7 @@ class FuelLogForm
                             ->helperText('Sales invoice / delivery receipt number.')
                             ->maxLength(255),
 
-                        Select::make('vehicle_id')
-                            ->label('Truck/Unit')
-                            ->options(
-                                Vehicle::whereIn('status', ['active', 'maintenance'])
-                                    ->get()
-                                    ->mapWithKeys(fn ($v) => [$v->id => $v->full_name])
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->live()
+                        VehicleSelect::make()
                             ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
                                 $vehicle = $state ? Vehicle::find($state) : null;
                                 $set('plate_number_display', $vehicle?->plate_number);

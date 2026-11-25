@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MaintenanceRecords\Schemas;
 
 use App\Enums\ProductUnit;
+use App\Filament\Resources\Vehicles\Schemas\VehicleSelect;
 use App\Models\DateChangeRequest;
 use App\Models\MaintenanceRecord;
 use App\Models\MaintenanceType;
@@ -154,16 +155,7 @@ class MaintenanceRecordForm
 
                 Section::make('Truck / Unit')
                     ->schema([
-                        Select::make('vehicle_id')
-                            ->label('Truck/Unit')
-                            ->options(
-                                Vehicle::whereIn('status', ['active', 'maintenance'])
-                                    ->get()
-                                    ->mapWithKeys(fn ($v) => [$v->id => $v->full_name])
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->live()
+                        VehicleSelect::make()
                             ->afterStateUpdated(function (Get $get, Set $set, ?int $state) {
                                 $vehicle = $state ? Vehicle::find($state) : null;
                                 $set('plate_number_display', $vehicle?->plate_number);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MiscellaneousExpenses\Schemas;
 
+use App\Filament\Resources\Vehicles\Schemas\VehicleSelect;
 use App\Models\MiscellaneousExpense;
 use App\Models\Vehicle;
 use Filament\Forms\Components\DatePicker;
@@ -50,17 +51,8 @@ class MiscellaneousExpenseForm
                             ->helperText('Sales invoice / delivery receipt / official receipt number.')
                             ->maxLength(255),
 
-                        Select::make('vehicle_id')
-                            ->label('Truck/Unit')
+                        VehicleSelect::make()
                             ->helperText('Optional — leave blank if not for a specific vehicle.')
-                            ->options(
-                                Vehicle::whereIn('status', ['active', 'maintenance'])
-                                    ->get()
-                                    ->mapWithKeys(fn ($v) => [$v->id => $v->full_name])
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->live()
                             ->afterStateUpdated(fn (Set $set, $state) => $set(
                                 'plate_number_display',
                                 $state ? Vehicle::find($state)?->plate_number : null
